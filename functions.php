@@ -341,18 +341,3 @@ function el_rocinante_analytics() {
     <?php endif;
 }
 add_action( 'wp_head', 'el_rocinante_analytics' );
-
-
-// ============================================================
-// GITHUB API CONNECTIVITY TEST (TEMPORARY — REMOVE AFTER USE)
-// ============================================================
-
-add_action( 'admin_init', function() {
-    if ( ! current_user_can( 'manage_options' ) ) return;
-    $response = wp_remote_get( 'https://api.github.com/repos/JotaWorks-WD/el-rocinante' );
-    if ( is_wp_error( $response ) ) {
-        error_log( 'GitHub API test: ' . $response->get_error_message() );
-    } else {
-        error_log( 'GitHub API test OK: ' . wp_remote_retrieve_response_code( $response ) );
-    }
-} );
