@@ -2,11 +2,9 @@
 node_modules/
 
 # Sass intermediate files
-dist/css/style.comp.css
-dist/css/style.prefix.css
-dist/css/style.comp.css.map
-dist/css/style.css.map
-dist/css/style.prefix.css
+dist/css/*.comp.css
+dist/css/*.prefix.css
+dist/css/*.map
 
 # OS files
 .DS_Store
