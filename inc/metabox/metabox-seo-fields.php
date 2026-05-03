@@ -1,4 +1,17 @@
 <?php
+/**
+ * Metabox — SEO Field Group
+ *
+ * Registers the SEO Settings metabox on pages and posts.
+ * Includes target query, meta title/description, canonical,
+ * robots, OG image, and conditionally the preview/health panels.
+ *
+ * File:    metabox-seo-fields.php
+ * Version: 1.0.0
+ * Updated: 2026-05-03
+ *
+ * @package ElRocinante
+ */
 
 // ============================================================
 // METABOX — SEO FIELD GROUP
@@ -6,8 +19,8 @@
 
 add_filter( 'rwmb_meta_boxes', function( $meta_boxes ) {
 
-    $show_preview     = get_theme_mod( 'roci_seo_preview', '1' );
-    $default_og_image = get_theme_mod( 'roci_default_og_image', '' );
+    $show_preview     = roci_setting( 'seo', 'seo_preview', '1' );
+    $default_og_image = roci_setting( 'seo', 'default_og_image', '' );
 
     $fields = array(
 
@@ -51,10 +64,10 @@ add_filter( 'rwmb_meta_boxes', function( $meta_boxes ) {
 
         // Canonical URL
         array(
-            'id'   => 'roci_canonical',
-            'name' => __( 'Canonical URL', 'rocinante' ),
-            'type' => 'url',
-            'desc' => __( 'Leave blank to use the default page URL.', 'rocinante' ),
+            'id'         => 'roci_canonical',
+            'name'       => __( 'Canonical URL', 'rocinante' ),
+            'type'       => 'url',
+            'desc'       => __( 'Leave blank to use the default page URL.', 'rocinante' ),
             'attributes' => array(
                 'id' => 'roci_canonical',
             ),

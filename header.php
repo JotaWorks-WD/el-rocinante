@@ -1,4 +1,18 @@
 <!DOCTYPE html>
+<?php
+/**
+ * Header Template — Site Head & Navigation
+ *
+ * Outputs the full <head> block including SEO meta, OG tags,
+ * Twitter Card, schema JSON-LD, and the primary navigation.
+ *
+ * File:    header.php
+ * Version: 1.0.0
+ * Updated: 2026-05-03
+ *
+ * @package ElRocinante
+ */
+?>
 <html <?php language_attributes(); ?>>
 <head>
     <meta charset="<?php bloginfo( 'charset' ); ?>">
@@ -15,14 +29,14 @@
     // META TITLE
     // --------------------------------------------------------
     $roci_meta_title = roci_get_field( 'roci_meta_title', $roci_post_id );
-    $roci_site_name  = get_theme_mod( 'roci_business_name', get_bloginfo( 'name' ) );
+    $roci_site_name  = roci_setting( 'business', 'name', get_bloginfo( 'name' ) );
     $roci_title      = $roci_meta_title ? $roci_meta_title : get_the_title();
 
     // --------------------------------------------------------
     // META DESCRIPTION
     // --------------------------------------------------------
     $roci_meta_desc    = roci_get_field( 'roci_meta_description', $roci_post_id );
-    $roci_default_desc = get_theme_mod( 'roci_default_meta_description', '' );
+    $roci_default_desc = roci_setting( 'seo', 'default_meta_description' );
     $roci_description  = $roci_meta_desc ? $roci_meta_desc : $roci_default_desc;
 
     // --------------------------------------------------------
@@ -43,7 +57,7 @@
     // --------------------------------------------------------
     $roci_og_image_url = '';
 
-    // 1. OG Image field
+    // 1. OG Image field (Metabox)
     $roci_og_image_field = roci_get_field( 'roci_og_image', $roci_post_id );
     if ( $roci_og_image_field ) {
         $roci_og_image_ids = array_keys( $roci_og_image_field );
@@ -57,9 +71,9 @@
         $roci_og_image_url = get_the_post_thumbnail_url( $roci_post_id, 'full' );
     }
 
-    // 3. Site default fallback
+    // 3. Site default fallback (Theme Settings → SEO)
     if ( ! $roci_og_image_url ) {
-        $roci_og_image_url = get_theme_mod( 'roci_default_og_image', '' );
+        $roci_og_image_url = roci_setting( 'seo', 'default_og_image' );
     }
 
     // --------------------------------------------------------
@@ -109,19 +123,20 @@
     <?php endif; ?>
 
     <?php if ( is_front_page() ) :
-        $roci_biz_name    = get_theme_mod( 'roci_business_name', '' );
-        $roci_biz_phone   = get_theme_mod( 'roci_phone', '' );
-        $roci_biz_email   = get_theme_mod( 'roci_email', '' );
-        $roci_biz_address = get_theme_mod( 'roci_address', '' );
+        $roci_biz_name    = roci_setting( 'business', 'name' );
+        $roci_biz_phone   = roci_setting( 'business', 'phone' );
+        $roci_biz_email   = roci_setting( 'business', 'email' );
+        $roci_biz_address = roci_setting( 'business', 'address' );
 
         $roci_same_as = array_values( array_filter( [
-            get_theme_mod( 'roci_facebook', '' ),
-            get_theme_mod( 'roci_instagram', '' ),
-            get_theme_mod( 'roci_tiktok', '' ),
-            get_theme_mod( 'roci_youtube', '' ),
-            get_theme_mod( 'roci_linkedin', '' ),
-            get_theme_mod( 'roci_twitter', '' ),
-            get_theme_mod( 'roci_tripadvisor', '' ),
+            roci_setting( 'social', 'facebook' ),
+            roci_setting( 'social', 'instagram' ),
+            roci_setting( 'social', 'whatsapp' ),
+            roci_setting( 'social', 'tiktok' ),
+            roci_setting( 'social', 'youtube' ),
+            roci_setting( 'social', 'linkedin' ),
+            roci_setting( 'social', 'twitter' ),
+            roci_setting( 'social', 'tripadvisor' ),
         ] ) );
 
         if ( $roci_biz_name ) :
@@ -139,7 +154,7 @@
                 'sameAs'    => $roci_same_as,
             ];
         ?>
-    <!-- Schema JSON-LD — Site Level (Customizer) -->
+    <!-- Schema JSON-LD — Site Level (Theme Settings) -->
     <script type="application/ld+json">
     <?php echo wp_json_encode( $roci_local_schema, JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT ); ?>
     </script>

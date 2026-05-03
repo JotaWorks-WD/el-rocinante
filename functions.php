@@ -1,4 +1,17 @@
 <?php
+/**
+ * Functions — Core Theme Setup
+ *
+ * Registers theme support, nav menus, enqueues styles/scripts,
+ * loads includes, and outputs analytics/integration scripts.
+ *
+ * File:    functions.php
+ * Version: 1.0.0
+ * Updated: 2026-05-03
+ *
+ * @package ElRocinante
+ */
+
 
 // ============================================================
 // THEME SETUP
@@ -67,6 +80,28 @@ add_action( 'wp_enqueue_scripts', 'el_rocinante_enqueue_assets' );
 
 
 // ============================================================
+// BODY CLASSES — design setting hooks
+// ============================================================
+
+function el_rocinante_body_classes( $classes ) {
+
+    $header_style  = roci_setting( 'design', 'header_style', 'solid' );
+    $sticky_header = roci_setting( 'design', 'sticky_header', '0' );
+
+    if ( $header_style === 'transparent' ) {
+        $classes[] = 'has-transparent-nav';
+    }
+
+    if ( $sticky_header === '1' ) {
+        $classes[] = 'has-sticky-nav';
+    }
+
+    return $classes;
+}
+add_filter( 'body_class', 'el_rocinante_body_classes' );
+
+
+// ============================================================
 // REMOVE WORDPRESS JUNK FROM HEAD
 // ============================================================
 
@@ -93,6 +128,13 @@ remove_action( 'wp_head', 'wp_robots', 1 );
 // ============================================================
 
 require_once get_template_directory() . '/inc/class-wp-bootstrap-navwalker.php';
+
+
+// ============================================================
+// THEME SETTINGS PAGE
+// ============================================================
+
+require_once get_template_directory() . '/inc/theme-settings.php';
 
 
 // ============================================================
@@ -125,200 +167,15 @@ function roci_get_field( $field_id, $object_id = null ) {
 
 
 // ============================================================
-// CUSTOMIZER SETTINGS
-// ============================================================
-
-function el_rocinante_customizer( $wp_customize ) {
-
-    $wp_customize->add_panel( 'roci_seo_configuration', array(
-        'title'       => __( 'SEO Configuration', 'rocinante' ),
-        'description' => __( 'Business information, social profiles, and SEO defaults for this site.', 'rocinante' ),
-        'priority'    => 30,
-    ) );
-
-    // --------------------------------------------------------
-    // BUSINESS SETTINGS
-    // --------------------------------------------------------
-
-    $wp_customize->add_section( 'roci_business_settings', array(
-        'title'    => __( 'Business Settings', 'rocinante' ),
-        'panel'    => 'roci_seo_configuration',
-        'priority' => 10,
-    ) );
-
-    $wp_customize->add_setting( 'roci_business_name', array(
-        'default'           => '',
-        'sanitize_callback' => 'sanitize_text_field',
-    ) );
-    $wp_customize->add_control( 'roci_business_name', array(
-        'label'   => __( 'Business Name', 'rocinante' ),
-        'section' => 'roci_business_settings',
-        'type'    => 'text',
-    ) );
-
-    $wp_customize->add_setting( 'roci_phone', array(
-        'default'           => '',
-        'sanitize_callback' => 'sanitize_text_field',
-    ) );
-    $wp_customize->add_control( 'roci_phone', array(
-        'label'   => __( 'Phone Number', 'rocinante' ),
-        'section' => 'roci_business_settings',
-        'type'    => 'text',
-    ) );
-
-    $wp_customize->add_setting( 'roci_email', array(
-        'default'           => '',
-        'sanitize_callback' => 'sanitize_email',
-    ) );
-    $wp_customize->add_control( 'roci_email', array(
-        'label'   => __( 'Email Address', 'rocinante' ),
-        'section' => 'roci_business_settings',
-        'type'    => 'text',
-    ) );
-
-    $wp_customize->add_setting( 'roci_address', array(
-        'default'           => '',
-        'sanitize_callback' => 'sanitize_textarea_field',
-    ) );
-    $wp_customize->add_control( 'roci_address', array(
-        'label'   => __( 'Business Address', 'rocinante' ),
-        'section' => 'roci_business_settings',
-        'type'    => 'textarea',
-    ) );
-
-    $wp_customize->add_setting( 'roci_maps_embed', array(
-        'default'           => '',
-        'sanitize_callback' => 'esc_url_raw',
-    ) );
-    $wp_customize->add_control( 'roci_maps_embed', array(
-        'label'       => __( 'Google Maps Embed URL', 'rocinante' ),
-        'description' => __( 'Paste the src URL from your Google Maps embed code.', 'rocinante' ),
-        'section'     => 'roci_business_settings',
-        'type'        => 'text',
-    ) );
-
-    $wp_customize->add_setting( 'roci_whatsapp', array(
-        'default'           => '',
-        'sanitize_callback' => 'sanitize_text_field',
-    ) );
-    $wp_customize->add_control( 'roci_whatsapp', array(
-        'label'       => __( 'WhatsApp Number', 'rocinante' ),
-        'description' => __( 'Include country code, no spaces. e.g. 50688887777', 'rocinante' ),
-        'section'     => 'roci_business_settings',
-        'type'        => 'text',
-    ) );
-
-    // --------------------------------------------------------
-    // SOCIAL PROFILES
-    // --------------------------------------------------------
-
-    $wp_customize->add_section( 'roci_social_profiles', array(
-        'title'    => __( 'Social Profiles', 'rocinante' ),
-        'panel'    => 'roci_seo_configuration',
-        'priority' => 20,
-    ) );
-
-    $social_profiles = array(
-        'roci_facebook'    => 'Facebook URL',
-        'roci_instagram'   => 'Instagram URL',
-        'roci_tiktok'      => 'TikTok URL',
-        'roci_youtube'     => 'YouTube URL',
-        'roci_linkedin'    => 'LinkedIn URL',
-        'roci_twitter'     => 'X (Twitter) URL',
-        'roci_tripadvisor' => 'TripAdvisor URL',
-    );
-
-    foreach ( $social_profiles as $key => $label ) {
-        $wp_customize->add_setting( $key, array(
-            'default'           => '',
-            'sanitize_callback' => 'esc_url_raw',
-        ) );
-        $wp_customize->add_control( $key, array(
-            'label'   => __( $label, 'rocinante' ),
-            'section' => 'roci_social_profiles',
-            'type'    => 'url',
-        ) );
-    }
-
-    // --------------------------------------------------------
-    // SEO DEFAULTS
-    // --------------------------------------------------------
-
-    $wp_customize->add_section( 'roci_seo_defaults', array(
-        'title'    => __( 'SEO Defaults', 'rocinante' ),
-        'panel'    => 'roci_seo_configuration',
-        'priority' => 30,
-    ) );
-
-    $wp_customize->add_setting( 'roci_default_meta_description', array(
-        'default'           => '',
-        'sanitize_callback' => 'sanitize_textarea_field',
-    ) );
-    $wp_customize->add_control( 'roci_default_meta_description', array(
-        'label'       => __( 'Default Meta Description', 'rocinante' ),
-        'description' => __( 'Used when no page-specific meta description is set.', 'rocinante' ),
-        'section'     => 'roci_seo_defaults',
-        'type'        => 'textarea',
-    ) );
-
-    $wp_customize->add_setting( 'roci_default_og_image', array(
-        'default'           => '',
-        'sanitize_callback' => 'esc_url_raw',
-    ) );
-    $wp_customize->add_control( new WP_Customize_Image_Control(
-        $wp_customize,
-        'roci_default_og_image',
-        array(
-            'label'       => __( 'Default OG Image', 'rocinante' ),
-            'description' => __( 'Used when no page-specific OG image is set. Recommended 1200x630px.', 'rocinante' ),
-            'section'     => 'roci_seo_defaults',
-        )
-    ) );
-
-    $wp_customize->add_setting( 'roci_ga_id', array(
-        'default'           => '',
-        'sanitize_callback' => 'sanitize_text_field',
-    ) );
-    $wp_customize->add_control( 'roci_ga_id', array(
-        'label'       => __( 'Google Analytics ID', 'rocinante' ),
-        'description' => __( 'e.g. G-XXXXXXXXXX', 'rocinante' ),
-        'section'     => 'roci_seo_defaults',
-        'type'        => 'text',
-    ) );
-
-    $wp_customize->add_setting( 'roci_gtm_id', array(
-        'default'           => '',
-        'sanitize_callback' => 'sanitize_text_field',
-    ) );
-    $wp_customize->add_control( 'roci_gtm_id', array(
-        'label'       => __( 'Google Tag Manager ID', 'rocinante' ),
-        'description' => __( 'e.g. GTM-XXXXXXX', 'rocinante' ),
-        'section'     => 'roci_seo_defaults',
-        'type'        => 'text',
-    ) );
-
-    $wp_customize->add_setting( 'roci_seo_preview', array(
-        'default'           => '1',
-        'sanitize_callback' => 'absint',
-    ) );
-    $wp_customize->add_control( 'roci_seo_preview', array(
-        'label'       => __( 'Enable SEO Preview Panel', 'rocinante' ),
-        'description' => __( 'Show Google, Facebook and Twitter previews on page/post edit screens.', 'rocinante' ),
-        'section'     => 'roci_seo_defaults',
-        'type'        => 'checkbox',
-    ) );
-
-}
-add_action( 'customize_register', 'el_rocinante_customizer' );
-
-
-// ============================================================
-// OUTPUT GOOGLE ANALYTICS & GTM
+// OUTPUT ANALYTICS & INTEGRATIONS
 // ============================================================
 
 function el_rocinante_analytics() {
-    $ga_id  = get_theme_mod( 'roci_ga_id', '' );
-    $gtm_id = get_theme_mod( 'roci_gtm_id', '' );
+
+    $ga_id       = roci_setting( 'integrations', 'ga_id' );
+    $gtm_id      = roci_setting( 'integrations', 'gtm_id' );
+    $fb_pixel    = roci_setting( 'integrations', 'fb_pixel_id' );
+    $head_script = roci_setting( 'integrations', 'custom_head_script' );
 
     if ( $ga_id ) : ?>
         <!-- Google Analytics -->
@@ -336,8 +193,39 @@ function el_rocinante_analytics() {
         <script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
         new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
         j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
-        'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentBefore(j,f);
+        'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
         })(window,document,'script','dataLayer','<?php echo esc_attr( $gtm_id ); ?>');</script>
     <?php endif;
+
+    if ( $fb_pixel ) : ?>
+        <!-- Facebook Pixel -->
+        <script>
+        !function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?
+        n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;
+        n.push=n;n.loaded=!0;n.version='2.0';n.queue=[];t=b.createElement(e);t.async=!0;
+        t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}(window,
+        document,'script','https://connect.facebook.net/en_US/fbevents.js');
+        fbq('init','<?php echo esc_attr( $fb_pixel ); ?>');
+        fbq('track','PageView');
+        </script>
+    <?php endif;
+
+    if ( $head_script ) :
+        echo $head_script;
+    endif;
+
 }
 add_action( 'wp_head', 'el_rocinante_analytics' );
+
+
+// ============================================================
+// OUTPUT CUSTOM FOOTER SCRIPT
+// ============================================================
+
+function el_rocinante_footer_scripts() {
+    $footer_script = roci_setting( 'integrations', 'custom_footer_script' );
+    if ( $footer_script ) {
+        echo $footer_script;
+    }
+}
+add_action( 'wp_footer', 'el_rocinante_footer_scripts' );
