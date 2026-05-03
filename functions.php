@@ -6,7 +6,7 @@
  * loads includes, and outputs analytics/integration scripts.
  *
  * File:    functions.php
- * Version: 1.0.0
+ * Version: 1.1.0
  * Updated: 2026-05-03
  *
  * @package ElRocinante
@@ -229,3 +229,14 @@ function el_rocinante_footer_scripts() {
     }
 }
 add_action( 'wp_footer', 'el_rocinante_footer_scripts' );
+
+
+// ============================================================
+// REMOVE CUSTOMIZER PANELS — replaced by Theme Settings page
+// ============================================================
+
+function roci_remove_customizer_sections( $wp_customize ) {
+    $wp_customize->remove_section( 'title_tagline' );        // Site Identity
+    $wp_customize->remove_panel( 'roci_seo_configuration' ); // SEO Config (moved to Theme Settings)
+}
+add_action( 'customize_register', 'roci_remove_customizer_sections', 20 );
