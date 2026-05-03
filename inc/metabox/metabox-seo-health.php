@@ -49,6 +49,7 @@ function roci_seo_health_html( $default_og_image ) {
             var defaultOgImg = "' . esc_js( $default_og_image ) . '";
             var cachedSlug   = "";
             var slugFetched  = false;
+            var slugFetching = false;
             var postId       = new URLSearchParams( window.location.search ).get("post");
 
             // ------------------------------------------------
@@ -61,7 +62,6 @@ function roci_seo_health_html( $default_og_image ) {
                 fetch( "/wp-json/wp/v2/pages/" + postId )
                     .then(function(r) {
                         if ( r.ok ) return r.json();
-                        // Not a page — try posts
                         return fetch( "/wp-json/wp/v2/posts/" + postId ).then(function(r2) {
                             if ( r2.ok ) return r2.json();
                             return null;
@@ -73,10 +73,12 @@ function roci_seo_health_html( $default_og_image ) {
                             slugFetched = true;
                             callback( cachedSlug );
                         } else {
+                            slugFetched = true;
                             callback("");
                         }
                     })
                     .catch(function() {
+                        slugFetched = true;
                         callback("");
                     });
             }
@@ -91,8 +93,11 @@ function roci_seo_health_html( $default_og_image ) {
 
                 // Show loading state if slug not yet fetched
                 if ( !slugFetched ) {
+                    if ( slugFetching ) return;
+                    slugFetching = true;
                     panel.innerHTML = "<div style=\"color:#888;font-size:13px;padding:12px 0;\">Loading SEO Health...</div>";
                     fetchSlug(function() {
+                        slugFetching = false;
                         window.rociUpdateHealth();
                     });
                     return;
@@ -295,7 +300,8 @@ function roci_seo_health_html( $default_og_image ) {
             var saveBtn = document.querySelector(".editor-post-publish-button, .editor-post-save-draft__button");
             if ( saveBtn ) {
                 saveBtn.addEventListener("click", function() {
-                    slugFetched = false;
+                    slugFetched  = false;
+                    slugFetching = false;
                     setTimeout(function() {
                         fetchSlug(function() {
                             window.rociUpdateHealth();
@@ -307,7 +313,8 @@ function roci_seo_health_html( $default_og_image ) {
             // Also watch for save via keyboard shortcut
             document.addEventListener("keydown", function(e) {
                 if ( (e.ctrlKey || e.metaKey) && e.key === "s" ) {
-                    slugFetched = false;
+                    slugFetched  = false;
+                    slugFetching = false;
                     setTimeout(function() {
                         fetchSlug(function() {
                             window.rociUpdateHealth();
