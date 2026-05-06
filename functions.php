@@ -6,8 +6,8 @@
  * loads includes, and outputs analytics/integration scripts.
  *
  * File:    functions.php
- * Version: 1.2.0
- * Updated: 2026-05-03
+ * Version: 1.2.1
+ * Updated: 2026-05-06
  *
  * @package ElRocinante
  */
@@ -149,6 +149,13 @@ require_once get_template_directory() . '/inc/metabox/metabox-fields.php';
 // ============================================================
 
 require_once get_template_directory() . '/inc/sitemap.php';
+
+
+// ============================================================
+// HELPER FUNCTIONS — image & video output
+// ============================================================
+
+require_once get_template_directory() . '/inc/helpers.php';
 
 
 // ============================================================
