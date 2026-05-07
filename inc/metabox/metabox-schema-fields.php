@@ -1,4 +1,17 @@
 <?php
+/**
+ * Metabox — Schema Field Group
+ *
+ * Registers the Schema JSON-LD field group for posts and pages.
+ * Paste complete JSON-LD into the textarea — script tags are added automatically.
+ *
+ * File:    inc/metabox/metabox-schema-fields.php
+ * Version: 1.1.0
+ * Updated: 2026-05-07
+ *
+ * @package ElRocinante
+ */
+
 
 // ============================================================
 // METABOX — SCHEMA FIELD GROUP

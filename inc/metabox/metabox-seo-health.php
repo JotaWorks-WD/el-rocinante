@@ -1,4 +1,18 @@
 <?php
+/**
+ * Metabox — SEO Health Panel
+ *
+ * Renders a live SEO health checklist in the WordPress admin sidebar.
+ * Watches meta title, description, schema, OG image, featured image,
+ * and slug fields — updates in real time as the editor types.
+ *
+ * File:    inc/metabox/metabox-seo-health.php
+ * Version: 1.1.0
+ * Updated: 2026-05-07
+ *
+ * @package ElRocinante
+ */
+
 
 // ============================================================
 // SEO HEALTH PANEL

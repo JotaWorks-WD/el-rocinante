@@ -1,14 +1,14 @@
 <?php
 /**
- * Helper Functions — Image & Video Output
+ * Helper Functions — Image, Video & FAQ Output
  *
- * Reusable output helpers for generating semantic HTML for images
- * and video embeds. Called directly from page templates and
- * template parts throughout El Rocinante and child themes.
+ * Reusable output helpers for generating semantic HTML for images,
+ * video embeds, and FAQ schema. Called directly from page templates
+ * and template parts throughout El Rocinante and child themes.
  *
  * File:    inc/helpers.php
- * Version: 1.0.0
- * Updated: 2026-05-06
+ * Version: 1.1.0
+ * Updated: 2026-05-07
  *
  * @package ElRocinante
  *
@@ -17,10 +17,11 @@
  *   jw_picture()         — Standard content image as <picture> tag
  *   jw_hero_picture()    — Art-directed hero <picture> (desktop + mobile crop)
  *   jw_bunny_video()     — Clean Bunny Stream iframe embed
+ *   jw_faq_schema()      — FAQPage JSON-LD schema output from jw_faq_items field
  *
  * Future expansion:
  *   If this file grows significantly, split into:
- *   inc/helpers/images.php, inc/helpers/video.php, etc.
+ *   inc/helpers/images.php, inc/helpers/video.php, inc/helpers/faq.php, etc.
  *   and convert this file into a loader using require_once.
  *   Template function calls require no changes when refactoring.
  */
@@ -283,4 +284,67 @@ function jw_bunny_video( $library_id, $video_id, $poster_id = 0, $class = '' ) {
     </div>
     <?php
     return ob_get_clean();
+}
+
+
+// ============================================================
+// FAQ HELPERS
+// ============================================================
+
+/**
+ * jw_faq_schema()
+ *
+ * Reads the jw_faq_items cloneable group for the current post
+ * and outputs a FAQPage JSON-LD schema block.
+ * Outputs nothing if no FAQ items are found.
+ *
+ * Called inside template-parts/faq.php in the child theme.
+ * Do not call directly in page templates — let the partial handle it.
+ *
+ * @param  int|null $post_id  Post ID. Defaults to current post.
+ * @return void               Echoes directly — do not echo the return value.
+ */
+function jw_faq_schema( $post_id = null ) {
+
+    if ( ! $post_id ) {
+        $post_id = get_the_ID();
+    }
+
+    $items = rwmb_meta( 'jw_faq_items', array(), $post_id );
+
+    if ( empty( $items ) || ! is_array( $items ) ) {
+        return;
+    }
+
+    $entities = array();
+
+    foreach ( $items as $item ) {
+        $question = isset( $item['faq_question'] ) ? trim( $item['faq_question'] ) : '';
+        $answer   = isset( $item['faq_answer'] )   ? trim( $item['faq_answer'] )   : '';
+
+        if ( ! $question || ! $answer ) {
+            continue;
+        }
+
+        $entities[] = array(
+            '@type'          => 'Question',
+            'name'           => $question,
+            'acceptedAnswer' => array(
+                '@type' => 'Answer',
+                'text'  => $answer,
+            ),
+        );
+    }
+
+    if ( empty( $entities ) ) {
+        return;
+    }
+
+    $schema = array(
+        '@context'   => 'https://schema.org',
+        '@type'      => 'FAQPage',
+        'mainEntity' => $entities,
+    );
+
+    echo '<script type="application/ld+json">' . wp_json_encode( $schema, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE ) . '</script>' . "\n";
 }

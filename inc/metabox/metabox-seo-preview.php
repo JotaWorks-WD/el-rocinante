@@ -1,4 +1,18 @@
 <?php
+/**
+ * Metabox — SEO Preview Panel
+ *
+ * Renders a tabbed live preview panel in the WordPress admin sidebar.
+ * Tabs: Google Preview, Facebook Preview, Twitter Preview, SEO Health.
+ * Updates in real time as the editor types — no save required.
+ *
+ * File:    inc/metabox/metabox-seo-preview.php
+ * Version: 1.1.0
+ * Updated: 2026-05-07
+ *
+ * @package ElRocinante
+ */
+
 
 // ============================================================
 // SEO PREVIEW PANEL — Google, Facebook, Twitter tabs
