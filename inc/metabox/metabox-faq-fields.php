@@ -10,8 +10,10 @@
  * for JSON-LD output, and by template-parts/faq.php in the
  * child theme for front-end accordion rendering.
  *
+ * Note: collapsible groups require Meta Box Pro — not used here.
+ *
  * File:    inc/metabox/metabox-faq-fields.php
- * Version: 1.0.0
+ * Version: 1.1.0
  * Updated: 2026-05-07
  *
  * @package ElRocinante
@@ -37,14 +39,12 @@ add_filter( 'rwmb_meta_boxes', function( $meta_boxes ) {
         'fields'     => array(
 
             array(
-                'id'          => 'jw_faq_items',
-                'type'        => 'group',
-                'clone'       => true,
-                'sort_clone'  => true,
-                'collapsible' => true,
-                'group_title' => array( 'field' => 'faq_question' ),
-                'add_button'  => __( '+ Add FAQ Item', 'rocinante' ),
-                'fields'      => array(
+                'id'         => 'jw_faq_items',
+                'type'       => 'group',
+                'clone'      => true,
+                'sort_clone' => true,
+                'add_button' => __( '+ Add FAQ Item', 'rocinante' ),
+                'fields'     => array(
 
                     array(
                         'id'         => 'faq_question',
