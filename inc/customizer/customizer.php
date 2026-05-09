@@ -7,7 +7,8 @@
  * Child themes populate this panel via roci_register_page_section().
  *
  * File:    inc/customizer/customizer.php
- * Version: 1.0.0
+ * Version: 1.0.1
+ * Updated: 2026-05-09
  *
  * @package ElRocinante
  */
@@ -28,19 +29,26 @@ $roci_page_sections = array();
 //
 // Child themes call this to register a tab inside the Pages panel.
 //
-// Usage (in child theme's functions.php or an inc/ file):
+// IMPORTANT: Always wrap the call in after_setup_theme at priority 20
+// to ensure the parent theme has fully loaded before registering.
 //
-//   roci_register_page_section( array(
-//       'tab_id'    => 'home',               // unique slug for this tab
-//       'tab_label' => 'Home',               // label shown in the tab nav
-//       'option'    => 'fpp_page_home',      // wp option key — use client prefix
-//       'group'     => 'fpp_page_home_group',// settings group — use client prefix
-//       'sanitize'  => 'fpp_sanitize_home',  // sanitize callback function name
-//       'render'    => 'fpp_render_home_tab',// render callback — outputs form fields
-//   ) );
+// Usage (in child theme inc/customizer/pages/your-page.php):
+//
+//   function fpp_register_home_section() {
+//       roci_register_page_section( array(
+//           'tab_id'    => 'home',                // unique slug for this tab
+//           'tab_label' => 'Home',                // label shown in the tab nav
+//           'option'    => 'fpp_page_home',       // wp option key — use client prefix
+//           'group'     => 'fpp_page_home_group', // settings group — use client prefix
+//           'sanitize'  => 'fpp_sanitize_home',   // sanitize callback function name
+//           'render'    => 'fpp_render_home_tab', // render callback — outputs form fields
+//       ) );
+//   }
+//   add_action( 'after_setup_theme', 'fpp_register_home_section', 20 );
 //
 // The render callback receives no arguments.
 // Use get_option( 'fpp_page_home', array() ) inside it to read saved values.
+// All keys (option, group, sanitize, render) should use the client prefix — never roci_.
 // ============================================================
 
 function roci_register_page_section( array $args ) {
