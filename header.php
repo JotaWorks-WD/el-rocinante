@@ -5,10 +5,11 @@
  *
  * Outputs the full <head> block including SEO meta, OG tags,
  * Twitter Card, schema JSON-LD, and the primary navigation.
+ * Logo is not output automatically — call roci_logo() in templates.
  *
  * File:    header.php
- * Version: 1.0.0
- * Updated: 2026-05-03
+ * Version: 1.1.0
+ * Updated: 2026-05-09
  *
  * @package ElRocinante
  */
@@ -169,13 +170,9 @@
     <nav id="site-navigation" class="navbar navbar-expand-lg" aria-label="<?php esc_attr_e( 'Primary Navigation', 'rocinante' ); ?>">
         <div class="container">
 
-            <!-- Logo / Site Name -->
+            <!-- Brand — logo output controlled per child theme template -->
             <a class="navbar-brand" href="<?php echo esc_url( home_url( '/' ) ); ?>" rel="home">
-                <?php if ( has_custom_logo() ) : ?>
-                    <?php the_custom_logo(); ?>
-                <?php else : ?>
-                    <span class="site-title"><?php bloginfo( 'name' ); ?></span>
-                <?php endif; ?>
+                <span class="site-title"><?php bloginfo( 'name' ); ?></span>
             </a>
 
             <!-- Mobile Toggle -->
