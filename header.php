@@ -5,10 +5,10 @@
  *
  * Outputs the full <head> block including SEO meta, OG tags,
  * Twitter Card, schema JSON-LD, and the primary navigation.
- * Logo is not output automatically — call roci_logo() in templates.
+ * Nav output is controlled per child theme via do_action('roci_nav').
  *
  * File:    header.php
- * Version: 1.1.0
+ * Version: 1.2.0
  * Updated: 2026-05-09
  *
  * @package ElRocinante
@@ -167,39 +167,5 @@
 <body <?php body_class(); ?>>
 
 <header id="site-header" class="site-header">
-    <nav id="site-navigation" class="navbar navbar-expand-lg" aria-label="<?php esc_attr_e( 'Primary Navigation', 'rocinante' ); ?>">
-        <div class="container">
-
-            <!-- Brand — logo output controlled per child theme template -->
-            <a class="navbar-brand" href="<?php echo esc_url( home_url( '/' ) ); ?>" rel="home">
-                <span class="site-title"><?php bloginfo( 'name' ); ?></span>
-            </a>
-
-            <!-- Mobile Toggle -->
-            <button class="navbar-toggler" type="button"
-                data-bs-toggle="collapse"
-                data-bs-target="#primaryMenu"
-                aria-controls="primaryMenu"
-                aria-expanded="false"
-                aria-label="<?php esc_attr_e( 'Toggle navigation', 'rocinante' ); ?>">
-                <span class="navbar-toggler-icon"></span>
-            </button>
-
-            <!-- Primary Nav -->
-            <div class="collapse navbar-collapse" id="primaryMenu">
-                <?php
-                if ( has_nav_menu( 'primary' ) ) :
-                    wp_nav_menu( array(
-                        'theme_location' => 'primary',
-                        'container'      => false,
-                        'menu_class'     => 'navbar-nav ms-auto',
-                        'fallback_cb'    => false,
-                        'walker'         => new WP_Bootstrap_Navwalker(),
-                    ) );
-                endif;
-                ?>
-            </div>
-
-        </div>
-    </nav>
+    <?php do_action( 'roci_nav' ); ?>
 </header>
