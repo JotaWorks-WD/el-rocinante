@@ -6,8 +6,8 @@
  * loads includes, and outputs analytics/integration scripts.
  *
  * File:    functions.php
- * Version: 1.2.1
- * Updated: 2026-05-06
+ * Version: 1.2.2
+ * Updated: 2026-05-09
  *
  * @package ElRocinante
  */
@@ -135,6 +135,13 @@ require_once get_template_directory() . '/inc/class-wp-bootstrap-navwalker.php';
 // ============================================================
 
 require_once get_template_directory() . '/inc/theme-settings.php';
+
+
+// ============================================================
+// CUSTOMIZER — Pages panel + child theme helper
+// ============================================================
+
+require_once get_template_directory() . '/inc/customizer/customizer.php';
 
 
 // ============================================================
