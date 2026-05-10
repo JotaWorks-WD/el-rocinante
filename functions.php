@@ -134,7 +134,7 @@ require_once get_template_directory() . '/inc/class-wp-bootstrap-navwalker.php';
 // THEME SETTINGS PAGE
 // ============================================================
 
-require_once get_template_directory() . '/inc/theme-settings.php';
+require_once get_template_directory() . '/inc/theme-settings/settings-loader.php';
 
 
 // ============================================================
