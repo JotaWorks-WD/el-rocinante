@@ -5,7 +5,7 @@
  * Also contains the roci_setting() front-end helper.
  *
  * File:    inc/theme-settings/settings-register.php
- * Version: 1.1.1
+ * Version: 1.1.2
  * Updated: 2026-05-10
  *
  * @package ElRocinante
@@ -59,7 +59,7 @@ add_action( 'admin_menu', 'roci_add_settings_menu' );
 // ============================================================
 
 function roci_settings_enqueue( $hook ) {
-    if ( $hook !== 'toplevel_page_roci-theme-settings' ) return;
+    if ( strpos( $hook, 'roci' ) === false ) return;
 
     wp_enqueue_style( 'wp-color-picker' );
     wp_enqueue_media();
