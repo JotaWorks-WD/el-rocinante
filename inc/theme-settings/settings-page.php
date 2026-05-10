@@ -7,7 +7,7 @@
  * to the individual files in tabs/.
  *
  * File:    inc/theme-settings/settings-page.php
- * Version: 1.1.2
+ * Version: 1.1.3
  * Updated: 2026-05-10
  *
  * @package ElRocinante
