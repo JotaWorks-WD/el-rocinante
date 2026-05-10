@@ -7,8 +7,8 @@
  * and template parts throughout El Rocinante and child themes.
  *
  * File:    inc/helpers.php
- * Version: 1.1.0
- * Updated: 2026-05-07
+ * Version: 1.1.1
+ * Updated: 2026-05-10
  *
  * @package ElRocinante
  *
@@ -90,7 +90,12 @@ function jw_get_webp_url( $attachment_id, $size = 'full' ) {
  * @param  string $alt            Alt text. Default: '' (decorative).
  * @param  string $class          CSS class on the <img> tag. Default: ''.
  * @param  string $loading        'lazy' or 'eager'. Default: 'lazy'.
- *                                Pass 'eager' for above-the-fold / LCP images.
+ *                                IMPORTANT: Pass 'eager' for above-the-fold / LCP images
+ *                                such as hero sections. Failure to do so will delay the
+ *                                Largest Contentful Paint and hurt Core Web Vitals scores.
+ *                                jw_hero_picture() already defaults to 'eager' — this
+ *                                function intentionally keeps 'lazy' as default since most
+ *                                callers use it for content images below the fold.
  * @return string                 HTML output.
  */
 function jw_picture( $attachment_id, $size = 'full', $alt = '', $class = '', $loading = 'lazy' ) {

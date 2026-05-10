@@ -7,8 +7,8 @@
  * Child themes populate this panel via roci_register_page_section().
  *
  * File:    inc/customizer/customizer.php
- * Version: 1.0.1
- * Updated: 2026-05-09
+ * Version: 1.0.2
+ * Updated: 2026-05-10
  *
  * @package ElRocinante
  */
