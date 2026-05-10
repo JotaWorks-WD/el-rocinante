@@ -7,7 +7,7 @@
  * to the individual files in tabs/.
  *
  * File:    inc/theme-settings/settings-page.php
- * Version: 1.1.1
+ * Version: 1.1.2
  * Updated: 2026-05-10
  *
  * @package ElRocinante
@@ -112,7 +112,6 @@ function roci_settings_page() {
         </div>
 
     </div>
-
 
     <?php
     // Handle custom_logo save — theme mod requires set_theme_mod(), not options.php
