@@ -12,7 +12,7 @@
  *     into the AttachmentsBrowser toolbar (after the type + date filters)
  *
  * File:    inc/folders/filters.php
- * Version: 1.4.0
+ * Version: 1.4.1
  * Updated: 2026-05-13
  *
  * @package ElRocinante
@@ -183,40 +183,45 @@ add_action( 'admin_init', 'roci_translate_folder_query_var', 1 );
 // ============================================================
 
 /**
- * Apply the folder filter when the media picker modal queries attachments.
+ * Apply the folder filter when the media library queries attachments via AJAX.
  *
- * The media modal sends requests to wp-admin/admin-ajax.php?action=query-attachments
- * (not the REST API). WordPress's AJAX handler whitelists known query keys and
- * strips anything else before building the WP_Query — so we must intercept here
- * via ajax_query_attachments_args and read from $_REQUEST['query'] directly.
+ * wp_ajax_query_attachments() passes all recognised query keys through to
+ * WP_Query. Because roci_media_folder is a registered taxonomy, WP_Query
+ * treats a bare integer value (e.g. 29) as a term SLUG — no slug matches,
+ * returns nothing. Fix: pull the term_id out of the query array, unset the
+ * raw key so WP_Query never sees it, then inject a proper tax_query.
  *
- * include_children => true is required so selecting a parent folder
- * also returns attachments inside its child terms.
+ * include_children => true mirrors list-view behaviour: selecting a parent
+ * folder also surfaces attachments inside its child terms.
  *
- * @param  array $args  WP_Query args already assembled by wp_ajax_query_attachments().
+ * @param  array $query  WP_Query args assembled by wp_ajax_query_attachments().
  * @return array
  */
-function roci_media_folder_modal_ajax_filter( $args ) {
+function roci_media_folder_modal_ajax_filter( $query ) {
 
-	if ( empty( $_REQUEST['query']['roci_media_folder'] ) ) {
-		return $args;
+	if ( empty( $query['roci_media_folder'] ) ) {
+		return $query;
 	}
 
-	$folder = absint( $_REQUEST['query']['roci_media_folder'] );
-	if ( ! $folder ) {
-		return $args;
+	$term_id = (int) $query['roci_media_folder'];
+	if ( ! $term_id ) {
+		return $query;
 	}
 
-	$args['tax_query'] = array(
+	// Critical: remove the raw key before WP_Query sees it, or WP will
+	// treat the integer as a slug query and override our tax_query.
+	unset( $query['roci_media_folder'] );
+
+	$query['tax_query'] = array(
 		array(
 			'taxonomy'         => 'roci_media_folder',
 			'field'            => 'term_id',
-			'terms'            => $folder,
+			'terms'            => $term_id,
 			'include_children' => true,
 		),
 	);
 
-	return $args;
+	return $query;
 }
 add_filter( 'ajax_query_attachments_args', 'roci_media_folder_modal_ajax_filter' );
 
