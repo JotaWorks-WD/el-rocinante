@@ -7,8 +7,8 @@
  * and template parts throughout El Rocinante and child themes.
  *
  * File:    inc/helpers.php
- * Version: 1.1.1
- * Updated: 2026-05-10
+ * Version: 1.1.2
+ * Updated: 2026-05-13
  *
  * @package ElRocinante
  *
@@ -87,7 +87,9 @@ function jw_get_webp_url( $attachment_id, $size = 'full' ) {
  *
  * @param  int    $attachment_id  WordPress attachment ID.
  * @param  string $size           WordPress image size slug. Default: 'full'.
- * @param  string $alt            Alt text. Default: '' (decorative).
+ * @param  string|null $alt        Alt text. Omit or pass null to fall back to the
+ *                                media library alt (_wp_attachment_image_alt). Pass ''
+ *                                for decorative images (intentional empty alt).
  * @param  string $class          CSS class on the <img> tag. Default: ''.
  * @param  string $loading        'lazy' or 'eager'. Default: 'lazy'.
  *                                IMPORTANT: Pass 'eager' for above-the-fold / LCP images
@@ -98,7 +100,7 @@ function jw_get_webp_url( $attachment_id, $size = 'full' ) {
  *                                callers use it for content images below the fold.
  * @return string                 HTML output.
  */
-function jw_picture( $attachment_id, $size = 'full', $alt = '', $class = '', $loading = 'lazy' ) {
+function jw_picture( $attachment_id, $size = 'full', $alt = null, $class = '', $loading = 'lazy' ) {
 
     if ( ! $attachment_id ) {
         return '';
@@ -127,6 +129,10 @@ function jw_picture( $attachment_id, $size = 'full', $alt = '', $class = '', $lo
         }
     }
 
+    // null means alt was not passed — fall back to the media library value.
+    if ( null === $alt ) {
+        $alt = (string) get_post_meta( $attachment_id, '_wp_attachment_image_alt', true );
+    }
     $alt     = esc_attr( $alt );
     $class   = $class ? ' class="' . esc_attr( $class ) . '"' : '';
     $loading = in_array( $loading, [ 'lazy', 'eager' ], true ) ? $loading : 'lazy';
