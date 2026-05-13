@@ -19,7 +19,7 @@
  *   $_REQUEST['query']['roci_media_folder'] directly (bypassing WP's
  *   whitelist) and applies the tax_query with include_children.
  *
- * Version: 1.4.0
+ * Version: 1.4.1
  */
 
 ( function ( media ) {
@@ -94,6 +94,12 @@
 		id: 'roci-media-folder-filter',
 
 		initialize: function () {
+			// Ensure the prop exists so select() matches the '' key (All Folders).
+			// Without this, model.get('roci_media_folder') returns undefined,
+			// which never equals '' and leaves the select blank on page load.
+			if ( ! this.model.has( 'roci_media_folder' ) ) {
+				this.model.set( 'roci_media_folder', '', { silent: true } );
+			}
 			media.view.AttachmentFilters.prototype.initialize.apply( this, arguments );
 			activeFilter = this;
 		},
