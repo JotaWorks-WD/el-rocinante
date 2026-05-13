@@ -29,20 +29,26 @@
         var errorEl      = document.getElementById( 'roci-folder-error' );
         var filterSelect = document.getElementById( rociAdminFolders.filterSelectId );
 
-        // Guard: bail silently if markup isn't present.
-        if ( ! btn || ! modal ) {
+        // Guard: bail if the modal isn't in the DOM. The button may be absent
+        // in grid view (it's injected by media-folder-filter.js there instead).
+        if ( ! modal ) {
             return;
         }
 
         // ── Open ──────────────────────────────────────────────────────────
 
-        btn.addEventListener( 'click', function () {
-            nameInput.value = '';
-            hideError();
-            modal.style.display  = 'block';
-            backdrop.style.display = 'block';
-            nameInput.focus();
-        } );
+        // The list-view button (#roci-new-folder-btn) is rendered by PHP.
+        // The grid-view button is a Backbone view in media-folder-filter.js
+        // that calls openModal() directly — so this handler is list-view only.
+        if ( btn ) {
+            btn.addEventListener( 'click', function () {
+                nameInput.value = '';
+                hideError();
+                modal.style.display    = 'block';
+                backdrop.style.display = 'block';
+                nameInput.focus();
+            } );
+        }
 
         // ── Close ─────────────────────────────────────────────────────────
 
@@ -150,7 +156,8 @@
 
                     var options = response.data.options;
 
-                    // Refresh the admin list filter dropdown.
+                    // Refresh the list-view PHP select (null-safe — rebuildSelect
+                    // handles a null selectEl gracefully).
                     rebuildSelect(
                         filterSelect,
                         options,
@@ -158,14 +165,19 @@
                         ''
                     );
 
-                    // Refresh the modal parent dropdown so the new folder
-                    // can itself become a parent in the next creation.
+                    // Refresh the modal parent dropdown.
                     rebuildSelect(
                         parentSelect,
                         options,
                         rociAdminFolders.i18n.noParent,
                         '0'
                     );
+
+                    // Notify media-folder-filter.js so it can refresh the
+                    // Backbone filter in grid view with the updated term list.
+                    document.dispatchEvent( new CustomEvent( 'roci:folderCreated', {
+                        detail: { options: options }
+                    } ) );
 
                     closeModal();
                 } )

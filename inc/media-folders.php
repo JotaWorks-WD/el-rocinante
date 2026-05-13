@@ -20,7 +20,7 @@
  *   - Front-end folder output of any kind
  *
  * File:    inc/media-folders.php
- * Version: 1.1.0
+ * Version: 1.1.1
  * Updated: 2026-05-13
  *
  * @package ElRocinante
@@ -110,11 +110,12 @@ add_action( 'init', 'roci_register_page_folder_taxonomy' );
  * because the taxonomy is hierarchical — no custom tree-walk needed.
  *
  * @param string $post_type  Current list-table post type.
- * @param string $which      Toolbar position: 'top' or 'bottom'.
+ * @param string $which      Toolbar position. WP_Media_List_Table uses 'bar'
+ *                           (not 'top'/'bottom' like WP_Posts_List_Table).
  */
 function roci_media_folder_filter_dropdown( $post_type, $which ) {
 
-    if ( 'attachment' !== $post_type || 'top' !== $which ) {
+    if ( 'attachment' !== $post_type || 'bar' !== $which ) {
         return;
     }
 
@@ -628,10 +629,11 @@ function roci_enqueue_admin_folders_js( $hook_suffix ) {
         'taxonomy'       => $taxonomy,
         'filterSelectId' => $filter_select_id,
         'i18n'           => array(
-            'allFolders'    => __( 'All Folders', 'rocinante' ),
-            'noParent'      => __( '— No Parent —', 'rocinante' ),
-            'nameRequired'  => __( 'Folder name is required.', 'rocinante' ),
-            'requestFailed' => __( 'Request failed. Please try again.', 'rocinante' ),
+            'allFolders'     => __( 'All Folders', 'rocinante' ),
+            'noParent'       => __( '— No Parent —', 'rocinante' ),
+            'nameRequired'   => __( 'Folder name is required.', 'rocinante' ),
+            'requestFailed'  => __( 'Request failed. Please try again.', 'rocinante' ),
+            'newFolderLabel' => __( '+ New Folder', 'rocinante' ),
         ),
     ) );
 }
