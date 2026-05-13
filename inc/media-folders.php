@@ -20,7 +20,7 @@
  *   - Front-end folder output of any kind
  *
  * File:    inc/media-folders.php
- * Version: 1.1.1
+ * Version: 1.1.2
  * Updated: 2026-05-13
  *
  * @package ElRocinante
