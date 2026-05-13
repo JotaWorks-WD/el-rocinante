@@ -13,7 +13,7 @@
  *   roci_enqueue_admin_folders_js()        — enqueues admin-folders.js
  *
  * File:    inc/folders/create.php
- * Version: 1.2.0
+ * Version: 1.2.1
  * Updated: 2026-05-13
  *
  * @package ElRocinante
@@ -80,8 +80,16 @@ function roci_build_folder_options_for_select( $taxonomy ) {
  * is rendered via PHP at page load since the screen — and therefore
  * the taxonomy — is known. The JS rebuilds both selects from the
  * option list returned by the AJAX handler after each creation.
+ *
+ * Registered on admin_footer-upload.php (fires for both list and grid mode)
+ * AND admin_footer (for edit.php?post_type=page). The static flag prevents
+ * double-rendering on upload.php where both hooks fire.
  */
 function roci_render_new_folder_modal() {
+	static $done = false;
+	if ( $done ) {
+		return;
+	}
 
 	$screen = get_current_screen();
 	if ( ! $screen ) {
@@ -95,6 +103,8 @@ function roci_render_new_folder_modal() {
 	} else {
 		return;
 	}
+
+	$done = true;
 
 	?>
 	<div id="roci-folder-backdrop"
@@ -164,7 +174,8 @@ function roci_render_new_folder_modal() {
 	</div>
 	<?php
 }
-add_action( 'admin_footer', 'roci_render_new_folder_modal' );
+add_action( 'admin_footer-upload.php', 'roci_render_new_folder_modal' );
+add_action( 'admin_footer',            'roci_render_new_folder_modal' );
 
 
 // ============================================================
@@ -268,7 +279,7 @@ function roci_enqueue_admin_folders_js( $hook_suffix ) {
 		'roci-admin-folders',
 		get_template_directory_uri() . '/dist/js/admin-folders.js',
 		array(),
-		'1.0.0',
+		'1.1.0',
 		true
 	);
 

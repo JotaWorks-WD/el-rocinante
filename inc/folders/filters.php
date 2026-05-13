@@ -11,7 +11,7 @@
  *   - JS enqueue (media-folder-filter.js) for the modal folder filter UI
  *
  * File:    inc/folders/filters.php
- * Version: 1.2.4
+ * Version: 1.2.5
  * Updated: 2026-05-13
  *
  * @package ElRocinante
@@ -262,10 +262,13 @@ function roci_get_folder_terms_for_js() {
 
 
 /**
- * Enqueue the media modal folder filter on relevant admin screens.
+ * Enqueue the media folder filter script on relevant admin screens.
  *
  * post.php / post-new.php — Featured Image picker + Insert Media dialog.
- * upload.php              — Media Library grid view.
+ * upload.php              — Media Library, both list view and grid view.
+ *                           Grid view injects the dropdown + button via the
+ *                           Backbone AttachmentsBrowser extension in the JS;
+ *                           list view renders them via PHP (restrict_manage_posts).
  *
  * The script depends on 'media-views', which WordPress loads on all three
  * screens either automatically (upload.php) or via wp_enqueue_media()
@@ -283,7 +286,7 @@ function roci_enqueue_media_folder_js( $hook_suffix ) {
 		'roci-media-folder-filter',
 		get_template_directory_uri() . '/dist/js/media-folder-filter.js',
 		array( 'media-views' ),
-		'1.0.0',
+		'1.1.0',
 		true
 	);
 
