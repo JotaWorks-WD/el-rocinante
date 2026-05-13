@@ -6,12 +6,12 @@
  * picker modal. Includes:
  *
  *   - restrict_manage_posts dropdowns for upload.php and edit.php?post_type=page
- *   - request filter that translates custom folder query vars into WP's standard taxonomy/term vars
+ *   - admin_init hook that converts numeric folder query vars (term_id) to slug so WP's auto-registered taxonomy query var builds the correct tax_query
  *   - ajax_query_attachments_args filter for the media picker modal
  *   - JS enqueue (media-folder-filter.js) for the modal folder filter UI
  *
  * File:    inc/folders/filters.php
- * Version: 1.2.2
+ * Version: 1.2.4
  * Updated: 2026-05-13
  *
  * @package ElRocinante
@@ -42,7 +42,18 @@ function roci_media_folder_filter_dropdown( $post_type, $which ) {
 		return;
 	}
 
-	$selected = isset( $_GET['roci_media_folder'] ) ? absint( $_GET['roci_media_folder'] ) : 0;
+	$selected = 0;
+	if ( ! empty( $_GET['roci_media_folder'] ) ) {
+		$val = sanitize_text_field( wp_unslash( $_GET['roci_media_folder'] ) );
+		if ( is_numeric( $val ) ) {
+			$selected = absint( $val );
+		} else {
+			$term = get_term_by( 'slug', $val, 'roci_media_folder' );
+			if ( $term ) {
+				$selected = $term->term_id;
+			}
+		}
+	}
 
 	echo '<label class="screen-reader-text" for="roci-media-folder-filter">'
 		. esc_html__( 'Filter by Media Folder', 'rocinante' )
@@ -84,7 +95,18 @@ function roci_page_folder_filter_dropdown( $post_type, $which ) {
 		return;
 	}
 
-	$selected = isset( $_GET['roci_page_folder'] ) ? absint( $_GET['roci_page_folder'] ) : 0;
+	$selected = 0;
+	if ( ! empty( $_GET['roci_page_folder'] ) ) {
+		$val = sanitize_text_field( wp_unslash( $_GET['roci_page_folder'] ) );
+		if ( is_numeric( $val ) ) {
+			$selected = absint( $val );
+		} else {
+			$term = get_term_by( 'slug', $val, 'roci_page_folder' );
+			if ( $term ) {
+				$selected = $term->term_id;
+			}
+		}
+	}
 
 	echo '<label class="screen-reader-text" for="roci-page-folder-filter">'
 		. esc_html__( 'Filter by Page Folder', 'rocinante' )
@@ -115,48 +137,44 @@ add_action( 'restrict_manage_posts', 'roci_page_folder_filter_dropdown', 10, 2 )
 // ============================================================
 
 /**
- * Translate custom folder query vars into WP's standard taxonomy+term vars.
+ * Convert numeric folder query vars (term_id) to the term's slug.
  *
- * The `request` filter runs after WP parses the URL but before WP_Query
- * builds its SQL, so $vars['taxonomy'] / $vars['term'] are always honoured —
- * including include_children behaviour, which WP handles natively for
- * hierarchical taxonomies when queried this way.
- *
- * @param  array $vars  Parsed query vars.
- * @return array
+ * WordPress auto-registers every hierarchical custom taxonomy as a query var
+ * and converts it to a tax_query using the value as a slug. By replacing the
+ * numeric term_id with the slug here (before WP parses query vars), WP builds
+ * a single, correct tax_query — including include_children for free. Setting
+ * taxonomy+term vars separately would create a second conflicting tax_query.
  */
-function roci_translate_folder_query_var( $vars ) {
+function roci_translate_folder_query_var() {
 	if ( ! is_admin() ) {
-		return $vars;
+		return;
 	}
 
 	global $pagenow;
 
 	if ( 'upload.php' === $pagenow && ! empty( $_GET['roci_media_folder'] ) ) {
-		$folder_id = absint( $_GET['roci_media_folder'] );
-		if ( $folder_id > 0 ) {
-			$term = get_term( $folder_id, 'roci_media_folder' );
+		$val = sanitize_text_field( wp_unslash( $_GET['roci_media_folder'] ) );
+		if ( is_numeric( $val ) ) {
+			$term = get_term( absint( $val ), 'roci_media_folder' );
 			if ( $term && ! is_wp_error( $term ) ) {
-				$vars['taxonomy'] = 'roci_media_folder';
-				$vars['term']     = $term->slug;
+				$_GET['roci_media_folder']     = $term->slug;
+				$_REQUEST['roci_media_folder'] = $term->slug;
 			}
 		}
 	}
 
 	if ( 'edit.php' === $pagenow && ! empty( $_GET['roci_page_folder'] ) ) {
-		$folder_id = absint( $_GET['roci_page_folder'] );
-		if ( $folder_id > 0 ) {
-			$term = get_term( $folder_id, 'roci_page_folder' );
+		$val = sanitize_text_field( wp_unslash( $_GET['roci_page_folder'] ) );
+		if ( is_numeric( $val ) ) {
+			$term = get_term( absint( $val ), 'roci_page_folder' );
 			if ( $term && ! is_wp_error( $term ) ) {
-				$vars['taxonomy'] = 'roci_page_folder';
-				$vars['term']     = $term->slug;
+				$_GET['roci_page_folder']     = $term->slug;
+				$_REQUEST['roci_page_folder'] = $term->slug;
 			}
 		}
 	}
-
-	return $vars;
 }
-add_filter( 'request', 'roci_translate_folder_query_var' );
+add_action( 'admin_init', 'roci_translate_folder_query_var', 1 );
 
 
 // ============================================================
