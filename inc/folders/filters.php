@@ -11,7 +11,7 @@
  *   - JS enqueue (media-folder-filter.js) for the modal folder filter UI
  *
  * File:    inc/folders/filters.php
- * Version: 1.2.6
+ * Version: 1.3.0
  * Updated: 2026-05-13
  *
  * @package ElRocinante
@@ -286,8 +286,16 @@ function roci_enqueue_media_folder_js( $hook_suffix ) {
 		'roci-media-folder-filter',
 		get_template_directory_uri() . '/dist/js/media-folder-filter.js',
 		array( 'media-views' ),
-		'1.2.0',
+		'1.3.0',
 		true
+	);
+
+	// Align the injected "+ New Folder" button with the folder filter select
+	// in the grid-view secondary toolbar. Uses inline-flex so the button sits
+	// flush next to the <select> with a small gap rather than overlapping the
+	// primary (Bulk select) section.
+	wp_add_inline_style( 'wp-admin',
+		'.upload-php .media-toolbar-secondary { display: inline-flex; align-items: center; gap: 4px; }'
 	);
 
 	wp_localize_script( 'roci-media-folder-filter', 'rociMediaFolders', array(
