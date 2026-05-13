@@ -11,7 +11,7 @@
  *   - JS enqueue (media-folder-filter.js) for the modal folder filter UI
  *
  * File:    inc/folders/filters.php
- * Version: 1.2.0
+ * Version: 1.2.1
  * Updated: 2026-05-13
  *
  * @package ElRocinante
@@ -82,8 +82,11 @@ function roci_filter_media_by_folder( $query ) {
 		return;
 	}
 
-	$screen = get_current_screen();
-	if ( ! $screen || 'upload' !== $screen->base ) {
+	global $pagenow;
+	if ( 'upload.php' !== $pagenow ) {
+		return;
+	}
+	if ( 'attachment' !== $query->get( 'post_type' ) ) {
 		return;
 	}
 
@@ -157,9 +160,11 @@ function roci_filter_pages_by_folder( $query ) {
 		return;
 	}
 
-	$screen = get_current_screen();
-	// Screen ID is 'edit-page' (not base 'edit') when post_type=page.
-	if ( ! $screen || 'edit-page' !== $screen->id ) {
+	global $pagenow;
+	if ( 'edit.php' !== $pagenow ) {
+		return;
+	}
+	if ( 'page' !== $query->get( 'post_type' ) ) {
 		return;
 	}
 
