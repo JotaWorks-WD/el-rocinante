@@ -124,6 +124,20 @@ remove_action( 'wp_head', 'wp_robots', 1 );
 
 
 // ============================================================
+// DOCUMENT <title> — override with custom meta title field
+// ============================================================
+
+add_filter( 'pre_get_document_title', function( $title ) {
+    $post_id = get_the_ID();
+    if ( ! $post_id ) {
+        return $title;
+    }
+    $meta_title = roci_get_field( 'roci_meta_title', $post_id );
+    return $meta_title ? $meta_title : $title;
+} );
+
+
+// ============================================================
 // BOOTSTRAP NAVWALKER
 // ============================================================
 

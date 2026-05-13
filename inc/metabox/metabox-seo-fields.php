@@ -62,6 +62,19 @@ add_filter( 'rwmb_meta_boxes', function( $meta_boxes ) {
             ),
         ),
 
+        // Page Slug
+        array(
+            'id'                => 'roci_slug',
+            'name'              => __( 'Page Slug', 'rocinante' ),
+            'type'              => 'text',
+            'desc'              => __( 'Overrides the default WordPress permalink slug for this page. Use lowercase, hyphens only, no spaces.', 'rocinante' ),
+            'size'              => 80,
+            'sanitize_callback' => 'sanitize_title',
+            'attributes'        => array(
+                'id' => 'roci_slug',
+            ),
+        ),
+
         // Canonical URL
         array(
             'id'         => 'roci_canonical',
@@ -117,3 +130,58 @@ add_filter( 'rwmb_meta_boxes', function( $meta_boxes ) {
     return $meta_boxes;
 
 } );
+
+
+// ============================================================
+// SLUG FIELD — pre-populate with current post_name
+// ============================================================
+
+add_filter( 'rwmb_roci_slug_value', function( $value, $field, $args, $object_id ) {
+    if ( ! $value && $object_id ) {
+        $post = get_post( $object_id );
+        if ( $post ) {
+            return $post->post_name;
+        }
+    }
+    return $value;
+}, 10, 4 );
+
+
+// ============================================================
+// SLUG FIELD — sync post_name on save
+// ============================================================
+
+function roci_save_slug_field( $post_id, $post ) {
+    if ( defined( 'DOING_AUTOSAVE' ) && DOING_AUTOSAVE ) {
+        return;
+    }
+    if ( wp_is_post_revision( $post_id ) ) {
+        return;
+    }
+    if ( ! in_array( $post->post_type, [ 'post', 'page' ], true ) ) {
+        return;
+    }
+    if ( ! current_user_can( 'edit_post', $post_id ) ) {
+        return;
+    }
+    if ( ! isset( $_POST['roci_slug'] ) ) {
+        return;
+    }
+
+    $new_slug = sanitize_title( wp_unslash( $_POST['roci_slug'] ) );
+
+    if ( ! $new_slug || $new_slug === $post->post_name ) {
+        return;
+    }
+
+    remove_action( 'save_post', 'roci_save_slug_field', 20 );
+
+    wp_update_post( [
+        'ID'        => $post_id,
+        'post_name' => $new_slug,
+    ] );
+
+    add_action( 'save_post', 'roci_save_slug_field', 20, 2 );
+}
+
+add_action( 'save_post', 'roci_save_slug_field', 20, 2 );
