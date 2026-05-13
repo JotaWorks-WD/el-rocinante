@@ -7,7 +7,7 @@
  * and template parts throughout El Rocinante and child themes.
  *
  * File:    inc/helpers.php
- * Version: 1.1.2
+ * Version: 1.1.3
  * Updated: 2026-05-13
  *
  * @package ElRocinante
@@ -172,12 +172,14 @@ function jw_picture( $attachment_id, $size = 'full', $alt = null, $class = '', $
  *
  * @param  int    $desktop_id  Attachment ID of the desktop crop.
  * @param  int    $mobile_id   Attachment ID of the mobile crop.
- * @param  string $alt         Alt text. Default: ''.
+ * @param  string|null $alt     Alt text. Omit or pass null to fall back to the
+ *                              media library alt of the mobile attachment. Pass ''
+ *                              for decorative images (intentional empty alt).
  * @param  string $class       CSS class on the <img> tag. Default: ''.
  * @param  string $loading     'lazy' or 'eager'. Default: 'eager' (heroes are LCP).
  * @return string              HTML output.
  */
-function jw_hero_picture( $desktop_id, $mobile_id, $alt = '', $class = '', $loading = 'eager' ) {
+function jw_hero_picture( $desktop_id, $mobile_id, $alt = null, $class = '', $loading = 'eager' ) {
 
     if ( ! $desktop_id || ! $mobile_id ) {
         return '';
@@ -196,6 +198,10 @@ function jw_hero_picture( $desktop_id, $mobile_id, $alt = '', $class = '', $load
     $width    = isset( $metadata['width'] )  ? (int) $metadata['width']  : '';
     $height   = isset( $metadata['height'] ) ? (int) $metadata['height'] : '';
 
+    // null means alt was not passed — fall back to the mobile attachment's media library value.
+    if ( null === $alt ) {
+        $alt = (string) get_post_meta( $mobile_id, '_wp_attachment_image_alt', true );
+    }
     $alt     = esc_attr( $alt );
     $class   = $class ? ' class="' . esc_attr( $class ) . '"' : '';
     $loading = in_array( $loading, [ 'lazy', 'eager' ], true ) ? $loading : 'eager';
