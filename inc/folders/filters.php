@@ -8,10 +8,11 @@
  *   - restrict_manage_posts dropdowns for upload.php and edit.php?post_type=page
  *   - admin_init hook that converts numeric folder query vars (term_id) to slug so WP's auto-registered taxonomy query var builds the correct tax_query
  *   - ajax_query_attachments_args filter for the media picker modal
- *   - JS enqueue (media-folder-filter.js) for the modal folder filter UI
+ *   - JS enqueue (media-folder-filter.js) that injects a separate folder filter
+ *     into the AttachmentsBrowser toolbar (after the type + date filters)
  *
  * File:    inc/folders/filters.php
- * Version: 1.3.0
+ * Version: 1.4.0
  * Updated: 2026-05-13
  *
  * @package ElRocinante
@@ -286,7 +287,7 @@ function roci_enqueue_media_folder_js( $hook_suffix ) {
 		'roci-media-folder-filter',
 		get_template_directory_uri() . '/dist/js/media-folder-filter.js',
 		array( 'media-views' ),
-		'1.3.0',
+		'1.4.0',
 		true
 	);
 

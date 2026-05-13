@@ -3,24 +3,23 @@
 /**
  * Media Folder Filter — grid view and modal toolbar extension
  *
- * Overrides wp.media.view.AttachmentFilters.All (modal) and
- * wp.media.view.AttachmentFilters.Uploaded (grid view) so the built-in
- * filter <select> shows folder options in both contexts. On upload.php,
- * also injects a "+ New Folder" button next to the filter via the
- * AttachmentsBrowser createToolbar hook.
+ * Injects a folder <select> as a SEPARATE control AFTER the existing type
+ * and date filters — does NOT replace AttachmentFilters.All or .Uploaded.
  *
- * How filtering works:
- *   Selecting a folder sets roci_media_folder on the collection props.
- *   This prop travels through the query-attachments AJAX request.
- *   The PHP ajax_query_attachments_args filter in inc/folders/filters.php
- *   picks it up and applies the tax_query.
+ * Toolbar order in grid view (left → right):
+ *   [Type filter -80] [Date filter -75] [Folder filter -70] [+ New Folder -65]
+ *   | [Bulk select  — primary/right section]
  *
- * How the grid view button works:
- *   The button triggers the modal managed by admin-folders.js. After
- *   creation, admin-folders.js dispatches roci:folderCreated; this script
- *   updates rociMediaFolders.terms and re-renders the active filter.
+ * Why AJAX filtering works without propmap changes:
+ *   wp.media.model.Query.get() iterates every prop and maps it to a query arg
+ *   via:  args[ Query.propmap[prop] || prop ] = value
+ *   Because 'roci_media_folder' is not in propmap, the fallback (|| prop) uses
+ *   the key as-is, so it lands in the admin-ajax payload automatically.
+ *   The PHP ajax_query_attachments_args filter in filters.php reads
+ *   $_REQUEST['query']['roci_media_folder'] directly (bypassing WP's
+ *   whitelist) and applies the tax_query with include_children.
  *
- * Version: 1.3.0
+ * Version: 1.4.0
  */
 
 ( function ( media ) {
@@ -31,16 +30,16 @@
 		return;
 	}
 
-	// Holds the most recently focused filter instance so roci:folderCreated
-	// can refresh it after a term is created.
+	// Declare roci_media_folder as a default query arg so it is always present
+	// in the admin-ajax payload (empty string = "no filter", positive int = term_id).
+	_.extend( media.model.Query.defaultArgs, { roci_media_folder: '' } );
+
+	// Holds the most recently created RociMediaFolderFilter instance so
+	// roci:folderCreated can re-render it after a term is created.
 	var activeFilter = null;
 
 
 	// ── Shared folder filter builder ───────────────────────────────────────
-	//
-	// Returns a filters hash suitable for this.filters in any AttachmentFilters
-	// subclass. Reads from rociMediaFolders.terms so it reflects the current
-	// term list at call time (important when called after term creation).
 
 	function buildFolderFilters() {
 		var filters = {};
@@ -84,37 +83,18 @@
 	}
 
 
-	// ── AttachmentFilters.All override (modal / non-grid) ──────────────────
+	// ── RociMediaFolderFilter ──────────────────────────────────────────────
 	//
-	// Replaces the MIME-type dropdown with a folder dropdown in the
-	// Insert Media and Featured Image modals.
+	// Standalone AttachmentFilters subclass for folder filtering.
+	// Extends the BASE wp.media.view.AttachmentFilters, NOT .All or .Uploaded,
+	// so the existing type and date filters are completely untouched.
 
-	var OriginalAll = media.view.AttachmentFilters.All;
+	var RociMediaFolderFilter = media.view.AttachmentFilters.extend( {
 
-	media.view.AttachmentFilters.All = OriginalAll.extend( {
+		id: 'roci-media-folder-filter',
 
 		initialize: function () {
-			OriginalAll.prototype.initialize.apply( this, arguments );
-			activeFilter = this;
-		},
-
-		createFilters: function () {
-			this.filters = buildFolderFilters();
-		}
-	} );
-
-
-	// ── AttachmentFilters.Uploaded override (grid view) ────────────────────
-	//
-	// Replaces the uploaded-to dropdown with a folder dropdown in the
-	// standalone media library grid view on upload.php.
-
-	var OriginalUploaded = media.view.AttachmentFilters.Uploaded;
-
-	media.view.AttachmentFilters.Uploaded = OriginalUploaded.extend( {
-
-		initialize: function () {
-			OriginalUploaded.prototype.initialize.apply( this, arguments );
+			media.view.AttachmentFilters.prototype.initialize.apply( this, arguments );
 			activeFilter = this;
 		},
 
@@ -144,9 +124,11 @@
 
 	// ── AttachmentsBrowser extension ───────────────────────────────────────
 	//
-	// The folder filter itself is handled by the .All / .Uploaded overrides
-	// above. createToolbar only needs to inject the "+ New Folder" button,
-	// and only on upload.php where the modal HTML exists.
+	// Injects the folder filter and (on upload.php) the "+ New Folder" button
+	// after WP's type (-80) and date (-75) filters in the secondary toolbar.
+	// Priority -70 for the folder filter, -65 for the button places them in
+	// the secondary (left) section immediately before the primary (right)
+	// Bulk select section.
 
 	var OriginalBrowser = media.view.AttachmentsBrowser;
 
@@ -155,15 +137,25 @@
 		createToolbar: function () {
 			OriginalBrowser.prototype.createToolbar.apply( this, arguments );
 
-			// Evaluated here (not at module load) to guarantee rociAdminFolders
-			// is defined — footer scripts may execute after this module loads.
+			// Evaluated here, not at module load, because rociAdminFolders is
+			// enqueued without a dependency on this script and may not yet be
+			// defined at parse time.
 			var hasModal = typeof rociAdminFolders !== 'undefined';
 
+			// Show the folder filter when folders exist, or always on upload.php
+			// so it appears before any folder is created (enabling the button).
+			if ( rociMediaFolders.terms.length || hasModal ) {
+				this.toolbar.set( 'rociMediaFolderFilter', new RociMediaFolderFilter( {
+					controller: this.controller,
+					model:      this.collection.props,
+					priority:   -70
+				} ).render() );
+			}
+
+			// Button only on upload.php — post-editor modal has no modal HTML.
 			if ( hasModal ) {
 				this.toolbar.set( 'rociNewFolderBtn', new NewFolderButton( {
-					// Priority -79 puts the button in the secondary (left) section,
-					// immediately to the right of the folder filter at priority -80.
-					priority: -79
+					priority: -65
 				} ).render() );
 			}
 		}
@@ -173,13 +165,9 @@
 	// ── Post-creation refresh ──────────────────────────────────────────────
 	//
 	// admin-folders.js dispatches roci:folderCreated after a successful AJAX
-	// creation. The options payload uses {value, label} format (from PHP's
-	// roci_build_folder_options_for_select); rociMediaFolders.terms expects
-	// {term_id, name} — convert before storing.
-	//
-	// createFilters() is called explicitly before render() so this.filters
-	// is rebuilt from the updated term list regardless of whether the
-	// AttachmentFilters base class calls createFilters inside render().
+	// creation. The options payload uses {value, label} format; convert to
+	// {term_id, name} before storing. Rebuild this.filters before render so
+	// the select options reflect the updated term list.
 
 	document.addEventListener( 'roci:folderCreated', function ( e ) {
 		rociMediaFolders.terms = e.detail.options.map( function ( opt ) {
