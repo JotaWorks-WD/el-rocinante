@@ -11,7 +11,7 @@
  *   - JS enqueue (media-folder-filter.js) for the modal folder filter UI
  *
  * File:    inc/folders/filters.php
- * Version: 1.2.5
+ * Version: 1.2.6
  * Updated: 2026-05-13
  *
  * @package ElRocinante
@@ -286,7 +286,7 @@ function roci_enqueue_media_folder_js( $hook_suffix ) {
 		'roci-media-folder-filter',
 		get_template_directory_uri() . '/dist/js/media-folder-filter.js',
 		array( 'media-views' ),
-		'1.1.0',
+		'1.2.0',
 		true
 	);
 

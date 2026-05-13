@@ -21,7 +21,7 @@
  *   admin-folders.js dispatches roci:folderCreated; this script listens and
  *   re-renders the filter with the updated term list.
  *
- * Version: 1.1.0
+ * Version: 1.2.0
  */
 
 ( function ( media ) {
@@ -35,10 +35,6 @@
     // Holds the most recently created MediaFolderFilter instance so the
     // roci:folderCreated event handler can re-render it after term creation.
     var activeFilter = null;
-
-    // True only on upload.php, where rociAdminFolders is localized and the
-    // modal HTML is rendered by PHP (admin_footer hook).
-    var hasModal = typeof rociAdminFolders !== 'undefined';
 
 
     // ── Modal open helper ──────────────────────────────────────────────────
@@ -137,6 +133,12 @@
 
         createToolbar: function () {
             OriginalBrowser.prototype.createToolbar.apply( this, arguments );
+
+            // Evaluated here, not at module load, because roci-admin-folders has no
+            // script dependencies and can be output before roci-media-folder-filter
+            // in WordPress's footer queue. By createToolbar time (inside jQuery.ready)
+            // all footer scripts have executed so rociAdminFolders is guaranteed defined.
+            var hasModal = typeof rociAdminFolders !== 'undefined';
 
             // On upload.php, always render the filter (even when empty) so that
             // activeFilter is set and can respond to roci:folderCreated before
