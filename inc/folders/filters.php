@@ -6,12 +6,12 @@
  * picker modal. Includes:
  *
  *   - restrict_manage_posts dropdowns for upload.php and edit.php?post_type=page
- *   - pre_get_posts handlers that apply the tax_query when a folder is selected
+ *   - request filter that translates custom folder query vars into WP's standard taxonomy/term vars
  *   - ajax_query_attachments_args filter for the media picker modal
  *   - JS enqueue (media-folder-filter.js) for the modal folder filter UI
  *
  * File:    inc/folders/filters.php
- * Version: 1.2.1
+ * Version: 1.2.2
  * Updated: 2026-05-13
  *
  * @package ElRocinante
@@ -68,45 +68,6 @@ function roci_media_folder_filter_dropdown( $post_type, $which ) {
 add_action( 'restrict_manage_posts', 'roci_media_folder_filter_dropdown', 10, 2 );
 
 
-/**
- * Filter the Media Library list-view query when a folder is selected.
- *
- * include_children => true means selecting "Charters" also surfaces
- * attachments assigned to "Charters > Bushwacker" and any other children.
- *
- * @param WP_Query $query
- */
-function roci_filter_media_by_folder( $query ) {
-
-	if ( ! is_admin() || ! $query->is_main_query() ) {
-		return;
-	}
-
-	global $pagenow;
-	if ( 'upload.php' !== $pagenow ) {
-		return;
-	}
-	if ( 'attachment' !== $query->get( 'post_type' ) ) {
-		return;
-	}
-
-	$folder = isset( $_GET['roci_media_folder'] ) ? absint( $_GET['roci_media_folder'] ) : 0;
-	if ( ! $folder ) {
-		return;
-	}
-
-	$query->set( 'tax_query', array(
-		array(
-			'taxonomy'         => 'roci_media_folder',
-			'field'            => 'term_id',
-			'terms'            => $folder,
-			'include_children' => true,
-		),
-	) );
-}
-add_action( 'pre_get_posts', 'roci_filter_media_by_folder' );
-
-
 // ============================================================
 // ADMIN LIST — PAGE FOLDER FILTER (edit.php?post_type=page)
 // ============================================================
@@ -149,40 +110,53 @@ function roci_page_folder_filter_dropdown( $post_type, $which ) {
 add_action( 'restrict_manage_posts', 'roci_page_folder_filter_dropdown', 10, 2 );
 
 
-/**
- * Filter the Pages list-view query when a folder is selected.
- *
- * @param WP_Query $query
- */
-function roci_filter_pages_by_folder( $query ) {
+// ============================================================
+// REQUEST FILTER — TRANSLATE FOLDER QUERY VARS
+// ============================================================
 
-	if ( ! is_admin() || ! $query->is_main_query() ) {
-		return;
+/**
+ * Translate custom folder query vars into WP's standard taxonomy+term vars.
+ *
+ * The `request` filter runs after WP parses the URL but before WP_Query
+ * builds its SQL, so $vars['taxonomy'] / $vars['term'] are always honoured —
+ * including include_children behaviour, which WP handles natively for
+ * hierarchical taxonomies when queried this way.
+ *
+ * @param  array $vars  Parsed query vars.
+ * @return array
+ */
+function roci_translate_folder_query_var( $vars ) {
+	if ( ! is_admin() ) {
+		return $vars;
 	}
 
 	global $pagenow;
-	if ( 'edit.php' !== $pagenow ) {
-		return;
-	}
-	if ( 'page' !== $query->get( 'post_type' ) ) {
-		return;
+
+	if ( 'upload.php' === $pagenow && ! empty( $_GET['roci_media_folder'] ) ) {
+		$folder_id = absint( $_GET['roci_media_folder'] );
+		if ( $folder_id > 0 ) {
+			$term = get_term( $folder_id, 'roci_media_folder' );
+			if ( $term && ! is_wp_error( $term ) ) {
+				$vars['taxonomy'] = 'roci_media_folder';
+				$vars['term']     = $term->slug;
+			}
+		}
 	}
 
-	$folder = isset( $_GET['roci_page_folder'] ) ? absint( $_GET['roci_page_folder'] ) : 0;
-	if ( ! $folder ) {
-		return;
+	if ( 'edit.php' === $pagenow && ! empty( $_GET['roci_page_folder'] ) ) {
+		$folder_id = absint( $_GET['roci_page_folder'] );
+		if ( $folder_id > 0 ) {
+			$term = get_term( $folder_id, 'roci_page_folder' );
+			if ( $term && ! is_wp_error( $term ) ) {
+				$vars['taxonomy'] = 'roci_page_folder';
+				$vars['term']     = $term->slug;
+			}
+		}
 	}
 
-	$query->set( 'tax_query', array(
-		array(
-			'taxonomy'         => 'roci_page_folder',
-			'field'            => 'term_id',
-			'terms'            => $folder,
-			'include_children' => true,
-		),
-	) );
+	return $vars;
 }
-add_action( 'pre_get_posts', 'roci_filter_pages_by_folder' );
+add_filter( 'request', 'roci_translate_folder_query_var' );
 
 
 // ============================================================
