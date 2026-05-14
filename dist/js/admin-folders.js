@@ -11,7 +11,7 @@
  * uses it to refresh both the filter dropdown and the modal parent
  * dropdown in place — no page reload needed.
  *
- * Version: 1.2.0
+ * Version: 1.2.1
  * Updated: 2026-05-14
  */
 
@@ -28,7 +28,6 @@
         var nameInput    = document.getElementById( 'roci-folder-name' );
         var parentSelect = document.getElementById( 'roci-folder-parent' );
         var errorEl      = document.getElementById( 'roci-folder-error' );
-        var filterSelect = document.getElementById( rociAdminFolders.filterSelectId );
 
         // Guard: bail if the modal isn't in the DOM. The button may be absent
         // in grid view (it's injected by media-folder-filter.js there instead).
@@ -157,10 +156,13 @@
 
                     var options = response.data.options;
 
-                    // Refresh the list-view PHP select (null-safe — rebuildSelect
-                    // handles a null selectEl gracefully).
+                    // Re-query the filter select at response time, not at page
+                    // load. In grid view the Backbone select doesn't exist at
+                    // DOMContentLoaded but is in the DOM by the time the user
+                    // creates a folder. rebuildSelect is null-safe if the
+                    // element still isn't found.
                     rebuildSelect(
-                        filterSelect,
+                        document.getElementById( rociAdminFolders.filterSelectId ),
                         options,
                         rociAdminFolders.i18n.allFolders,
                         ''
