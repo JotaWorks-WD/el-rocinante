@@ -2,10 +2,12 @@
  * Folder Sidebar — collapse toggle, localStorage persistence, chevron toggle,
  * grid-view filter dispatch, new-folder tree injection
  *
- * List view (upload.php?mode=list, edit.php?post_type=page):
+ * List view (upload.php?mode=list, or upload.php with no explicit mode param
+ *   when the user's stored WP preference is list view):
  *   Sidebar links navigate normally; PHP renders is-active on next load.
  *
- * Grid view (upload.php without mode=list):
+ * Grid view (upload.php?mode=grid, or upload.php with no explicit mode param
+ *   when the user's stored WP preference is grid view):
  *   Links are intercepted; roci:sidebarFilter dispatched so
  *   media-folder-filter.js updates the Backbone model via AJAX.
  *
@@ -23,7 +25,7 @@
  * a parent, the parent is upgraded to a branch node and auto-expanded.
  *
  * File:    dist/js/folders/folders-sidebar.js
- * Version: 2.2.0
+ * Version: 2.3.0
  * Updated: 2026-05-14
  */
 
@@ -67,10 +69,17 @@
 		var allFilesLink = sidebar.querySelector( '[data-term="__all__"] a' );
 		var baseUrl      = allFilesLink ? allFilesLink.href : '';
 
-		// Grid view: upload.php without ?mode=list.
-		var isUpload   = window.location.pathname.indexOf( 'upload.php' ) !== -1;
-		var isListMode = window.location.search.indexOf( 'mode=list' ) !== -1;
-		var isGridView = isUpload && ! isListMode;
+		var isUpload = window.location.pathname.indexOf( 'upload.php' ) !== -1;
+		var isGridView = (function () {
+			if ( ! isUpload ) { return false; }
+			var search = window.location.search;
+			if ( search.indexOf( 'mode=grid' ) !== -1 ) { return true; }
+			if ( search.indexOf( 'mode=list' ) !== -1 ) { return false; }
+			// No explicit mode param — WP may serve list view from stored user preference
+			// without adding ?mode=list to the URL. The list table is present in DOM;
+			// the Backbone grid frame is not. Use that to detect the actual mode.
+			return ! document.querySelector( '.wp-list-table.attachments' );
+		}());
 
 		// ── Collapse toggle ────────────────────────────────────────────────
 
