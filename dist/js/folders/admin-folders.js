@@ -11,7 +11,7 @@
  * uses it to refresh both the filter dropdown and the modal parent
  * dropdown in place — no page reload needed.
  *
- * Version: 1.2.2
+ * Version: 1.2.3
  * Updated: 2026-05-14
  */
 
@@ -176,10 +176,10 @@
                         '0'
                     );
 
-                    // Notify media-folder-filter.js so it can refresh the
-                    // Backbone filter in grid view with the updated term list.
+                    // Notify other modules: media-folder-filter.js refreshes the
+                    // Backbone filter; folders-sidebar.js injects the new node.
                     document.dispatchEvent( new CustomEvent( 'roci:folderCreated', {
-                        detail: { options: options }
+                        detail: { options: options, term: response.data.term }
                     } ) );
 
                     closeModal();

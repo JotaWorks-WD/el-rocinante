@@ -15,7 +15,7 @@
  * ajax_query_attachments_args filter.
  *
  * File:    inc/folders/sidebar.php
- * Version: 1.2.0
+ * Version: 1.3.0
  * Updated: 2026-05-14
  *
  * @package ElRocinante
@@ -243,6 +243,12 @@ function roci_render_folders_sidebar_html( $taxonomy, $folder_url_key, $base_url
 				<?php esc_html_e( 'Folders', 'rocinante' ); ?>
 			</span>
 			<button type="button"
+			        class="button button-small roci-sidebar-new-folder-btn"
+			        id="roci-new-folder-btn"
+			        aria-label="<?php esc_attr_e( 'Create new folder', 'rocinante' ); ?>">
+				<?php esc_html_e( '+ New Folder', 'rocinante' ); ?>
+			</button>
+			<button type="button"
 			        id="roci-sidebar-toggle"
 			        class="roci-sidebar-toggle"
 			        aria-label="<?php esc_attr_e( 'Collapse folder sidebar', 'rocinante' ); ?>"
@@ -363,7 +369,7 @@ function roci_enqueue_sidebar_assets( $hook_suffix ) {
 		'roci-folders-sidebar',
 		get_template_directory_uri() . '/dist/js/folders/folders-sidebar.js',
 		array(),
-		'1.2.0',
+		'2.0.0',
 		true
 	);
 

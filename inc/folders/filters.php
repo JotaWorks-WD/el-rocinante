@@ -12,7 +12,7 @@
  *     folder filter into the AttachmentsBrowser toolbar (after the type + date filters)
  *
  * File:    inc/folders/filters.php
- * Version: 1.6.3
+ * Version: 1.7.0
  * Updated: 2026-05-14
  *
  * @package ElRocinante
@@ -72,10 +72,6 @@ function roci_media_folder_filter_dropdown( $post_type, $which ) {
 		'hierarchical'    => true,
 		'value_field'     => 'term_id',
 	) );
-
-	echo ' <button type="button" class="button" id="roci-new-folder-btn">'
-		. esc_html__( '+ New Folder', 'rocinante' )
-		. '</button>';
 }
 add_action( 'restrict_manage_posts', 'roci_media_folder_filter_dropdown', 10, 2 );
 
@@ -125,10 +121,6 @@ function roci_page_folder_filter_dropdown( $post_type, $which ) {
 		'hierarchical'    => true,
 		'value_field'     => 'term_id',
 	) );
-
-	echo ' <button type="button" class="button" id="roci-new-folder-btn">'
-		. esc_html__( '+ New Folder', 'rocinante' )
-		. '</button>';
 }
 add_action( 'restrict_manage_posts', 'roci_page_folder_filter_dropdown', 10, 2 );
 
