@@ -15,7 +15,7 @@
  * ajax_query_attachments_args filter.
  *
  * File:    inc/folders/sidebar.php
- * Version: 1.5.0
+ * Version: 1.5.1
  * Updated: 2026-05-14
  *
  * @package ElRocinante
@@ -394,7 +394,7 @@ function roci_enqueue_sidebar_assets( $hook_suffix ) {
 		'roci-admin-folders',
 		get_template_directory_uri() . '/dist/css/admin-folders.css',
 		array( 'wp-admin' ),
-		'2.2.0'
+		'2.2.1'
 	);
 
 	wp_enqueue_script(
