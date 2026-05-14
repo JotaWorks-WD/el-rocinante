@@ -12,7 +12,7 @@
  *     into the AttachmentsBrowser toolbar (after the type + date filters)
  *
  * File:    inc/folders/filters.php
- * Version: 1.5.3
+ * Version: 1.6.0
  * Updated: 2026-05-14
  *
  * @package ElRocinante
@@ -199,6 +199,20 @@ add_action( 'admin_init', 'roci_translate_folder_query_var', 1 );
  */
 function roci_media_folder_modal_ajax_filter( $query ) {
 
+	// Unassigned filter (sidebar "Unassigned Files" in grid view):
+	// show attachments with no roci_media_folder term assigned.
+	if ( ! empty( $query['roci_no_folder'] ) ) {
+		unset( $query['roci_no_folder'] );
+		unset( $query['roci_media_folder'] ); // prevent conflicting tax_query
+		$query['tax_query'] = array(
+			array(
+				'taxonomy' => 'roci_media_folder',
+				'operator' => 'NOT EXISTS',
+			),
+		);
+		return $query;
+	}
+
 	if ( empty( $query['roci_media_folder'] ) ) {
 		return $query;
 	}
@@ -292,7 +306,7 @@ function roci_enqueue_media_folder_js( $hook_suffix ) {
 		'roci-media-folder-filter',
 		get_template_directory_uri() . '/dist/js/media-folder-filter.js',
 		array( 'media-views' ),
-		'1.5.0',
+		'1.6.0',
 		true
 	);
 
@@ -300,7 +314,7 @@ function roci_enqueue_media_folder_js( $hook_suffix ) {
 		'roci-admin-folders',
 		get_template_directory_uri() . '/dist/css/admin-folders.css',
 		array( 'wp-admin' ),
-		'1.1.3'
+		'2.0.0'
 	);
 
 	wp_localize_script( 'roci-media-folder-filter', 'rociMediaFolders', array(
