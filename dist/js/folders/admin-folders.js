@@ -11,7 +11,7 @@
  * uses it to refresh both the filter dropdown and the modal parent
  * dropdown in place — no page reload needed.
  *
- * Version: 1.2.3
+ * Version: 1.2.4
  * Updated: 2026-05-14
  */
 
@@ -135,12 +135,19 @@
             submitBtn.disabled    = true;
             submitBtn.textContent = originalLabel + '…';
 
+            // Read the "All Files" link href — it has ?mode=list baked in when
+            // the user is browsing in list view, so server-rendered tree links
+            // in the response will match the current navigation context.
+            var allFilesLink  = document.querySelector( '#roci-folders-sidebar [data-term="__all__"] a' );
+            var treeBaseUrl   = allFilesLink ? allFilesLink.href : '';
+
             var data = new FormData();
-            data.append( 'action',      'roci_create_folder' );
-            data.append( 'nonce',       rociAdminFolders.nonce );
-            data.append( 'taxonomy',    rociAdminFolders.taxonomy );
-            data.append( 'folder_name', name );
-            data.append( 'parent',      parent );
+            data.append( 'action',        'roci_create_folder' );
+            data.append( 'nonce',         rociAdminFolders.nonce );
+            data.append( 'taxonomy',      rociAdminFolders.taxonomy );
+            data.append( 'folder_name',   name );
+            data.append( 'parent',        parent );
+            data.append( 'tree_base_url', treeBaseUrl );
 
             fetch( rociAdminFolders.ajaxUrl, {
                 method:      'POST',
@@ -177,9 +184,13 @@
                     );
 
                     // Notify other modules: media-folder-filter.js refreshes the
-                    // Backbone filter; folders-sidebar.js injects the new node.
+                    // Backbone filter; folders-sidebar.js replaces the tree.
                     document.dispatchEvent( new CustomEvent( 'roci:folderCreated', {
-                        detail: { options: options, term: response.data.term }
+                        detail: {
+                            options:   options,
+                            term:      response.data.term,
+                            tree_html: response.data.tree_html
+                        }
                     } ) );
 
                     closeModal();

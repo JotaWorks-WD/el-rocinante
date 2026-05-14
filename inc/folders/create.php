@@ -13,7 +13,7 @@
  *   roci_enqueue_admin_folders_js()        — enqueues dist/js/folders/admin-folders.js
  *
  * File:    inc/folders/create.php
- * Version: 1.3.2
+ * Version: 1.4.0
  * Updated: 2026-05-14
  *
  * @package ElRocinante
@@ -243,13 +243,22 @@ function roci_ajax_create_folder() {
 
 	$term = get_term( $result['term_id'], $taxonomy );
 
+	// Build the base URL for tree links. JS posts the current "All Files" href
+	// (which already includes ?mode=list when relevant) so server-rendered links
+	// in the refreshed tree match what PHP would produce on a full page load.
+	$tree_base_url = isset( $_POST['tree_base_url'] ) ? esc_url_raw( wp_unslash( $_POST['tree_base_url'] ) ) : '';
+	if ( ! $tree_base_url || strpos( $tree_base_url, admin_url() ) !== 0 ) {
+		$tree_base_url = admin_url( 'roci_media_folder' === $taxonomy ? 'upload.php' : 'edit.php?post_type=page' );
+	}
+
 	wp_send_json_success( array(
-		'term'    => array(
+		'term'      => array(
 			'term_id' => $term->term_id,
 			'name'    => $term->name,
 			'parent'  => $term->parent,
 		),
-		'options' => roci_build_folder_options_for_select( $taxonomy ),
+		'options'   => roci_build_folder_options_for_select( $taxonomy ),
+		'tree_html' => roci_get_folder_tree_html( $taxonomy, $taxonomy, $tree_base_url ),
 	) );
 }
 add_action( 'wp_ajax_roci_create_folder', 'roci_ajax_create_folder' );
@@ -291,7 +300,7 @@ function roci_enqueue_admin_folders_js( $hook_suffix ) {
 		'roci-admin-folders',
 		get_template_directory_uri() . '/dist/js/folders/admin-folders.js',
 		array(),
-		'1.2.3',
+		'1.2.4',
 		true
 	);
 
