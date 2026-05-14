@@ -7,7 +7,7 @@
  * and date filters — does NOT replace AttachmentFilters.All or .Uploaded.
  *
  * Toolbar order in grid view (left → right):
- *   [Type filter -80] [Date filter -75] [Folder filter -70] [+ New Folder -65]
+ *   [Type filter -80] [Date filter -75] [Folder filter -70] [Filter btn -68] [+ New Folder -65]
  *   | [Bulk select  — primary/right section]
  *
  * Why AJAX filtering works without propmap changes:
@@ -19,7 +19,8 @@
  *   $_REQUEST['query']['roci_media_folder'] directly (bypassing WP's
  *   whitelist) and applies the tax_query with include_children.
  *
- * Version: 1.4.1
+ * Version: 1.5.0
+ * Updated: 2026-05-14
  */
 
 ( function ( media ) {
@@ -91,7 +92,8 @@
 
 	var RociMediaFolderFilter = media.view.AttachmentFilters.extend( {
 
-		id: 'roci-media-folder-filter',
+		id:     'roci-media-folder-filter',
+		events: {}, // Filter button is the sole trigger; disable parent's change→refetch.
 
 		initialize: function () {
 			// Ensure the prop exists so select() matches the '' key (All Folders).
@@ -128,13 +130,42 @@
 	} );
 
 
+	// ── FilterButton ──────────────────────────────────────────────────────
+	//
+	// Reads the current folder select value and sets roci_media_folder on
+	// the collection props, triggering the AJAX refetch. Only injected on
+	// upload.php (gated by hasModal) where the folder filter is always shown.
+
+	var FilterButton = media.View.extend( {
+		tagName:    'button',
+		className:  'button roci-folder-filter-btn',
+		attributes: { type: 'button' },
+
+		initialize: function () {
+			this.el.textContent = 'Filter';
+			this.el.addEventListener( 'click', _.bind( this.applyFilter, this ) );
+		},
+
+		applyFilter: function () {
+			var select = document.getElementById( 'roci-media-folder-filter' );
+			if ( ! select ) {
+				return;
+			}
+			var termId = select.value !== '' ? parseInt( select.value, 10 ) : '';
+			this.model.set( { roci_media_folder: termId } );
+		},
+
+		render: function () {
+			return this;
+		}
+	} );
+
+
 	// ── AttachmentsBrowser extension ───────────────────────────────────────
 	//
-	// Injects the folder filter and (on upload.php) the "+ New Folder" button
-	// after WP's type (-80) and date (-75) filters in the secondary toolbar.
-	// Priority -70 for the folder filter, -65 for the button places them in
-	// the secondary (left) section immediately before the primary (right)
-	// Bulk select section.
+	// Injects the folder filter and (on upload.php) the Filter button and
+	// "+ New Folder" button after WP's type (-80) and date (-75) filters.
+	// Priority -70 folder filter → -68 Filter button → -65 New Folder button.
 
 	var OriginalBrowser = media.view.AttachmentsBrowser;
 
@@ -158,8 +189,13 @@
 				} ).render() );
 			}
 
-			// Button only on upload.php — post-editor modal has no modal HTML.
+			// Filter button and New Folder button only on upload.php.
 			if ( hasModal ) {
+				this.toolbar.set( 'rociFolderFilterBtn', new FilterButton( {
+					model:    this.collection.props,
+					priority: -68
+				} ).render() );
+
 				this.toolbar.set( 'rociNewFolderBtn', new NewFolderButton( {
 					priority: -65
 				} ).render() );

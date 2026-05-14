@@ -11,7 +11,8 @@
  * uses it to refresh both the filter dropdown and the modal parent
  * dropdown in place — no page reload needed.
  *
- * Version: 1.1.0
+ * Version: 1.2.0
+ * Updated: 2026-05-14
  */
 
 ( function () {
@@ -33,31 +34,6 @@
         // in grid view (it's injected by media-folder-filter.js there instead).
         if ( ! modal ) {
             return;
-        }
-
-        // ── Filter select — direct URL navigation ─────────────────────────
-        //
-        // WordPress media library JS intercepts the filter form and does not
-        // propagate custom field values correctly — the built-in months and
-        // mime-type selects work because they're WordPress-internal params.
-        // Bypass the Filter button entirely: navigate on change instead.
-
-        if ( filterSelect ) {
-            filterSelect.addEventListener( 'change', function () {
-                var url = new URL( window.location.href );
-                var val = filterSelect.value;
-
-                if ( ! val || val === '0' ) {
-                    url.searchParams.delete( rociAdminFolders.taxonomy );
-                } else {
-                    url.searchParams.set( rociAdminFolders.taxonomy, val );
-                }
-
-                // Reset pagination so we always land on page 1.
-                url.searchParams.delete( 'paged' );
-
-                window.location.href = url.toString();
-            } );
         }
 
         // ── Open ──────────────────────────────────────────────────────────

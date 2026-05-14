@@ -13,8 +13,8 @@
  *   roci_enqueue_admin_folders_js()        — enqueues admin-folders.js
  *
  * File:    inc/folders/create.php
- * Version: 1.2.1
- * Updated: 2026-05-13
+ * Version: 1.2.2
+ * Updated: 2026-05-14
  *
  * @package ElRocinante
  */
@@ -279,7 +279,7 @@ function roci_enqueue_admin_folders_js( $hook_suffix ) {
 		'roci-admin-folders',
 		get_template_directory_uri() . '/dist/js/admin-folders.js',
 		array(),
-		'1.1.0',
+		'1.2.0',
 		true
 	);
 
