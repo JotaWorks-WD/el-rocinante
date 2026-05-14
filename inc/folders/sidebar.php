@@ -15,7 +15,7 @@
  * ajax_query_attachments_args filter.
  *
  * File:    inc/folders/sidebar.php
- * Version: 1.1.0
+ * Version: 1.2.0
  * Updated: 2026-05-14
  *
  * @package ElRocinante
@@ -24,6 +24,45 @@
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
+
+
+// ============================================================
+// SIDEBAR — EARLY COLLAPSE STATE (admin_head inline script)
+// ============================================================
+
+/**
+ * Output a tiny inline script in <head> that reads the localStorage
+ * collapsed key and immediately applies 'roci-sidebar-is-collapsed' to
+ * <html> — before first paint — so the sidebar renders at the saved
+ * width with no visible flicker.
+ */
+function roci_sidebar_early_state_script() {
+
+	$screen = get_current_screen();
+	if ( ! $screen ) {
+		return;
+	}
+
+	if ( 'upload' !== $screen->base && 'edit-page' !== $screen->id ) {
+		return;
+	}
+
+	$key = ( 'upload' === $screen->base )
+		? 'roci_sidebar_collapsed_media'
+		: 'roci_sidebar_collapsed_pages';
+	?>
+	<script>
+	( function () {
+		try {
+			if ( localStorage.getItem( <?php echo wp_json_encode( $key ); ?> ) === '1' ) {
+				document.documentElement.classList.add( 'roci-sidebar-is-collapsed' );
+			}
+		} catch ( e ) {}
+	} )();
+	</script>
+	<?php
+}
+add_action( 'admin_head', 'roci_sidebar_early_state_script' );
 
 
 // ============================================================
@@ -324,8 +363,12 @@ function roci_enqueue_sidebar_assets( $hook_suffix ) {
 		'roci-folders-sidebar',
 		get_template_directory_uri() . '/dist/js/folders/folders-sidebar.js',
 		array(),
-		'1.1.0',
+		'1.2.0',
 		true
 	);
+
+	wp_localize_script( 'roci-folders-sidebar', 'rociSidebar', array(
+		'screenKey' => ( 'upload' === $screen->base ) ? 'media' : 'pages',
+	) );
 }
 add_action( 'admin_enqueue_scripts', 'roci_enqueue_sidebar_assets' );
