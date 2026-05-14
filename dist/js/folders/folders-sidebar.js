@@ -12,7 +12,7 @@
  * Chevron click toggles child list visibility without triggering the link.
  * In-session only; page refresh resets to collapsed default (Pass 1).
  *
- * Version: 1.0.1
+ * Version: 1.0.2
  * Updated: 2026-05-14
  */
 
@@ -116,6 +116,22 @@
 			// List view: let the default href navigation happen;
 			// PHP will render the correct is-active on the next page load.
 		} );
+
+		// ── List-view: auto-submit on folder dropdown change ───────────────
+		// #post-query-submit is hidden via CSS; submit the form directly so
+		// list view behaves like grid view (immediate apply, no Filter button).
+
+		if ( ! isGridView ) {
+			var folderSelect = document.getElementById( 'roci-media-folder-filter' );
+			if ( folderSelect ) {
+				folderSelect.addEventListener( 'change', function () {
+					var form = document.getElementById( 'posts-filter' );
+					if ( form ) {
+						form.submit();
+					}
+				} );
+			}
+		}
 
 	} );
 
