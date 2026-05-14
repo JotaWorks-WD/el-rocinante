@@ -9,9 +9,12 @@
  *   Links are intercepted; roci:sidebarFilter dispatched so
  *   media-folder-filter.js updates the Backbone model via AJAX.
  *
- * Collapse state and open-folder state are persisted to localStorage under
- * screen-scoped keys (roci_sidebar_collapsed_media / _pages,
- * roci_folder_expanded_media / _pages). The collapsed class is applied to
+ * Collapse state is persisted to localStorage (survives tab close):
+ *   roci_sidebar_collapsed_media / _pages
+ * Expanded-folder state is persisted to sessionStorage (resets on tab close,
+ * survives within-tab navigation and refresh):
+ *   roci_folder_expanded_media / _pages
+ * The collapsed class is applied to
  * <html> by an early inline script in admin_head before first paint so
  * there is no visible flicker.
  *
@@ -20,7 +23,7 @@
  * a parent, the parent is upgraded to a branch node and auto-expanded.
  *
  * File:    dist/js/folders/folders-sidebar.js
- * Version: 2.1.0
+ * Version: 2.2.0
  * Updated: 2026-05-14
  */
 
@@ -28,17 +31,25 @@
 
 	'use strict';
 
-	// ── localStorage keys (screen-scoped) ─────────────────────────────────
+	// ── Storage keys (screen-scoped) ──────────────────────────────────────
 	var screenKey      = ( typeof rociSidebar !== 'undefined' && rociSidebar.screenKey ) ? rociSidebar.screenKey : 'media';
-	var lsKeyCollapsed = 'roci_sidebar_collapsed_' + screenKey;
-	var lsKeyExpanded  = 'roci_folder_expanded_'   + screenKey;
+	var lsKeyCollapsed = 'roci_sidebar_collapsed_' + screenKey; // localStorage  — persists across tabs/sessions
+	var lsKeyExpanded  = 'roci_folder_expanded_'   + screenKey; // sessionStorage — resets on tab close
 
-	// ── Safe localStorage wrappers ─────────────────────────────────────────
+	// ── Safe localStorage wrappers (collapsed state) ──────────────────────
 	function lsGet( key ) {
 		try { return localStorage.getItem( key ); } catch ( e ) { return null; }
 	}
 	function lsSet( key, val ) {
 		try { localStorage.setItem( key, val ); } catch ( e ) {}
+	}
+
+	// ── Safe sessionStorage wrappers (expanded state) ─────────────────────
+	function ssGet( key ) {
+		try { return sessionStorage.getItem( key ); } catch ( e ) { return null; }
+	}
+	function ssSet( key, val ) {
+		try { sessionStorage.setItem( key, val ); } catch ( e ) {}
 	}
 
 	document.addEventListener( 'DOMContentLoaded', function () {
@@ -115,7 +126,7 @@
 		}
 
 		function persistExpanded() {
-			lsSet( lsKeyExpanded, JSON.stringify( getOpenTermIds() ) );
+			ssSet( lsKeyExpanded, JSON.stringify( getOpenTermIds() ) );
 		}
 
 		function openChildren( item ) {
@@ -147,7 +158,7 @@
 
 		// Restore open-folder state saved from the previous page load.
 		function restoreExpandedFolders() {
-			var raw = lsGet( lsKeyExpanded );
+			var raw = ssGet( lsKeyExpanded );
 			if ( ! raw ) {
 				return;
 			}
