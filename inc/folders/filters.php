@@ -314,7 +314,7 @@ function roci_enqueue_media_folder_js( $hook_suffix ) {
 		'roci-admin-folders',
 		get_template_directory_uri() . '/dist/css/admin-folders.css',
 		array( 'wp-admin' ),
-		'2.0.1'
+		'2.1.0'
 	);
 
 	wp_localize_script( 'roci-media-folder-filter', 'rociMediaFolders', array(

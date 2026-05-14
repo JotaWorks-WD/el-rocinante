@@ -15,7 +15,7 @@
  * ajax_query_attachments_args filter.
  *
  * File:    inc/folders/sidebar.php
- * Version: 1.0.2
+ * Version: 1.1.0
  * Updated: 2026-05-14
  *
  * @package ElRocinante
@@ -199,8 +199,17 @@ function roci_render_folders_sidebar_html( $taxonomy, $folder_url_key, $base_url
 	       data-folder-key="<?php echo esc_attr( $folder_url_key ); ?>"
 	       aria-label="<?php esc_attr_e( 'Folders', 'rocinante' ); ?>">
 
-		<div class="roci-sidebar-header" aria-hidden="true">
-			<?php esc_html_e( 'Folders', 'rocinante' ); ?>
+		<div class="roci-sidebar-header">
+			<span class="roci-sidebar-header-title" aria-hidden="true">
+				<?php esc_html_e( 'Folders', 'rocinante' ); ?>
+			</span>
+			<button type="button"
+			        id="roci-sidebar-toggle"
+			        class="roci-sidebar-toggle"
+			        aria-label="<?php esc_attr_e( 'Collapse folder sidebar', 'rocinante' ); ?>"
+			        aria-expanded="true">
+				<span class="dashicons dashicons-arrow-left-alt2" aria-hidden="true"></span>
+			</button>
 		</div>
 
 		<ul class="roci-folder-tree" role="tree">
@@ -308,14 +317,14 @@ function roci_enqueue_sidebar_assets( $hook_suffix ) {
 		'roci-admin-folders',
 		get_template_directory_uri() . '/dist/css/admin-folders.css',
 		array( 'wp-admin' ),
-		'2.0.1'
+		'2.1.0'
 	);
 
 	wp_enqueue_script(
 		'roci-folders-sidebar',
 		get_template_directory_uri() . '/dist/js/folders/folders-sidebar.js',
 		array(),
-		'1.0.2',
+		'1.1.0',
 		true
 	);
 }

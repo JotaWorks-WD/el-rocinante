@@ -1,18 +1,19 @@
 /**
- * Folder Sidebar — click handling, chevron toggle, grid-view filter dispatch
+ * Folder Sidebar — collapse toggle, chevron toggle, grid-view filter dispatch
  *
  * List view (upload.php?mode=list, edit.php?post_type=page):
- *   Sidebar links navigate normally; PHP renders is-active on the next load.
+ *   Sidebar links navigate normally; PHP renders is-active on next load.
  *
  * Grid view (upload.php without mode=list):
- *   Links are intercepted. A roci:sidebarFilter custom event is dispatched
- *   and media-folder-filter.js updates the Backbone model to trigger the
- *   AJAX refetch — no page navigation occurs.
+ *   Links are intercepted; roci:sidebarFilter dispatched so
+ *   media-folder-filter.js updates the Backbone model via AJAX.
  *
- * Chevron click toggles child list visibility without triggering the link.
- * In-session only; page refresh resets to collapsed default (Pass 1).
+ * Collapse toggle: edge arrow in the sidebar header collapses the sidebar to
+ * 36px and expands #wpcontent. CSS transition handles the width animation.
+ * State resets on page refresh (persistence added in Pass 2.2).
  *
- * Version: 1.0.2
+ * File:    dist/js/folders/folders-sidebar.js
+ * Version: 1.1.0
  * Updated: 2026-05-14
  */
 
@@ -27,10 +28,48 @@
 			return;
 		}
 
+		var toggle = document.getElementById( 'roci-sidebar-toggle' );
+
 		// Grid view: upload.php without ?mode=list.
 		var isUpload   = window.location.pathname.indexOf( 'upload.php' ) !== -1;
 		var isListMode = window.location.search.indexOf( 'mode=list' ) !== -1;
 		var isGridView = isUpload && ! isListMode;
+
+		// ── Collapse toggle ────────────────────────────────────────────────
+
+		function applyCollapsed( collapsed ) {
+			var html = document.documentElement;
+			var icon = toggle ? toggle.querySelector( '.dashicons' ) : null;
+
+			if ( collapsed ) {
+				html.classList.add( 'roci-sidebar-is-collapsed' );
+				if ( icon ) {
+					icon.classList.remove( 'dashicons-arrow-left-alt2' );
+					icon.classList.add( 'dashicons-arrow-right-alt2' );
+				}
+				if ( toggle ) {
+					toggle.setAttribute( 'aria-label',    'Expand folder sidebar' );
+					toggle.setAttribute( 'aria-expanded', 'false' );
+				}
+			} else {
+				html.classList.remove( 'roci-sidebar-is-collapsed' );
+				if ( icon ) {
+					icon.classList.remove( 'dashicons-arrow-right-alt2' );
+					icon.classList.add( 'dashicons-arrow-left-alt2' );
+				}
+				if ( toggle ) {
+					toggle.setAttribute( 'aria-label',    'Collapse folder sidebar' );
+					toggle.setAttribute( 'aria-expanded', 'true' );
+				}
+			}
+		}
+
+		if ( toggle ) {
+			toggle.addEventListener( 'click', function () {
+				var nowCollapsed = ! document.documentElement.classList.contains( 'roci-sidebar-is-collapsed' );
+				applyCollapsed( nowCollapsed );
+			} );
+		}
 
 		// ── Chevron toggle ─────────────────────────────────────────────────
 
@@ -48,8 +87,7 @@
 			}
 		}
 
-		// ── Active state ───────────────────────────────────────────────────
-		// Used in grid view only; list view relies on PHP-rendered is-active.
+		// ── Active state (grid view only) ──────────────────────────────────
 
 		function setActiveItem( item ) {
 			sidebar.querySelectorAll( '.roci-folder-item' ).forEach( function ( el ) {
@@ -65,7 +103,6 @@
 			if ( ! sel ) {
 				return;
 			}
-			// Unassigned and All have no matching option; reset to "All Folders".
 			if ( termId === '__all__' || termId === '__unassigned__' ) {
 				sel.value = '';
 			} else {
@@ -85,8 +122,6 @@
 
 		sidebar.addEventListener( 'click', function ( e ) {
 
-			// Chevron — toggle children, stop propagation so the row link
-			// is not also triggered.
 			var chevron = e.target.closest( '.roci-chevron' );
 			if ( chevron ) {
 				e.preventDefault();
@@ -95,7 +130,6 @@
 				return;
 			}
 
-			// Folder link — apply filter.
 			var link = e.target.closest( '.roci-item-row a' );
 			if ( ! link ) {
 				return;
@@ -113,13 +147,10 @@
 				syncSelectToTerm( termId );
 				dispatchSidebarFilter( termId );
 			}
-			// List view: let the default href navigation happen;
-			// PHP will render the correct is-active on the next page load.
+			// List view: let href navigate; PHP renders is-active on next load.
 		} );
 
 		// ── List-view: auto-submit on folder dropdown change ───────────────
-		// #post-query-submit is hidden via CSS; submit the form directly so
-		// list view behaves like grid view (immediate apply, no Filter button).
 
 		if ( ! isGridView ) {
 			var folderSelect = document.getElementById( 'roci-media-folder-filter' );
