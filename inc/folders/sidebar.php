@@ -15,7 +15,7 @@
  * ajax_query_attachments_args filter.
  *
  * File:    inc/folders/sidebar.php
- * Version: 1.4.0
+ * Version: 1.5.0
  * Updated: 2026-05-14
  *
  * @package ElRocinante
@@ -132,8 +132,9 @@ add_action( 'pre_get_posts', 'roci_pre_get_posts_no_folder' );
  * @param int    $parent_id      Term ID of the level currently being rendered.
  * @param string $folder_url_key Query var name used in filter links.
  * @param string $base_url       Base admin URL without folder query vars.
+ * @param string $taxonomy       Folder taxonomy slug — passed to roci_get_folder_count().
  */
-function roci_render_sidebar_tree_level( $children, $active_term_id, $parent_id, $folder_url_key, $base_url ) {
+function roci_render_sidebar_tree_level( $children, $active_term_id, $parent_id, $folder_url_key, $base_url, $taxonomy ) {
 
 	if ( empty( $children[ $parent_id ] ) ) {
 		return;
@@ -167,11 +168,12 @@ function roci_render_sidebar_tree_level( $children, $active_term_id, $parent_id,
 				<span class="dashicons dashicons-category roci-folder-icon" aria-hidden="true"></span>
 				<a class="roci-folder-link" href="<?php echo esc_url( $link ); ?>">
 					<?php echo esc_html( $term->name ); ?>
+					<span class="roci-folder-count">(<?php echo roci_get_folder_count( $term, $taxonomy ); ?>)</span>
 				</a>
 			</div>
 			<?php if ( $has_children ) : ?>
 			<ul class="roci-folder-children" role="group">
-				<?php roci_render_sidebar_tree_level( $children, $active_term_id, $term->term_id, $folder_url_key, $base_url ); ?>
+				<?php roci_render_sidebar_tree_level( $children, $active_term_id, $term->term_id, $folder_url_key, $base_url, $taxonomy ); ?>
 			</ul>
 			<?php endif; ?>
 		</li>
@@ -230,6 +232,7 @@ function roci_get_folder_tree_html( $taxonomy, $folder_url_key, $base_url, $acti
 			<span class="roci-chevron-gap" aria-hidden="true"></span>
 			<a href="<?php echo esc_url( $base_url ); ?>">
 				<?php esc_html_e( 'All Files', 'rocinante' ); ?>
+				<span class="roci-folder-count">(<?php echo roci_get_all_count( $taxonomy ); ?>)</span>
 			</a>
 		</div>
 	</li>
@@ -241,6 +244,7 @@ function roci_get_folder_tree_html( $taxonomy, $folder_url_key, $base_url, $acti
 			<span class="roci-chevron-gap" aria-hidden="true"></span>
 			<a href="<?php echo esc_url( $unassigned_url ); ?>">
 				<?php esc_html_e( 'Unassigned Files', 'rocinante' ); ?>
+				<span class="roci-folder-count">(<?php echo roci_get_unassigned_count( $taxonomy ); ?>)</span>
 			</a>
 		</div>
 	</li>
@@ -249,7 +253,7 @@ function roci_get_folder_tree_html( $taxonomy, $folder_url_key, $base_url, $acti
 	<li class="roci-sidebar-divider" role="separator" aria-hidden="true"></li>
 	<?php endif; ?>
 
-	<?php roci_render_sidebar_tree_level( $children, $active_term_id, 0, $folder_url_key, $base_url ); ?>
+	<?php roci_render_sidebar_tree_level( $children, $active_term_id, 0, $folder_url_key, $base_url, $taxonomy ); ?>
 	<?php
 	return ob_get_clean();
 }
@@ -390,7 +394,7 @@ function roci_enqueue_sidebar_assets( $hook_suffix ) {
 		'roci-admin-folders',
 		get_template_directory_uri() . '/dist/css/admin-folders.css',
 		array( 'wp-admin' ),
-		'2.1.0'
+		'2.2.0'
 	);
 
 	wp_enqueue_script(
