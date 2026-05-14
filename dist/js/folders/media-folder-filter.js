@@ -7,7 +7,7 @@
  * and date filters — does NOT replace AttachmentFilters.All or .Uploaded.
  *
  * Toolbar order in grid view (left → right):
- *   [Type filter -80] [Date filter -75] [Folder filter -70] [+ New Folder -65]
+ *   [Type filter -80] [Date filter -75] [Folder filter -70]
  *   | [Bulk select  — primary/right section]
  *
  * Why AJAX filtering works without propmap changes:
@@ -21,7 +21,7 @@
  * roci_no_folder follows the same propmap bypass: setting it to 1 in the model
  * causes the PHP filter to apply a NOT EXISTS tax_query for unassigned files.
  *
- * Version: 1.6.2
+ * Version: 1.6.3
  * Updated: 2026-05-14
  */
 
@@ -66,29 +66,6 @@
 	}
 
 
-	// ── Modal open helper ──────────────────────────────────────────────────
-
-	function openModal() {
-		var modal     = document.getElementById( 'roci-folder-modal' );
-		var backdrop  = document.getElementById( 'roci-folder-backdrop' );
-		var nameInput = document.getElementById( 'roci-folder-name' );
-		var errorEl   = document.getElementById( 'roci-folder-error' );
-
-		if ( ! modal || ! backdrop || ! nameInput ) {
-			return;
-		}
-
-		nameInput.value = '';
-		if ( errorEl ) {
-			errorEl.textContent   = '';
-			errorEl.style.display = 'none';
-		}
-		modal.style.display    = 'block';
-		backdrop.style.display = 'block';
-		nameInput.focus();
-	}
-
-
 	// ── RociMediaFolderFilter ──────────────────────────────────────────────
 	//
 	// Standalone AttachmentFilters subclass for folder filtering.
@@ -120,28 +97,9 @@
 	} );
 
 
-	// ── NewFolderButton ────────────────────────────────────────────────────
-
-	var NewFolderButton = media.View.extend( {
-		tagName:    'button',
-		className:  'button roci-new-folder-btn',
-		attributes: { type: 'button' },
-
-		initialize: function () {
-			this.el.textContent = rociAdminFolders.i18n.newFolderLabel;
-			this.el.addEventListener( 'click', openModal );
-		},
-
-		render: function () {
-			return this;
-		}
-	} );
-
-
 	// ── AttachmentsBrowser extension ───────────────────────────────────────
 	//
-	// Injects the folder filter and (on upload.php) the "+ New Folder" button
-	// after WP's type (-80) and date (-75) filters.
+	// Injects the folder filter after WP's type (-80) and date (-75) filters.
 
 	var OriginalBrowser = media.view.AttachmentsBrowser;
 
@@ -162,11 +120,6 @@
 				} ).render() );
 			}
 
-			if ( hasModal ) {
-				this.toolbar.set( 'rociNewFolderBtn', new NewFolderButton( {
-					priority: -65
-				} ).render() );
-			}
 		}
 	} );
 
