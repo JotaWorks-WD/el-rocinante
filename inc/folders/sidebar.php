@@ -7,7 +7,7 @@
  *   - edit.php?post_type=page (Pages list)
  *
  * NOT rendered inside the modal media picker; the existing toolbar dropdown
- * in media-folder-filter.js remains the only filter mechanism there.
+ * in dist/js/folders/media-folder-filter.js remains the only filter mechanism there.
  *
  * Includes a pre_get_posts hook that handles ?roci_no_folder=1, the
  * "Unassigned Files" sentinel used by the sidebar's virtual entry.
@@ -15,7 +15,7 @@
  * ajax_query_attachments_args filter.
  *
  * File:    inc/folders/sidebar.php
- * Version: 1.0.0
+ * Version: 1.0.1
  * Updated: 2026-05-14
  *
  * @package ElRocinante
@@ -313,9 +313,9 @@ function roci_enqueue_sidebar_assets( $hook_suffix ) {
 
 	wp_enqueue_script(
 		'roci-folders-sidebar',
-		get_template_directory_uri() . '/dist/js/folders-sidebar.js',
+		get_template_directory_uri() . '/dist/js/folders/folders-sidebar.js',
 		array(),
-		'1.0.0',
+		'1.0.1',
 		true
 	);
 }

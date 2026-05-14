@@ -10,10 +10,10 @@
  *   roci_build_folder_options_for_select() — shared option-list helper
  *   roci_render_new_folder_modal()         — modal HTML via admin_footer
  *   roci_ajax_create_folder()              — wp_ajax_roci_create_folder
- *   roci_enqueue_admin_folders_js()        — enqueues admin-folders.js
+ *   roci_enqueue_admin_folders_js()        — enqueues dist/js/folders/admin-folders.js
  *
  * File:    inc/folders/create.php
- * Version: 1.3.0
+ * Version: 1.3.1
  * Updated: 2026-05-14
  *
  * @package ElRocinante
@@ -289,9 +289,9 @@ function roci_enqueue_admin_folders_js( $hook_suffix ) {
 
 	wp_enqueue_script(
 		'roci-admin-folders',
-		get_template_directory_uri() . '/dist/js/admin-folders.js',
+		get_template_directory_uri() . '/dist/js/folders/admin-folders.js',
 		array(),
-		'1.2.1',
+		'1.2.2',
 		true
 	);
 

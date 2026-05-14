@@ -21,7 +21,7 @@
  * roci_no_folder follows the same propmap bypass: setting it to 1 in the model
  * causes the PHP filter to apply a NOT EXISTS tax_query for unassigned files.
  *
- * Version: 1.6.0
+ * Version: 1.6.1
  * Updated: 2026-05-14
  */
 

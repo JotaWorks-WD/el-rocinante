@@ -11,7 +11,7 @@
  * uses it to refresh both the filter dropdown and the modal parent
  * dropdown in place — no page reload needed.
  *
- * Version: 1.2.1
+ * Version: 1.2.2
  * Updated: 2026-05-14
  */
 

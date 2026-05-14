@@ -12,7 +12,7 @@
  * Chevron click toggles child list visibility without triggering the link.
  * In-session only; page refresh resets to collapsed default (Pass 1).
  *
- * Version: 1.0.0
+ * Version: 1.0.1
  * Updated: 2026-05-14
  */
 
