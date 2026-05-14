@@ -8,12 +8,13 @@
  * one more require_once here rather than touching functions.php.
  *
  *   taxonomies.php — register roci_media_folder and roci_page_folder
+ *   counts.php     — roci_get_folder_count, roci_get_unassigned_count, roci_get_all_count
  *   filters.php    — list-view dropdowns, pre_get_posts, media modal filter, JS
  *   create.php     — "+ New Folder" modal, AJAX endpoint, JS
  *   sidebar.php    — folder-tree sidebar, unassigned filter, JS enqueue
  *
  * File:    inc/folders/folders.php
- * Version: 1.3.0
+ * Version: 1.4.0
  * Updated: 2026-05-14
  *
  * @package ElRocinante
@@ -24,6 +25,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 require_once get_template_directory() . '/inc/folders/taxonomies.php';
+require_once get_template_directory() . '/inc/folders/counts.php';
 require_once get_template_directory() . '/inc/folders/filters.php';
 require_once get_template_directory() . '/inc/folders/create.php';
 require_once get_template_directory() . '/inc/folders/sidebar.php';
