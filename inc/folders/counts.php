@@ -19,7 +19,7 @@
  *   a scoped $wpdb->get_var() query and adjust the caching accordingly.
  *
  * File:    inc/folders/counts.php
- * Version: 1.0.0
+ * Version: 1.1.0
  * Updated: 2026-05-14
  *
  * @package ElRocinante
@@ -132,3 +132,39 @@ function roci_get_all_count( $taxonomy ) {
 	$counts = wp_count_posts( 'page' );
 	return isset( $counts->publish ) ? (int) $counts->publish : 0;
 }
+
+
+// ============================================================
+// COUNTS — ONE-TIME RECOUNT
+// ============================================================
+
+/**
+ * Recount all folder terms once after the update_count_callback change.
+ *
+ * Fires on admin_init, checks an option flag, and exits immediately on all
+ * subsequent requests. Uses get_terms( fields => 'tt_ids' ) to fetch
+ * term_taxonomy IDs — the format wp_update_term_count_now() expects.
+ *
+ * To trigger a fresh recount (e.g. after a bulk import), delete the option:
+ *   delete_option( 'roci_folder_counts_recounted_v1' );
+ */
+function roci_maybe_recount_folder_terms() {
+
+	if ( get_option( 'roci_folder_counts_recounted_v1' ) ) {
+		return;
+	}
+
+	foreach ( array( 'roci_media_folder', 'roci_page_folder' ) as $taxonomy ) {
+		$tt_ids = get_terms( array(
+			'taxonomy'   => $taxonomy,
+			'hide_empty' => false,
+			'fields'     => 'tt_ids',
+		) );
+		if ( ! empty( $tt_ids ) && ! is_wp_error( $tt_ids ) ) {
+			wp_update_term_count_now( $tt_ids, $taxonomy );
+		}
+	}
+
+	update_option( 'roci_folder_counts_recounted_v1', true, false );
+}
+add_action( 'admin_init', 'roci_maybe_recount_folder_terms' );

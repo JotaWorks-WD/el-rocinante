@@ -11,8 +11,8 @@
  * WordPress's built-in term management UI — no custom tree needed.
  *
  * File:    inc/folders/taxonomies.php
- * Version: 1.2.0
- * Updated: 2026-05-13
+ * Version: 1.3.0
+ * Updated: 2026-05-14
  *
  * @package ElRocinante
  */
@@ -46,13 +46,18 @@ function roci_register_media_folder_taxonomy() {
 	);
 
 	register_taxonomy( 'roci_media_folder', 'attachment', array(
-		'labels'            => $labels,
-		'hierarchical'      => true,
-		'show_ui'           => true,
-		'show_admin_column' => true,
-		'show_in_rest'      => true,
-		'query_var'         => true,
-		'rewrite'           => false,
+		'labels'                => $labels,
+		'hierarchical'          => true,
+		'show_ui'               => true,
+		'show_admin_column'     => true,
+		'show_in_rest'          => true,
+		'query_var'             => true,
+		'rewrite'               => false,
+		// _update_post_term_count only counts post_status='inherit' attachments,
+		// which can leave counts stale when attachments are unattached (post_parent=0).
+		// _update_generic_term_count counts all objects in term_relationships regardless
+		// of status, keeping counts accurate for the Media Library use case.
+		'update_count_callback' => '_update_generic_term_count',
 	) );
 }
 add_action( 'init', 'roci_register_media_folder_taxonomy' );
