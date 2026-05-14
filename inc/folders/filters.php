@@ -12,7 +12,7 @@
  *     folder filter into the AttachmentsBrowser toolbar (after the type + date filters)
  *
  * File:    inc/folders/filters.php
- * Version: 1.6.2
+ * Version: 1.6.3
  * Updated: 2026-05-14
  *
  * @package ElRocinante
@@ -306,7 +306,7 @@ function roci_enqueue_media_folder_js( $hook_suffix ) {
 		'roci-media-folder-filter',
 		get_template_directory_uri() . '/dist/js/folders/media-folder-filter.js',
 		array( 'media-views' ),
-		'1.6.1',
+		'1.6.2',
 		true
 	);
 

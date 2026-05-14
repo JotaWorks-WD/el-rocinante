@@ -21,7 +21,7 @@
  * roci_no_folder follows the same propmap bypass: setting it to 1 in the model
  * causes the PHP filter to apply a NOT EXISTS tax_query for unassigned files.
  *
- * Version: 1.6.1
+ * Version: 1.6.2
  * Updated: 2026-05-14
  */
 
@@ -100,11 +100,15 @@
 		id: 'roci-media-folder-filter',
 
 		initialize: function () {
-			// Ensure the prop exists so select() matches the '' key (All Folders).
-			// Without this, model.get('roci_media_folder') returns undefined,
-			// which never equals '' and leaves the select blank on page load.
+			// Both custom props must be '' in the props model before the parent
+			// initialize calls select(). select() tests every prop in each filter
+			// against the model; if either is undefined (not the same as ''),
+			// no filter matches and the select renders blank on page load.
 			if ( ! this.model.has( 'roci_media_folder' ) ) {
 				this.model.set( 'roci_media_folder', '', { silent: true } );
+			}
+			if ( ! this.model.has( 'roci_no_folder' ) ) {
+				this.model.set( 'roci_no_folder', '', { silent: true } );
 			}
 			media.view.AttachmentFilters.prototype.initialize.apply( this, arguments );
 			activeFilter = this;
