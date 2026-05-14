@@ -13,7 +13,7 @@
  *   roci_enqueue_admin_folders_js()        — enqueues admin-folders.js
  *
  * File:    inc/folders/create.php
- * Version: 1.2.3
+ * Version: 1.3.0
  * Updated: 2026-05-14
  *
  * @package ElRocinante
@@ -45,7 +45,7 @@ function roci_build_folder_options_for_select( $taxonomy ) {
 	$terms = get_terms( array(
 		'taxonomy'   => $taxonomy,
 		'hide_empty' => false,
-		'orderby'    => 'parent',
+		'orderby'    => 'name',
 		'order'      => 'ASC',
 	) );
 
@@ -53,16 +53,28 @@ function roci_build_folder_options_for_select( $taxonomy ) {
 		return array();
 	}
 
+	// Index by parent for depth-first walk matching Walker_CategoryDropdown order.
+	$children = array();
+	foreach ( $terms as $term ) {
+		$children[ $term->parent ][] = $term;
+	}
+
 	$options = array();
 
-	foreach ( $terms as $term ) {
-		$depth     = count( get_ancestors( $term->term_id, $taxonomy, 'taxonomy' ) );
-		$indent    = $depth > 0 ? str_repeat( "\u{2014} ", $depth ) : '';
-		$options[] = array(
-			'value' => $term->term_id,
-			'label' => $indent . $term->name,
-		);
-	}
+	$walk = function( $parent_id, $depth ) use ( &$walk, &$options, &$children ) {
+		if ( empty( $children[ $parent_id ] ) ) {
+			return;
+		}
+		foreach ( $children[ $parent_id ] as $term ) {
+			$options[] = array(
+				'value' => $term->term_id,
+				'label' => str_repeat( "\u{2014} ", $depth ) . $term->name,
+			);
+			$walk( $term->term_id, $depth + 1 );
+		}
+	};
+
+	$walk( 0, 0 );
 
 	return $options;
 }
