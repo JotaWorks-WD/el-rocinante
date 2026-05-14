@@ -19,7 +19,7 @@
  *   a scoped $wpdb->get_var() query and adjust the caching accordingly.
  *
  * File:    inc/folders/counts.php
- * Version: 1.1.0
+ * Version: 1.2.0
  * Updated: 2026-05-14
  *
  * @package ElRocinante
@@ -113,11 +113,11 @@ function roci_get_unassigned_count( $taxonomy ) {
 /**
  * Count all items for the post type associated with a folder taxonomy.
  *
- * Delegates to wp_count_attachments() or wp_count_posts(), both of which
- * are internally cached by WordPress (object cache or static transient).
- * Returns only the status subset that term_taxonomy.count uses:
- *   roci_media_folder → $counts->inherit
- *   roci_page_folder  → $counts->publish
+ * Uses wp_count_posts() for both branches — it returns counts keyed by
+ * post_status, so ->inherit gives non-trashed attachments and ->publish
+ * gives published pages. wp_count_attachments() is NOT used here because
+ * it keys by MIME type, not status, making ->inherit undefined.
+ * Both calls are internally cached by WordPress.
  *
  * @param string $taxonomy  'roci_media_folder' or 'roci_page_folder'.
  * @return int
@@ -125,7 +125,7 @@ function roci_get_unassigned_count( $taxonomy ) {
 function roci_get_all_count( $taxonomy ) {
 
 	if ( 'roci_media_folder' === $taxonomy ) {
-		$counts = wp_count_attachments();
+		$counts = wp_count_posts( 'attachment' );
 		return isset( $counts->inherit ) ? (int) $counts->inherit : 0;
 	}
 
