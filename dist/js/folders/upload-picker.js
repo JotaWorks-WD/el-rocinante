@@ -5,7 +5,7 @@
  * and wires the selected folder term ID into Plupload's multipart_params.
  *
  * @package El_Rocinante
- * @version 2.8.4
+ * @version 2.8.5
  * Updated: 2026-05-15
  */
 
@@ -153,10 +153,6 @@
                 }
             }, 100 );
         }
-
-        document.body.addEventListener( 'click', function () {
-            setTimeout( injectPickers, 150 );
-        } );
     }
 
     if ( document.readyState === 'loading' ) {
