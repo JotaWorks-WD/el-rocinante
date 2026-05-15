@@ -5,13 +5,44 @@
  * and wires the selected folder term ID into Plupload's multipart_params.
  *
  * @package El_Rocinante
- * @version 2.8.2
+ * @version 2.8.4
  * Updated: 2026-05-15
  */
 
 ( function () {
 
     'use strict';
+
+    // XHR interceptor — catches all upload requests to async-upload.php
+    // regardless of which uploader framework initiated them. Safety net
+    // for paths the wp.Uploader prototype patch doesn't reach
+    // (media-new.php, list view, any standalone Plupload init).
+    ( function () {
+        if ( window.XMLHttpRequest.prototype._rociPatched ) {
+            return;
+        }
+        var origOpen = window.XMLHttpRequest.prototype.open;
+        var origSend = window.XMLHttpRequest.prototype.send;
+        window.XMLHttpRequest.prototype.open = function ( method, url ) {
+            this._rociUrl = url;
+            return origOpen.apply( this, arguments );
+        };
+        window.XMLHttpRequest.prototype.send = function ( body ) {
+            if (
+                this._rociUrl &&
+                this._rociUrl.indexOf( 'async-upload.php' ) !== -1 &&
+                body instanceof FormData &&
+                ! body.has( 'roci_target_folder' )
+            ) {
+                var picker = document.querySelector( '.roci-upload-picker__select' );
+                if ( picker && picker.value ) {
+                    body.append( 'roci_target_folder', picker.value );
+                }
+            }
+            return origSend.apply( this, arguments );
+        };
+        window.XMLHttpRequest.prototype._rociPatched = true;
+    } )();
 
     var data       = window.rociUploadPicker || {};
     var folders    = data.folders    || [];
