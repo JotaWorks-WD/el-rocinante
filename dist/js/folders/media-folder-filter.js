@@ -21,8 +21,8 @@
  * roci_no_folder follows the same propmap bypass: setting it to 1 in the model
  * causes the PHP filter to apply a NOT EXISTS tax_query for unassigned files.
  *
- * Version: 1.6.3
- * Updated: 2026-05-14
+ * Version: 1.7.0
+ * Updated: 2026-05-15
  */
 
 ( function ( media ) {
@@ -43,6 +43,38 @@
 	// Holds the most recently created RociMediaFolderFilter instance so
 	// roci:folderCreated and roci:sidebarFilter can update its model.
 	var activeFilter = null;
+
+
+	// ── Sync .view-list href with current Backbone folder filter ───────────
+	//
+	// In grid mode the active folder lives only in the Backbone model, not
+	// in the URL. When the user clicks the list-view toggle, the href must
+	// carry roci_media_folder so PHP can apply the filter on the next load
+	// (grid → list direction). Called once on toolbar creation and on every
+	// roci_media_folder model change.
+
+	function rociUpdateListViewLink() {
+		var listLink = document.querySelector( 'a.view-list' );
+		if ( ! listLink || ! wp.media || ! wp.media.frame ) {
+			return;
+		}
+		var folder = '';
+		try {
+			var content = wp.media.frame.content.get();
+			if ( content && content.collection && content.collection.props ) {
+				folder = content.collection.props.get( 'roci_media_folder' ) || '';
+			}
+		} catch ( e ) {
+			return;
+		}
+		var url = new URL( listLink.href, window.location.origin );
+		if ( folder ) {
+			url.searchParams.set( 'roci_media_folder', folder );
+		} else {
+			url.searchParams.delete( 'roci_media_folder' );
+		}
+		listLink.href = url.toString();
+	}
 
 
 	// ── Shared folder filter builder ───────────────────────────────────────
@@ -77,12 +109,21 @@
 		id: 'roci-media-folder-filter',
 
 		initialize: function () {
-			// Both custom props must be '' in the props model before the parent
-			// initialize calls select(). select() tests every prop in each filter
-			// against the model; if either is undefined (not the same as ''),
-			// no filter matches and the select renders blank on page load.
-			if ( ! this.model.has( 'roci_media_folder' ) ) {
-				this.model.set( 'roci_media_folder', '', { silent: true } );
+			// Seed roci_media_folder from the URL so the dropdown reflects the
+			// active filter when entering grid view from a filtered list-view URL
+			// (list → grid). select() fires inside the parent initialize() below
+			// and compares model props against each filter's props using strict
+			// ===. buildFolderFilters() stores term_id as integer, so coerce the
+			// string URL param to int before the comparison runs.
+			if ( ! this.model.get( 'roci_media_folder' ) ) {
+				var urlParams   = new URLSearchParams( window.location.search );
+				var folderParam = urlParams.get( 'roci_media_folder' );
+				if ( folderParam !== null ) {
+					var parsed = parseInt( folderParam, 10 );
+					this.model.set( 'roci_media_folder', isNaN( parsed ) ? folderParam : parsed, { silent: true } );
+				} else {
+					this.model.set( 'roci_media_folder', '', { silent: true } );
+				}
 			}
 			if ( ! this.model.has( 'roci_no_folder' ) ) {
 				this.model.set( 'roci_no_folder', '', { silent: true } );
@@ -120,6 +161,10 @@
 				} ).render() );
 			}
 
+			// Sync the .view-list toggle href with the active folder filter so
+			// navigating grid → list preserves the selection (Fix B).
+			rociUpdateListViewLink();
+			this.collection.props.on( 'change:roci_media_folder', rociUpdateListViewLink );
 		}
 	} );
 
