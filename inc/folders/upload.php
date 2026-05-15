@@ -6,7 +6,7 @@
  * wired in commit 2).
  *
  * @package El_Rocinante
- * @version 2.7.5
+ * @version 2.7.6
  * Updated: 2026-05-15
  */
 
@@ -50,3 +50,26 @@ function roci_assign_upload_folder( $attachment_id ) {
 	wp_set_object_terms( $attachment_id, $term_id, 'roci_media_folder', false );
 }
 add_action( 'add_attachment', 'roci_assign_upload_folder' );
+
+/**
+ * Inject roci_target_folder into Plupload's multipart_params so every
+ * admin upload carries a destination folder term ID.
+ *
+ * Default value is 0, which the commit 1 handler treats as no-op (empty()
+ * short-circuit). The picker UI in commit 3 dynamically updates this value
+ * via JS before each upload.
+ *
+ * @param array $settings Plupload default settings.
+ * @return array Modified settings.
+ */
+function roci_plupload_inject_folder_param( $settings ) {
+	if ( ! is_admin() ) {
+		return $settings;
+	}
+	if ( ! isset( $settings['multipart_params'] ) || ! is_array( $settings['multipart_params'] ) ) {
+		$settings['multipart_params'] = array();
+	}
+	$settings['multipart_params']['roci_target_folder'] = 0;
+	return $settings;
+}
+add_filter( 'plupload_default_settings', 'roci_plupload_inject_folder_param' );
