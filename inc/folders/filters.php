@@ -12,8 +12,8 @@
  *     folder filter into the AttachmentsBrowser toolbar (after the type + date filters)
  *
  * File:    inc/folders/filters.php
- * Version: 1.7.3
- * Updated: 2026-05-14
+ * Version: 1.8.0
+ * Updated: 2026-05-15
  *
  * @package ElRocinante
  */
@@ -298,7 +298,7 @@ function roci_enqueue_media_folder_js( $hook_suffix ) {
 		'roci-media-folder-filter',
 		get_template_directory_uri() . '/dist/js/folders/media-folder-filter.js',
 		array( 'media-views' ),
-		'1.6.3',
+		roci_asset_version( 'dist/js/folders/media-folder-filter.js' ),
 		true
 	);
 
@@ -306,7 +306,7 @@ function roci_enqueue_media_folder_js( $hook_suffix ) {
 		'roci-admin-folders',
 		get_template_directory_uri() . '/dist/css/admin-folders.css',
 		array( 'wp-admin' ),
-		'2.2.1'
+		roci_asset_version( 'dist/css/admin-folders.css' )
 	);
 
 	wp_localize_script( 'roci-media-folder-filter', 'rociMediaFolders', array(
