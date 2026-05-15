@@ -5,7 +5,7 @@
  * and wires the selected folder term ID into Plupload's multipart_params.
  *
  * @package El_Rocinante
- * @version 2.8.1
+ * @version 2.8.2
  * Updated: 2026-05-15
  */
 
@@ -52,6 +52,20 @@
         if ( window._wpPluploadSettings && window._wpPluploadSettings.defaults ) {
             window._wpPluploadSettings.defaults.multipart_params = window._wpPluploadSettings.defaults.multipart_params || {};
             window._wpPluploadSettings.defaults.multipart_params.roci_target_folder = termId;
+        }
+
+        // Also update existing Plupload instances directly. Covers uploaders
+        // created outside the wp.Uploader framework (media-new.php, list view
+        // upload modal, any standalone Plupload init).
+        if ( window.plupload && window.plupload.uploaders ) {
+            Object.keys( window.plupload.uploaders ).forEach( function ( id ) {
+                var up = window.plupload.uploaders[ id ];
+                if ( up && typeof up.getOption === 'function' && typeof up.setOption === 'function' ) {
+                    var current = up.getOption( 'multipart_params' ) || {};
+                    current.roci_target_folder = termId;
+                    up.setOption( 'multipart_params', current );
+                }
+            } );
         }
     }
 
