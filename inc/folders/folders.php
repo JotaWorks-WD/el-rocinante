@@ -58,4 +58,5 @@ require_once get_template_directory() . '/inc/folders/taxonomies.php';
 require_once get_template_directory() . '/inc/folders/counts.php';
 require_once get_template_directory() . '/inc/folders/filters.php';
 require_once get_template_directory() . '/inc/folders/create.php';
+require_once get_template_directory() . '/inc/folders/upload.php';
 require_once get_template_directory() . '/inc/folders/sidebar.php';
