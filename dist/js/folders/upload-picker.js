@@ -5,7 +5,7 @@
  * and wires the selected folder term ID into Plupload's multipart_params.
  *
  * @package El_Rocinante
- * @version 2.8.6
+ * @version 2.8.7
  * Updated: 2026-05-15
  */
 
@@ -68,7 +68,7 @@
     }
 
     function injectPickers() {
-        var selectors = [ '.uploader-inline', '#plupload-upload-ui', '.media-frame-uploader', '.uploader-window' ];
+        var selectors = [ '.uploader-inline', '#plupload-upload-ui' ];
         selectors.forEach( function ( sel ) {
             document.querySelectorAll( sel ).forEach( function ( dz ) {
                 if ( dz.querySelector( '.roci-upload-picker' ) ) return;
@@ -144,7 +144,7 @@
         if ( window._rociObserverSetup ) {
             return;
         }
-        var selectors = '.uploader-inline, #plupload-upload-ui, .media-frame-uploader, .uploader-window';
+        var selectors = '.uploader-inline, #plupload-upload-ui';
         var observer = new MutationObserver( function ( mutations ) {
             for ( var i = 0; i < mutations.length; i++ ) {
                 var addedNodes = mutations[ i ].addedNodes;
