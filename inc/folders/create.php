@@ -13,7 +13,7 @@
  *   roci_enqueue_admin_folders_js()        — enqueues dist/js/folders/admin-folders.js
  *
  * File:    inc/folders/create.php
- * Version: 1.5.0
+ * Version: 1.6.0
  * Updated: 2026-05-15
  *
  * @package ElRocinante
@@ -68,7 +68,7 @@ function roci_build_folder_options_for_select( $taxonomy ) {
 		foreach ( $children[ $parent_id ] as $term ) {
 			$options[] = array(
 				'value' => $term->term_id,
-				'label' => str_repeat( "\u{2014} ", $depth ) . $term->name,
+				'label' => str_repeat( "\u{2014} ", $depth ) . roci_format_folder_option_label( $term, $taxonomy ),
 			);
 			$walk( $term->term_id, $depth + 1 );
 		}

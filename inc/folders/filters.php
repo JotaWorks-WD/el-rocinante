@@ -12,7 +12,7 @@
  *     folder filter into the AttachmentsBrowser toolbar (after the type + date filters)
  *
  * File:    inc/folders/filters.php
- * Version: 1.8.0
+ * Version: 1.9.0
  * Updated: 2026-05-15
  *
  * @package ElRocinante
@@ -20,6 +20,62 @@
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
+}
+
+
+// ============================================================
+// ADMIN LIST — SHARED SELECT RENDERER
+// ============================================================
+
+/**
+ * Render a folder filter <select> with item counts in each option label.
+ *
+ * Replaces wp_dropdown_categories() for all folder filter dropdowns so
+ * roci_format_folder_option_label() is used consistently. Walks the
+ * term tree depth-first to match Walker_CategoryDropdown's output order
+ * and applies the same em-dash indentation used elsewhere in the system.
+ *
+ * @param string $taxonomy         Folder taxonomy slug.
+ * @param string $name             <select> name attribute.
+ * @param string $id               <select> id attribute.
+ * @param string $show_option_all  Label for the "show all" option (value="0").
+ * @param int    $selected         Currently selected term_id (0 = none).
+ */
+function roci_render_folder_select_dropdown( $taxonomy, $name, $id, $show_option_all, $selected ) {
+
+	$terms = get_terms( array(
+		'taxonomy'   => $taxonomy,
+		'hide_empty' => false,
+		'orderby'    => 'name',
+		'order'      => 'ASC',
+	) );
+
+	if ( is_wp_error( $terms ) ) {
+		$terms = array();
+	}
+
+	$children = array();
+	foreach ( $terms as $term ) {
+		$children[ $term->parent ][] = $term;
+	}
+
+	echo '<select name="' . esc_attr( $name ) . '" id="' . esc_attr( $id ) . '" class="postform">';
+	echo '<option value="0">' . esc_html( $show_option_all ) . '</option>';
+
+	$walk = function( $parent_id, $depth ) use ( &$walk, &$children, $taxonomy, $selected ) {
+		if ( empty( $children[ $parent_id ] ) ) {
+			return;
+		}
+		foreach ( $children[ $parent_id ] as $term ) {
+			$label    = str_repeat( "\u{2014} ", $depth ) . roci_format_folder_option_label( $term, $taxonomy );
+			$sel_attr = selected( $selected, $term->term_id, false );
+			echo '<option value="' . esc_attr( $term->term_id ) . '"' . $sel_attr . '>' . esc_html( $label ) . '</option>';
+			$walk( $term->term_id, $depth + 1 );
+		}
+	};
+
+	$walk( 0, 0 );
+	echo '</select>';
 }
 
 
@@ -60,18 +116,13 @@ function roci_media_folder_filter_dropdown( $post_type, $which ) {
 		. esc_html__( 'Filter by Media Folder', 'rocinante' )
 		. '</label>';
 
-	wp_dropdown_categories( array(
-		'show_option_all' => __( 'All Folders', 'rocinante' ),
-		'taxonomy'        => 'roci_media_folder',
-		'name'            => 'roci_media_folder',
-		'id'              => 'roci-media-folder-filter',
-		'orderby'         => 'name',
-		'selected'        => $selected,
-		'show_count'      => false,
-		'hide_empty'      => false,
-		'hierarchical'    => true,
-		'value_field'     => 'term_id',
-	) );
+	roci_render_folder_select_dropdown(
+		'roci_media_folder',
+		'roci_media_folder',
+		'roci-media-folder-filter',
+		__( 'All Folders', 'rocinante' ),
+		$selected
+	);
 }
 add_action( 'restrict_manage_posts', 'roci_media_folder_filter_dropdown', 10, 2 );
 
@@ -109,18 +160,13 @@ function roci_page_folder_filter_dropdown( $post_type, $which ) {
 		. esc_html__( 'Filter by Page Folder', 'rocinante' )
 		. '</label>';
 
-	wp_dropdown_categories( array(
-		'show_option_all' => __( 'All Folders', 'rocinante' ),
-		'taxonomy'        => 'roci_page_folder',
-		'name'            => 'roci_page_folder',
-		'id'              => 'roci-page-folder-filter',
-		'orderby'         => 'name',
-		'selected'        => $selected,
-		'show_count'      => false,
-		'hide_empty'      => false,
-		'hierarchical'    => true,
-		'value_field'     => 'term_id',
-	) );
+	roci_render_folder_select_dropdown(
+		'roci_page_folder',
+		'roci_page_folder',
+		'roci-page-folder-filter',
+		__( 'All Folders', 'rocinante' ),
+		$selected
+	);
 }
 add_action( 'restrict_manage_posts', 'roci_page_folder_filter_dropdown', 10, 2 );
 
@@ -265,7 +311,7 @@ function roci_get_folder_terms_for_js() {
 		$indent = $depth > 0 ? str_repeat( "\u{2014} ", $depth ) : '';
 		$data[] = array(
 			'term_id' => $term->term_id,
-			'name'    => $indent . $term->name,
+			'name'    => $indent . roci_format_folder_option_label( $term, 'roci_media_folder' ),
 		);
 	}
 

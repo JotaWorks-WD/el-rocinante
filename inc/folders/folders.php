@@ -14,7 +14,7 @@
  *   sidebar.php    — folder-tree sidebar, unassigned filter, JS enqueue
  *
  * File:    inc/folders/folders.php
- * Version: 1.5.0
+ * Version: 1.6.0
  * Updated: 2026-05-15
  *
  * @package ElRocinante
@@ -37,6 +37,21 @@ if ( ! defined( 'ABSPATH' ) ) {
 function roci_asset_version( $relative_path ) {
 	$abs = get_template_directory() . '/' . ltrim( $relative_path, '/' );
 	return file_exists( $abs ) ? filemtime( $abs ) : '1.0.0';
+}
+
+/**
+ * Format a folder term name with its item count for display in <select> options.
+ *
+ * Single source of truth used by the list-view filter dropdowns, the grid-view
+ * JS localisation, and the AJAX-refreshed option list after folder creation.
+ * All three render paths call this so counts can never drift out of sync.
+ *
+ * @param  WP_Term $term      The folder term.
+ * @param  string  $taxonomy  Folder taxonomy slug.
+ * @return string             e.g. "My Folder (5)"
+ */
+function roci_format_folder_option_label( $term, $taxonomy ) {
+	return sprintf( '%s (%d)', $term->name, (int) roci_get_folder_count( $term, $taxonomy ) );
 }
 
 require_once get_template_directory() . '/inc/folders/taxonomies.php';
