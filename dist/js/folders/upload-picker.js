@@ -5,7 +5,7 @@
  * and wires the selected folder term ID into Plupload's multipart_params.
  *
  * @package El_Rocinante
- * @version 2.8.5
+ * @version 2.8.6
  * Updated: 2026-05-15
  */
 
@@ -140,9 +140,34 @@
         } );
     }
 
+    function setupDropzoneObserver () {
+        if ( window._rociObserverSetup ) {
+            return;
+        }
+        var selectors = '.uploader-inline, #plupload-upload-ui, .media-frame-uploader, .uploader-window';
+        var observer = new MutationObserver( function ( mutations ) {
+            for ( var i = 0; i < mutations.length; i++ ) {
+                var addedNodes = mutations[ i ].addedNodes;
+                for ( var j = 0; j < addedNodes.length; j++ ) {
+                    var node = addedNodes[ j ];
+                    if ( node.nodeType !== 1 ) {
+                        continue;
+                    }
+                    if ( ( node.matches && node.matches( selectors ) ) || ( node.querySelector && node.querySelector( selectors ) ) ) {
+                        injectPickers();
+                        return;
+                    }
+                }
+            }
+        } );
+        observer.observe( document.body, { childList: true, subtree: true } );
+        window._rociObserverSetup = true;
+    }
+
     function init () {
         injectPickers();
         attachHandler();
+        setupDropzoneObserver();
 
         if ( ! patchUploader() ) {
             var attempts = 0;
