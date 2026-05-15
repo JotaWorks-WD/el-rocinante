@@ -5,7 +5,7 @@
  * and wires the selected folder term ID into Plupload's multipart_params.
  *
  * @package El_Rocinante
- * @version 2.8.0
+ * @version 2.8.1
  * Updated: 2026-05-15
  */
 
@@ -53,15 +53,34 @@
             window._wpPluploadSettings.defaults.multipart_params = window._wpPluploadSettings.defaults.multipart_params || {};
             window._wpPluploadSettings.defaults.multipart_params.roci_target_folder = termId;
         }
-        if ( window.wp && window.wp.Uploader && window.wp.Uploader.queue && window.wp.Uploader.queue.each ) {
-            window.wp.Uploader.queue.each( function ( uploader ) {
-                if ( uploader && uploader.uploader && uploader.uploader.setOption ) {
-                    var current = uploader.uploader.getOption( 'multipart_params' ) || {};
-                    current.roci_target_folder = termId;
-                    uploader.uploader.setOption( 'multipart_params', current );
-                }
-            } );
+    }
+
+    function patchUploader () {
+        if ( ! window.wp || ! window.wp.Uploader || ! window.wp.Uploader.prototype ) {
+            return false;
         }
+        if ( window.wp.Uploader.prototype._rociPatched ) {
+            return true;
+        }
+        var origInit = window.wp.Uploader.prototype.init;
+        window.wp.Uploader.prototype.init = function () {
+            var result = origInit.apply( this, arguments );
+            var self = this;
+            if ( self.uploader && typeof self.uploader.bind === 'function' ) {
+                self.uploader.bind( 'BeforeUpload', function () {
+                    var picker = document.querySelector( '.roci-upload-picker__select' );
+                    var termId = ( picker && picker.value ) ? parseInt( picker.value, 10 ) : 0;
+                    if ( termId ) {
+                        var current = self.uploader.getOption( 'multipart_params' ) || {};
+                        current.roci_target_folder = termId;
+                        self.uploader.setOption( 'multipart_params', current );
+                    }
+                } );
+            }
+            return result;
+        };
+        window.wp.Uploader.prototype._rociPatched = true;
+        return true;
     }
 
     function attachHandler() {
@@ -76,9 +95,20 @@
         } );
     }
 
-    function init() {
+    function init () {
         injectPickers();
         attachHandler();
+
+        if ( ! patchUploader() ) {
+            var attempts = 0;
+            var interval = setInterval( function () {
+                attempts++;
+                if ( patchUploader() || attempts > 50 ) {
+                    clearInterval( interval );
+                }
+            }, 100 );
+        }
+
         document.body.addEventListener( 'click', function () {
             setTimeout( injectPickers, 150 );
         } );
