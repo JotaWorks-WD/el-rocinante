@@ -21,7 +21,7 @@
  * roci_no_folder follows the same propmap bypass: setting it to 1 in the model
  * causes the PHP filter to apply a NOT EXISTS tax_query for unassigned files.
  *
- * Version: 1.7.0
+ * Version: 1.7.1
  * Updated: 2026-05-15
  */
 
@@ -115,15 +115,19 @@
 			// and compares model props against each filter's props using strict
 			// ===. buildFolderFilters() stores term_id as integer, so coerce the
 			// string URL param to int before the comparison runs.
-			if ( ! this.model.get( 'roci_media_folder' ) ) {
-				var urlParams   = new URLSearchParams( window.location.search );
-				var folderParam = urlParams.get( 'roci_media_folder' );
-				if ( folderParam !== null ) {
-					var parsed = parseInt( folderParam, 10 );
-					this.model.set( 'roci_media_folder', isNaN( parsed ) ? folderParam : parsed, { silent: true } );
-				} else {
-					this.model.set( 'roci_media_folder', '', { silent: true } );
-				}
+			//
+			// No guard on the URL-param branch: WP pre-populates collection.props
+			// with the raw URL string ('28') because roci_media_folder is a
+			// registered taxonomy var. A truthy-guard would skip this and leave
+			// the string in the model, causing '28' === 28 to fail in select().
+			// Always overwrite with the integer when the URL param is present.
+			var urlParams   = new URLSearchParams( window.location.search );
+			var folderParam = urlParams.get( 'roci_media_folder' );
+			if ( folderParam !== null ) {
+				var parsed = parseInt( folderParam, 10 );
+				this.model.set( 'roci_media_folder', isNaN( parsed ) ? folderParam : parsed, { silent: true } );
+			} else if ( ! this.model.has( 'roci_media_folder' ) ) {
+				this.model.set( 'roci_media_folder', '', { silent: true } );
 			}
 			if ( ! this.model.has( 'roci_no_folder' ) ) {
 				this.model.set( 'roci_no_folder', '', { silent: true } );
