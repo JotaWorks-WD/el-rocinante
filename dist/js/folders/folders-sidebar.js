@@ -25,8 +25,8 @@
  * a parent, the parent is upgraded to a branch node and auto-expanded.
  *
  * File:    dist/js/folders/folders-sidebar.js
- * Version: 2.3.0
- * Updated: 2026-05-14
+ * Version: 2.3.1
+ * Updated: 2026-05-15
  */
 
 ( function () {
@@ -78,7 +78,7 @@
 			// No explicit mode param — WP may serve list view from stored user preference
 			// without adding ?mode=list to the URL. The list table is present in DOM;
 			// the Backbone grid frame is not. Use that to detect the actual mode.
-			return ! document.querySelector( '.wp-list-table.attachments' );
+			return ! document.querySelector( '.wp-list-table.media' );
 		}());
 
 		// ── Collapse toggle ────────────────────────────────────────────────
