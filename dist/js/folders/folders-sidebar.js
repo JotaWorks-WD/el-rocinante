@@ -30,7 +30,7 @@
  *   termKey accepts an integer term ID or the sentinels '__all__' / '__unassigned__'.
  *
  * File:    dist/js/folders/folders-sidebar.js
- * Version: 2.4.0
+ * Version: 2.5.0
  * Updated: 2026-05-16
  */
 
@@ -190,6 +190,23 @@
 		}
 
 		restoreExpandedFolders();
+
+		// ── Folder search bar ──────────────────────────────────────────────────
+
+		function initFolderSearch() {
+			var input = sidebar.querySelector( '.roci-folder-search__input' );
+			if ( ! input ) { return; }
+			input.addEventListener( 'input', function () {
+				var q = this.value.toLowerCase();
+				sidebar.querySelectorAll( '.roci-folder-item:not(.roci-item-virtual)' ).forEach( function ( item ) {
+					var link = item.querySelector( '.roci-folder-link' );
+					var name = link ? link.firstChild.textContent.toLowerCase() : '';
+					item.style.display = ( ! q || name.indexOf( q ) !== -1 ) ? '' : 'none';
+				} );
+			} );
+		}
+
+		initFolderSearch();
 
 		// ── Active state (grid view only) ──────────────────────────────────
 

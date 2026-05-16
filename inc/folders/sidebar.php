@@ -15,7 +15,7 @@
  * ajax_query_attachments_args filter.
  *
  * File:    inc/folders/sidebar.php
- * Version: 1.8.0
+ * Version: 1.9.0
  * Updated: 2026-05-16
  *
  * @package ElRocinante
@@ -251,7 +251,18 @@ function roci_get_folder_tree_html( $taxonomy, $folder_url_key, $base_url, $acti
 	</li>
 
 	<?php if ( ! empty( $terms ) ) : ?>
-	<li class="roci-sidebar-divider" role="separator" aria-hidden="true"></li>
+	<li class="roci-sidebar-icon-row" role="presentation">
+		<div class="roci-sidebar-actions" role="toolbar" aria-label="<?php esc_attr_e( 'Fauxlder actions', 'rocinante' ); ?>">
+			<button type="button"
+			        class="roci-action-toggle roci-action-organize"
+			        aria-pressed="false"
+			        data-action="organize"
+			        title="<?php esc_attr_e( 'Toggle organize mode (drag to reorder)', 'rocinante' ); ?>">
+				<span class="dashicons dashicons-move" aria-hidden="true"></span>
+				<span class="screen-reader-text"><?php esc_html_e( 'Toggle organize mode', 'rocinante' ); ?></span>
+			</button>
+		</div>
+	</li>
 	<?php endif; ?>
 
 	<?php roci_render_sidebar_tree_level( $children, $active_term_id, 0, $folder_url_key, $base_url, $taxonomy ); ?>
@@ -318,15 +329,12 @@ function roci_render_folders_sidebar_html( $taxonomy, $folder_url_key, $base_url
 			</button>
 		</div>
 
-		<div class="roci-sidebar-actions" role="toolbar" aria-label="<?php esc_attr_e( 'Fauxlder actions', 'rocinante' ); ?>">
-			<button type="button"
-			        class="roci-action-toggle roci-action-organize"
-			        aria-pressed="false"
-			        data-action="organize"
-			        title="<?php esc_attr_e( 'Toggle organize mode (drag to reorder)', 'rocinante' ); ?>">
-				<span class="dashicons dashicons-move" aria-hidden="true"></span>
-				<span class="screen-reader-text"><?php esc_html_e( 'Toggle organize mode', 'rocinante' ); ?></span>
-			</button>
+		<div class="roci-folder-search">
+			<span class="roci-folder-search__icon dashicons dashicons-search" aria-hidden="true"></span>
+			<input type="text"
+			       class="roci-folder-search__input"
+			       placeholder="<?php esc_attr_e( 'Search Fauxlders', 'rocinante' ); ?>"
+			       aria-label="<?php esc_attr_e( 'Search Fauxlders', 'rocinante' ); ?>">
 		</div>
 
 		<ul class="roci-folder-tree" role="tree">
