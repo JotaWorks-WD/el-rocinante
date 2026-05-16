@@ -30,7 +30,7 @@
  *   termKey accepts an integer term ID or the sentinels '__all__' / '__unassigned__'.
  *
  * File:    dist/js/folders/folders-sidebar.js
- * Version: 2.6.0
+ * Version: 2.7.0
  * Updated: 2026-05-16
  */
 
@@ -207,6 +207,32 @@
 		}
 
 		initFolderSearch();
+
+		// ── Parent-direct-hover ────────────────────────────────────────────
+		//
+		// Applies .is-parent-direct-hover to a parent item only when the
+		// cursor is over that item's own .roci-item-row, not a descendant's.
+		// Because closest() walks up from the actual target, hovering a child
+		// row resolves to the child item — which lacks .has-children — so the
+		// parent never receives the class incorrectly.
+
+		function clearParentDirectHover() {
+			sidebar.querySelectorAll( '.is-parent-direct-hover' ).forEach( function ( el ) {
+				el.classList.remove( 'is-parent-direct-hover' );
+			} );
+		}
+
+		sidebar.addEventListener( 'mouseover', function ( e ) {
+			var row = e.target.closest( '.roci-item-row' );
+			clearParentDirectHover();
+			if ( ! row ) { return; }
+			var item = row.closest( '.roci-folder-item' );
+			if ( item && item.classList.contains( 'has-children' ) ) {
+				item.classList.add( 'is-parent-direct-hover' );
+			}
+		} );
+
+		sidebar.addEventListener( 'mouseleave', clearParentDirectHover );
 
 		// ── Active state (grid view only) ──────────────────────────────────
 
