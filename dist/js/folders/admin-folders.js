@@ -11,8 +11,8 @@
  * uses it to refresh both the filter dropdown and the modal parent
  * dropdown in place — no page reload needed.
  *
- * Version: 1.2.4
- * Updated: 2026-05-14
+ * Version: 1.2.5
+ * Updated: 2026-05-16
  */
 
 ( function () {
@@ -113,6 +113,23 @@
             // Restore previous selection if it still exists in the new list.
             selectEl.value = prevVal;
         }
+
+        // ── Submit ────────────────────────────────────────────────────────
+
+        // ── Reorder refresh ───────────────────────────────────────────────
+        //
+        // folders-reorder.js dispatches roci:folderOrderChanged after a
+        // successful AJAX reorder. Rebuild the modal parent dropdown so the
+        // new sibling order is reflected without a page reload.
+
+        document.addEventListener( 'roci:folderOrderChanged', function ( e ) {
+            rebuildSelect(
+                parentSelect,
+                e.detail.options,
+                rociAdminFolders.i18n.noParent,
+                '0'
+            );
+        } );
 
         // ── Submit ────────────────────────────────────────────────────────
 

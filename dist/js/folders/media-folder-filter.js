@@ -21,8 +21,8 @@
  * roci_no_folder follows the same propmap bypass: setting it to 1 in the model
  * causes the PHP filter to apply a NOT EXISTS tax_query for unassigned files.
  *
- * Version: 1.7.1
- * Updated: 2026-05-15
+ * Version: 1.7.2
+ * Updated: 2026-05-16
  */
 
 ( function ( media ) {
@@ -199,14 +199,15 @@
 	} );
 
 
-	// ── Post-creation refresh ──────────────────────────────────────────────
+	// ── Filter select rebuild ──────────────────────────────────────────────
 	//
-	// admin-folders.js dispatches roci:folderCreated after a successful AJAX
-	// creation. Convert the {value, label} option format to {term_id, name}
-	// before rebuilding the Backbone filter select.
+	// Shared by roci:folderCreated (post-creation) and roci:folderOrderChanged
+	// (post-reorder). Converts the server's {value, label} option format to
+	// the {term_id, name} shape that buildFolderFilters() expects, then
+	// re-renders the Backbone filter select.
 
-	document.addEventListener( 'roci:folderCreated', function ( e ) {
-		rociMediaFolders.terms = e.detail.options.map( function ( opt ) {
+	function rebuildFolderFilterSelect( options ) {
+		rociMediaFolders.terms = options.map( function ( opt ) {
 			return { term_id: opt.value, name: opt.label };
 		} );
 
@@ -214,6 +215,14 @@
 			activeFilter.createFilters();
 			activeFilter.render();
 		}
+	}
+
+	document.addEventListener( 'roci:folderCreated', function ( e ) {
+		rebuildFolderFilterSelect( e.detail.options );
+	} );
+
+	document.addEventListener( 'roci:folderOrderChanged', function ( e ) {
+		rebuildFolderFilterSelect( e.detail.options );
 	} );
 
 }( wp.media ) );

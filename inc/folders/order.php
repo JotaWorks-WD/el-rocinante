@@ -12,7 +12,7 @@
  *   roci_enqueue_reorder_assets()         — enqueues dist/js/folders/folders-reorder.js
  *
  * File:    inc/folders/order.php
- * Version: 1.0.0
+ * Version: 1.0.1
  * Updated: 2026-05-16
  *
  * @package ElRocinante
@@ -176,6 +176,8 @@ function roci_ajax_reorder_folders() {
 	}
 
 	// ── Success response ──────────────────────────────────────────────────
+	$options = roci_build_folder_options_for_select( 'roci_media_folder' );
+
 	wp_send_json_success( array(
 		'parent_id' => $parent_id,
 		'ordered'   => array_map(
@@ -188,6 +190,7 @@ function roci_ajax_reorder_folders() {
 			$ordered_ids,
 			array_keys( $ordered_ids )
 		),
+		'options'   => $options,
 	) );
 }
 add_action( 'wp_ajax_roci_reorder_folders', 'roci_ajax_reorder_folders' );

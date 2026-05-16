@@ -13,7 +13,7 @@
  * off, so this bubble-phase handler only fires when the mode is active.
  *
  * File:    dist/js/folders/folders-reorder.js
- * Version: 1.0.1
+ * Version: 1.1.0
  * Updated: 2026-05-16
  *
  * @package ElRocinante
@@ -274,6 +274,11 @@
 				var resp;
 				try { resp = JSON.parse( xhr.responseText ); } catch ( err ) { resp = null; }
 				if ( resp && resp.success ) {
+					if ( resp.data && resp.data.options ) {
+						document.dispatchEvent( new CustomEvent( 'roci:folderOrderChanged', {
+							detail: { options: resp.data.options }
+						} ) );
+					}
 					return;
 				}
 				var detail = ( resp && resp.data ) ? resp.data : 'Unknown error';
