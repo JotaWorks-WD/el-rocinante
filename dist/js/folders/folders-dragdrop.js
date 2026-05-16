@@ -27,7 +27,7 @@
  *   multi-select drag, and folder reordering are out of scope for Phase 6.
  *
  * File:    dist/js/folders/folders-dragdrop.js
- * Version: 1.2.0
+ * Version: 1.3.0
  * Updated: 2026-05-16
  *
  * @package ElRocinante
@@ -358,14 +358,22 @@
 	// The CSS in _admin-folders-dragdrop.scss hides the overlay elements as
 	// a belt-and-suspenders fallback.
 
+	document.addEventListener( 'dragstart', function () {
+		document.body.classList.add( 'roci-any-internal-drag' );
+	}, true );
+
+	document.addEventListener( 'dragend', function () {
+		document.body.classList.remove( 'roci-any-internal-drag' );
+	}, true );
+
 	document.addEventListener( 'dragenter', function () {
-		if ( document.body.classList.contains( 'roci-dragging' ) ) {
+		if ( document.body.classList.contains( 'roci-any-internal-drag' ) ) {
 			document.body.classList.remove( 'drag-drop' );
 		}
 	}, true );
 
 	document.addEventListener( 'dragover', function () {
-		if ( document.body.classList.contains( 'roci-dragging' ) ) {
+		if ( document.body.classList.contains( 'roci-any-internal-drag' ) ) {
 			document.body.classList.remove( 'drag-drop' );
 		}
 	}, true );
