@@ -6,8 +6,8 @@
  * wired in commit 2).
  *
  * @package El_Rocinante
- * @version 2.8.8
- * Updated: 2026-05-15
+ * @version 2.8.13
+ * Updated: 2026-05-16
  */
 
 defined( 'ABSPATH' ) || exit;
@@ -68,6 +68,14 @@ function roci_upload_picker_enqueue( $hook ) {
 		get_template_directory_uri() . '/dist/js/folders/upload-picker.js',
 		array(),
 		roci_asset_version( '/dist/js/folders/upload-picker.js' ),
+		true
+	);
+
+	wp_enqueue_script(
+		'roci-wp-media-refresh-shim',
+		get_template_directory_uri() . '/dist/js/folders/wp-media-refresh-shim.js',
+		array( 'media-views' ),
+		roci_asset_version( 'dist/js/folders/wp-media-refresh-shim.js' ),
 		true
 	);
 

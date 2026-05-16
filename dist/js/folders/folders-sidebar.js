@@ -25,7 +25,7 @@
  * a parent, the parent is upgraded to a branch node and auto-expanded.
  *
  * File:    dist/js/folders/folders-sidebar.js
- * Version: 2.3.3
+ * Version: 2.3.4
  * Updated: 2026-05-16
  */
 
@@ -350,6 +350,20 @@
 		var folderTerm = params.get( 'roci_media_folder' );
 		var noFolder = params.get( 'roci_no_folder' ) === '1';
 
+		// Grid mode: filter lives in wp.media library props, not URL.
+		if ( ! folderTerm && ! noFolder && window.wp && wp.media && wp.media.frame ) {
+			try {
+				var libState = wp.media.frame.state && wp.media.frame.state();
+				var lib = libState && libState.get && libState.get( 'library' );
+				if ( lib && lib.props ) {
+					folderTerm = lib.props.get( 'roci_media_folder' );
+					if ( ! folderTerm ) {
+						noFolder = lib.props.get( 'roci_no_folder' ) === '1';
+					}
+				}
+			} catch ( e ) {}
+		}
+
 		if ( folderTerm ) {
 			var termId = parseInt( folderTerm, 10 );
 			decrementSidebarCount( termId );
@@ -360,6 +374,10 @@
 		// "All Files" view (no folder filter): folder/unassigned counts drift
 		// until refresh because we don't know which folder the file was in.
 		// The "All Files" count itself is still updated above.
+
+		if ( typeof window.rociForceLibraryRefresh === 'function' ) {
+			window.rociForceLibraryRefresh();
+		}
 	}
 
 	function decrementSidebarCount ( termKey ) {
