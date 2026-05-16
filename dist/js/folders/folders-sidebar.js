@@ -25,8 +25,8 @@
  * a parent, the parent is upgraded to a branch node and auto-expanded.
  *
  * File:    dist/js/folders/folders-sidebar.js
- * Version: 2.3.1
- * Updated: 2026-05-15
+ * Version: 2.3.2
+ * Updated: 2026-05-16
  */
 
 ( function () {
@@ -36,7 +36,7 @@
 	// ── Storage keys (screen-scoped) ──────────────────────────────────────
 	var screenKey      = ( typeof rociSidebar !== 'undefined' && rociSidebar.screenKey ) ? rociSidebar.screenKey : 'media';
 	var lsKeyCollapsed = 'roci_sidebar_collapsed_' + screenKey; // localStorage  — persists across tabs/sessions
-	var lsKeyExpanded  = 'roci_folder_expanded_'   + screenKey; // sessionStorage — resets on tab close
+	var ssKeyExpanded  = 'roci_folder_expanded_'   + screenKey; // sessionStorage — resets on tab close
 
 	// ── Safe localStorage wrappers (collapsed state) ──────────────────────
 	function lsGet( key ) {
@@ -135,7 +135,7 @@
 		}
 
 		function persistExpanded() {
-			ssSet( lsKeyExpanded, JSON.stringify( getOpenTermIds() ) );
+			ssSet( ssKeyExpanded, JSON.stringify( getOpenTermIds() ) );
 		}
 
 		function openChildren( item ) {
@@ -167,7 +167,7 @@
 
 		// Restore open-folder state saved from the previous page load.
 		function restoreExpandedFolders() {
-			var raw = ssGet( lsKeyExpanded );
+			var raw = ssGet( ssKeyExpanded );
 			if ( ! raw ) {
 				return;
 			}
