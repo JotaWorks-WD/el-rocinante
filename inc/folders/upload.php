@@ -6,7 +6,7 @@
  * wired in commit 2).
  *
  * @package El_Rocinante
- * @version 2.8.13
+ * @version 2.8.14
  * Updated: 2026-05-16
  */
 
@@ -98,8 +98,8 @@ function roci_upload_picker_enqueue( $hook ) {
 
 	wp_localize_script( 'roci-upload-picker', 'rociUploadPicker', array(
 		'folders'    => $folders,
-		'label'      => __( 'Upload to folder', 'rocinante' ),
-		'helperText' => __( 'Choose a folder before uploading. Leave blank for unassigned.', 'rocinante' ),
+		'label'      => __( 'Upload to fauxlder', 'rocinante' ),
+		'helperText' => __( 'Choose a fauxlder before uploading. Leave blank for unassigned.', 'rocinante' ),
 	) );
 }
 add_action( 'admin_enqueue_scripts', 'roci_upload_picker_enqueue' );

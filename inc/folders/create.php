@@ -13,7 +13,7 @@
  *   roci_enqueue_admin_folders_js()        — enqueues dist/js/folders/admin-folders.js
  *
  * File:    inc/folders/create.php
- * Version: 1.7.0
+ * Version: 1.8.0
  * Updated: 2026-05-16
  *
  * @package ElRocinante
@@ -127,7 +127,7 @@ function roci_render_new_folder_modal() {
 
 		<h2 id="roci-folder-modal-title"
 		    style="margin-top:0;padding-bottom:12px;border-bottom:1px solid #dcdcde;font-size:1.1em;">
-			<?php esc_html_e( 'Create New Folder', 'rocinante' ); ?>
+			<?php esc_html_e( 'Create New Fauxlder', 'rocinante' ); ?>
 		</h2>
 
 		<form id="roci-folder-form">
@@ -135,7 +135,7 @@ function roci_render_new_folder_modal() {
 			<p style="margin:16px 0 12px;">
 				<label for="roci-folder-name"
 				       style="display:block;margin-bottom:4px;font-weight:600;">
-					<?php esc_html_e( 'Folder Name', 'rocinante' ); ?>
+					<?php esc_html_e( 'Fauxlder Name', 'rocinante' ); ?>
 					<span style="color:#d63638;" aria-hidden="true">*</span>
 				</label>
 				<input type="text"
@@ -148,7 +148,7 @@ function roci_render_new_folder_modal() {
 			<p style="margin-bottom:16px;">
 				<label for="roci-folder-parent"
 				       style="display:block;margin-bottom:4px;font-weight:600;">
-					<?php esc_html_e( 'Parent Folder', 'rocinante' ); ?>
+					<?php esc_html_e( 'Parent Fauxlder', 'rocinante' ); ?>
 				</label>
 				<?php
 				wp_dropdown_categories( array(
@@ -173,7 +173,7 @@ function roci_render_new_folder_modal() {
 
 			<p style="margin:0;">
 				<button type="submit" class="button button-primary">
-					<?php esc_html_e( 'Create Folder', 'rocinante' ); ?>
+					<?php esc_html_e( 'Create Fauxlder', 'rocinante' ); ?>
 				</button>
 				&nbsp;
 				<button type="button" id="roci-folder-cancel" class="button">
@@ -215,7 +215,7 @@ function roci_ajax_create_folder() {
 	check_ajax_referer( 'roci_create_folder', 'nonce' );
 
 	if ( ! current_user_can( 'manage_categories' ) ) {
-		wp_send_json_error( __( 'You do not have permission to create folders.', 'rocinante' ), 403 );
+		wp_send_json_error( __( 'You do not have permission to create fauxlders.', 'rocinante' ), 403 );
 	}
 
 	$allowed  = array( 'roci_media_folder', 'roci_page_folder' );
@@ -226,12 +226,12 @@ function roci_ajax_create_folder() {
 
 	$name = isset( $_POST['folder_name'] ) ? sanitize_text_field( wp_unslash( $_POST['folder_name'] ) ) : '';
 	if ( '' === $name ) {
-		wp_send_json_error( __( 'Folder name is required.', 'rocinante' ) );
+		wp_send_json_error( __( 'Fauxlder name is required.', 'rocinante' ) );
 	}
 
 	$parent = isset( $_POST['parent'] ) ? absint( $_POST['parent'] ) : 0;
 	if ( $parent > 0 && ! term_exists( $parent, $taxonomy ) ) {
-		wp_send_json_error( __( 'Selected parent folder does not exist.', 'rocinante' ) );
+		wp_send_json_error( __( 'Selected parent fauxlder does not exist.', 'rocinante' ) );
 	}
 
 	$result = wp_insert_term( $name, $taxonomy, array( 'parent' => $parent ) );
@@ -309,11 +309,11 @@ function roci_enqueue_admin_folders_js( $hook_suffix ) {
 		'taxonomy'       => $taxonomy,
 		'filterSelectId' => $filter_select_id,
 		'i18n'           => array(
-			'allFolders'     => __( 'All Folders', 'rocinante' ),
+			'allFolders'     => __( 'All Fauxlders', 'rocinante' ),
 			'noParent'       => __( '— No Parent —', 'rocinante' ),
-			'nameRequired'   => __( 'Folder name is required.', 'rocinante' ),
+			'nameRequired'   => __( 'Fauxlder name is required.', 'rocinante' ),
 			'requestFailed'  => __( 'Request failed. Please try again.', 'rocinante' ),
-			'newFolderLabel' => __( '+ New Folder', 'rocinante' ),
+			'newFolderLabel' => __( '+ New Fauxlder', 'rocinante' ),
 		),
 	) );
 }

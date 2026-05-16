@@ -15,7 +15,7 @@
  * ajax_query_attachments_args filter.
  *
  * File:    inc/folders/sidebar.php
- * Version: 1.7.0
+ * Version: 1.8.0
  * Updated: 2026-05-16
  *
  * @package ElRocinante
@@ -159,7 +159,7 @@ function roci_render_sidebar_tree_level( $children, $active_term_id, $parent_id,
 			<div class="roci-item-row">
 				<?php if ( $has_children ) : ?>
 				<button class="roci-chevron" type="button"
-				        aria-label="<?php esc_attr_e( 'Toggle subfolders', 'rocinante' ); ?>">
+				        aria-label="<?php esc_attr_e( 'Toggle subfauxlders', 'rocinante' ); ?>">
 					<span class="dashicons dashicons-arrow-right" aria-hidden="true"></span>
 				</button>
 				<?php else : ?>
@@ -297,28 +297,28 @@ function roci_render_folders_sidebar_html( $taxonomy, $folder_url_key, $base_url
 	       class="roci-folders-sidebar"
 	       data-taxonomy="<?php echo esc_attr( $taxonomy ); ?>"
 	       data-folder-key="<?php echo esc_attr( $folder_url_key ); ?>"
-	       aria-label="<?php esc_attr_e( 'Folders', 'rocinante' ); ?>">
+	       aria-label="<?php esc_attr_e( 'Fauxlders', 'rocinante' ); ?>">
 
 		<div class="roci-sidebar-header">
 			<span class="roci-sidebar-header-title" aria-hidden="true">
-				<?php esc_html_e( 'Folders', 'rocinante' ); ?>
+				<?php esc_html_e( 'Fauxlders', 'rocinante' ); ?>
 			</span>
 			<button type="button"
 			        class="button button-small roci-sidebar-new-folder-btn"
 			        id="roci-new-folder-btn"
-			        aria-label="<?php esc_attr_e( 'Create new folder', 'rocinante' ); ?>">
-				<?php esc_html_e( '+ New Folder', 'rocinante' ); ?>
+			        aria-label="<?php esc_attr_e( 'Create new fauxlder', 'rocinante' ); ?>">
+				<?php esc_html_e( '+ New Fauxlder', 'rocinante' ); ?>
 			</button>
 			<button type="button"
 			        id="roci-sidebar-toggle"
 			        class="roci-sidebar-toggle"
-			        aria-label="<?php esc_attr_e( 'Collapse folder sidebar', 'rocinante' ); ?>"
+			        aria-label="<?php esc_attr_e( 'Collapse fauxlder sidebar', 'rocinante' ); ?>"
 			        aria-expanded="true">
 				<span class="dashicons dashicons-arrow-left-alt2" aria-hidden="true"></span>
 			</button>
 		</div>
 
-		<div class="roci-sidebar-actions" role="toolbar" aria-label="<?php esc_attr_e( 'Folder actions', 'rocinante' ); ?>">
+		<div class="roci-sidebar-actions" role="toolbar" aria-label="<?php esc_attr_e( 'Fauxlder actions', 'rocinante' ); ?>">
 			<button type="button"
 			        class="roci-action-toggle roci-action-organize"
 			        aria-pressed="false"

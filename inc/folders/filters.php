@@ -12,7 +12,7 @@
  *     folder filter into the AttachmentsBrowser toolbar (after the type + date filters)
  *
  * File:    inc/folders/filters.php
- * Version: 2.1.0
+ * Version: 2.2.0
  * Updated: 2026-05-16
  *
  * @package ElRocinante
@@ -111,14 +111,14 @@ function roci_media_folder_filter_dropdown( $post_type, $which ) {
 	}
 
 	echo '<label class="screen-reader-text" for="roci-media-folder-filter">'
-		. esc_html__( 'Filter by Media Folder', 'rocinante' )
+		. esc_html__( 'Filter by Media Fauxlder', 'rocinante' )
 		. '</label>';
 
 	roci_render_folder_select_dropdown(
 		'roci_media_folder',
 		'roci_media_folder',
 		'roci-media-folder-filter',
-		__( 'All Folders', 'rocinante' ),
+		__( 'All Fauxlders', 'rocinante' ),
 		$selected
 	);
 }
@@ -155,14 +155,14 @@ function roci_page_folder_filter_dropdown( $post_type, $which ) {
 	}
 
 	echo '<label class="screen-reader-text" for="roci-page-folder-filter">'
-		. esc_html__( 'Filter by Page Folder', 'rocinante' )
+		. esc_html__( 'Filter by Page Fauxlder', 'rocinante' )
 		. '</label>';
 
 	roci_render_folder_select_dropdown(
 		'roci_page_folder',
 		'roci_page_folder',
 		'roci-page-folder-filter',
-		__( 'All Folders', 'rocinante' ),
+		__( 'All Fauxlders', 'rocinante' ),
 		$selected
 	);
 }
@@ -388,7 +388,7 @@ function roci_enqueue_media_folder_js( $hook_suffix ) {
 
 	wp_localize_script( 'roci-media-folder-filter', 'rociMediaFolders', array(
 		'terms'    => roci_get_folder_terms_for_js(),
-		'allLabel' => __( 'All Folders', 'rocinante' ),
+		'allLabel' => __( 'All Fauxlders', 'rocinante' ),
 	) );
 }
 add_action( 'admin_enqueue_scripts', 'roci_enqueue_media_folder_js' );

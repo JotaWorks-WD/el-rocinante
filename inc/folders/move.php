@@ -9,7 +9,7 @@
  *   roci_enqueue_dragdrop_assets() — enqueues dist/js/folders/folders-dragdrop.js
  *
  * File:    inc/folders/move.php
- * Version: 1.0.0
+ * Version: 1.1.0
  * Updated: 2026-05-16
  *
  * @package ElRocinante
@@ -66,7 +66,7 @@ function roci_ajax_move_attachment() {
 	} else {
 		$term_id = absint( $target_term );
 		if ( ! $term_id || ! roci_validate_folder_term( $term_id, 'roci_media_folder' ) ) {
-			wp_send_json_error( __( 'Invalid target folder.', 'rocinante' ), 400 );
+			wp_send_json_error( __( 'Invalid target fauxlder.', 'rocinante' ), 400 );
 		}
 		$terms_to_set = array( $term_id );
 	}

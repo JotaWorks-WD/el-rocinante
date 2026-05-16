@@ -12,7 +12,7 @@
  *   roci_enqueue_reorder_assets()         — enqueues dist/js/folders/folders-reorder.js
  *
  * File:    inc/folders/order.php
- * Version: 1.0.1
+ * Version: 1.1.0
  * Updated: 2026-05-16
  *
  * @package ElRocinante
@@ -108,7 +108,7 @@ function roci_ajax_reorder_folders() {
 
 	// ── Capability check ─────────────────────────────────────────────────
 	if ( ! current_user_can( 'manage_categories' ) ) {
-		wp_send_json_error( 'You do not have permission to reorder folders.', 403 );
+		wp_send_json_error( __( 'You do not have permission to reorder fauxlders.', 'rocinante' ), 403 );
 	}
 
 	// ── Validate parent ───────────────────────────────────────────────────

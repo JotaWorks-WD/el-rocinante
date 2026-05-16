@@ -5,7 +5,7 @@
  * and wires the selected folder term ID into Plupload's multipart_params.
  *
  * @package El_Rocinante
- * @version 2.8.7
+ * @version 2.8.8
  * Updated: 2026-05-15
  */
 
@@ -46,8 +46,8 @@
 
     var data       = window.rociUploadPicker || {};
     var folders    = data.folders    || [];
-    var labelText  = data.label      || 'Upload to folder';
-    var helperText = data.helperText || 'Choose a folder before uploading. Leave blank for unassigned.';
+    var labelText  = data.label      || 'Upload to fauxlder';
+    var helperText = data.helperText || 'Choose a fauxlder before uploading. Leave blank for unassigned.';
 
     function escapeHtml( str ) {
         var div = document.createElement( 'div' );
@@ -56,7 +56,7 @@
     }
 
     function buildPickerHTML() {
-        var options = '<option value="">— No folder —</option>';
+        var options = '<option value="">— No fauxlder —</option>';
         folders.forEach( function ( f ) {
             options += '<option value="' + f.id + '">' + escapeHtml( f.name ) + '</option>';
         } );
