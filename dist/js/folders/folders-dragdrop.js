@@ -27,7 +27,7 @@
  *   multi-select drag, and folder reordering are out of scope for Phase 6.
  *
  * File:    dist/js/folders/folders-dragdrop.js
- * Version: 1.1.0
+ * Version: 1.2.0
  * Updated: 2026-05-16
  *
  * @package ElRocinante
@@ -230,6 +230,14 @@
 	// ======================================================================
 
 	function bindSidebarDropTargets( sidebar ) {
+
+		// dragstart (capture phase) — block folder <li> drags when organize mode
+		// is off. When ON, dragstart propagates and folders-reorder.js handles it.
+		sidebar.addEventListener( 'dragstart', function ( e ) {
+			if ( ! sidebar.classList.contains( 'roci-organize-mode' ) ) {
+				e.preventDefault();
+			}
+		}, true );
 
 		// dragenter / dragover — highlight target, allow drop
 		function onDragOver( e ) {
