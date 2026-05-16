@@ -13,7 +13,7 @@
  * off, so this bubble-phase handler only fires when the mode is active.
  *
  * File:    dist/js/folders/folders-reorder.js
- * Version: 1.1.0
+ * Version: 1.2.0
  * Updated: 2026-05-16
  *
  * @package ElRocinante
@@ -337,10 +337,11 @@
 			return false;
 		}
 
-		var organizeBtn = sidebar.querySelector( '.roci-action-organize' );
-		if ( organizeBtn ) {
-			organizeBtn.addEventListener( 'click', handleOrganizeClick );
-		}
+		sidebar.addEventListener( 'click', function ( e ) {
+			if ( e.target.closest( '.roci-action-organize' ) ) {
+				handleOrganizeClick();
+			}
+		} );
 
 		// Bubble phase — folders-dragdrop.js capture-phase listeners run first,
 		// then these handlers process organize-mode drags.
