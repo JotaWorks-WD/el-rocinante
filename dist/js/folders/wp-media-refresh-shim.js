@@ -7,7 +7,7 @@
  * destroy callback can trigger the same re-fetch on delete.
  *
  * @package ElRocinante
- * @version 2.8.13
+ * @version 2.8.14
  * Updated: 2026-05-16
  */
 
@@ -43,9 +43,12 @@
 			return true;
 		}
 		var origSuccess = wp.Uploader.prototype.success;
-		wp.Uploader.prototype.success = function () {
+		wp.Uploader.prototype.success = function ( attachment ) {
 			var result = origSuccess.apply( this, arguments );
 			rociForceLibraryRefresh();
+			if ( typeof window.rociHandleAttachmentUploaded === 'function' ) {
+				window.rociHandleAttachmentUploaded( attachment );
+			}
 			return result;
 		};
 		wp.Uploader.prototype._rociUploadRefreshPatched = true;

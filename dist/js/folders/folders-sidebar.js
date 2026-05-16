@@ -25,7 +25,7 @@
  * a parent, the parent is upgraded to a branch node and auto-expanded.
  *
  * File:    dist/js/folders/folders-sidebar.js
- * Version: 2.3.4
+ * Version: 2.3.5
  * Updated: 2026-05-16
  */
 
@@ -405,6 +405,50 @@
 		var next = Math.max( 0, parseInt( match[ 1 ], 10 ) - 1 );
 		option.textContent = option.textContent.replace( /\((\d+)\)$/, '(' + next + ')' );
 	}
+
+	function incrementSidebarCount ( termKey ) {
+		var el = document.querySelector( '[data-term="' + termKey + '"] .roci-folder-count' );
+		if ( ! el ) {
+			return;
+		}
+		var match = el.textContent.match( /\((\d+)\)/ );
+		if ( ! match ) {
+			return;
+		}
+		var next = parseInt( match[ 1 ], 10 ) + 1;
+		el.textContent = '(' + next + ')';
+	}
+
+	function incrementDropdownOption ( termId ) {
+		var option = document.querySelector( '#roci-media-folder-filter option[value="' + termId + '"]' );
+		if ( ! option ) {
+			return;
+		}
+		var match = option.textContent.match( /\((\d+)\)$/ );
+		if ( ! match ) {
+			return;
+		}
+		var next = parseInt( match[ 1 ], 10 ) + 1;
+		option.textContent = option.textContent.replace( /\((\d+)\)$/, '(' + next + ')' );
+	}
+
+	function handleAttachmentUploaded ( attachment ) {
+		incrementSidebarCount( '__all__' );
+
+		var picker = document.querySelector( '.roci-upload-picker__select' );
+		if ( picker && picker.value ) {
+			var termId = parseInt( picker.value, 10 );
+			if ( termId ) {
+				incrementSidebarCount( termId );
+				incrementDropdownOption( termId );
+				return;
+			}
+		}
+		// No folder selected (or no picker present) — file lands as unassigned.
+		incrementSidebarCount( '__unassigned__' );
+	}
+
+	window.rociHandleAttachmentUploaded = handleAttachmentUploaded;
 
 	( function () {
 		if ( bindAttachmentDeleteListener() ) {
