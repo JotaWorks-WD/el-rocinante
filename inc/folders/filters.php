@@ -12,7 +12,7 @@
  *     folder filter into the AttachmentsBrowser toolbar (after the type + date filters)
  *
  * File:    inc/folders/filters.php
- * Version: 2.0.0
+ * Version: 2.1.0
  * Updated: 2026-05-16
  *
  * @package ElRocinante
@@ -281,11 +281,38 @@ add_filter( 'ajax_query_attachments_args', 'roci_media_folder_modal_ajax_filter'
 // ============================================================
 
 /**
+ * Depth-first walk of the roci_media_folder term tree.
+ *
+ * Emits each term into $ordered before recursing into its children,
+ * preserving the sibling sort already applied by get_terms (meta_value_num).
+ * Mirrors roci_render_sidebar_tree_level() in sidebar.php — same children-map
+ * pattern, same silent-drop behaviour for orphaned terms.
+ *
+ * @param array     $children   Map of parent_id => WP_Term[].
+ * @param int       $parent_id  Term ID of the level currently being walked.
+ * @param WP_Term[] &$ordered   Accumulator — terms in traversal order.
+ */
+function roci_walk_folder_terms_depth_first( $children, $parent_id, &$ordered ) {
+
+	if ( ! isset( $children[ $parent_id ] ) ) {
+		return;
+	}
+
+	foreach ( $children[ $parent_id ] as $term ) {
+		$ordered[] = $term;
+		roci_walk_folder_terms_depth_first( $children, $term->term_id, $ordered );
+	}
+}
+
+
+/**
  * Build the roci_media_folder term list for JS consumption.
  *
- * Returns a flat array ordered by parent so children follow their parent.
- * Depth is computed via get_ancestors() and converted to em-dash indentation
- * so the JS can render a visually hierarchical <select> without a tree-walk.
+ * Returns a flat array in depth-first tree order so children always follow
+ * their parent. Siblings within each level are sorted by roci_folder_order
+ * meta (via roci_get_folder_order_query_args()). Depth is computed via
+ * get_ancestors() and converted to em-dash indentation so the JS can render
+ * a visually hierarchical <select> without a tree-walk.
  *
  * @return array  [ [ 'term_id' => int, 'name' => string ], ... ]
  */
@@ -300,9 +327,17 @@ function roci_get_folder_terms_for_js() {
 		return array();
 	}
 
+	$children = array();
+	foreach ( $terms as $term ) {
+		$children[ $term->parent ][] = $term;
+	}
+
+	$ordered = array();
+	roci_walk_folder_terms_depth_first( $children, 0, $ordered );
+
 	$data = array();
 
-	foreach ( $terms as $term ) {
+	foreach ( $ordered as $term ) {
 		$depth  = count( get_ancestors( $term->term_id, 'roci_media_folder', 'taxonomy' ) );
 		$indent = $depth > 0 ? str_repeat( "\u{2014} ", $depth ) : '';
 		$data[] = array(
