@@ -12,7 +12,7 @@
  *     folder filter into the AttachmentsBrowser toolbar (after the type + date filters)
  *
  * File:    inc/folders/filters.php
- * Version: 2.3.0
+ * Version: 2.4.0
  * Updated: 2026-05-16
  *
  * @package ElRocinante
@@ -391,10 +391,11 @@ function roci_enqueue_media_folder_js( $hook_suffix ) {
 		'allLabel' => __( 'All Fauxlders', 'rocinante' ),
 	) );
 }
-// Grid-view folder-filter dropdown removed in favour of the sidebar.
-// The JS source (dist/js/folders/media-folder-filter.js) is retained as a
-// revert path. Re-enable by restoring the add_action call below.
-// add_action( 'admin_enqueue_scripts', 'roci_enqueue_media_folder_js' );
+// media-folder-filter.js must remain enqueued even though its toolbar dropdown
+// is suppressed when the sidebar is present. The script owns the Backbone model
+// integration (roci:sidebarFilter listener + defaultArgs extension) that makes
+// sidebar folder clicks trigger a grid-view AJAX refetch.
+add_action( 'admin_enqueue_scripts', 'roci_enqueue_media_folder_js' );
 
 
 // ============================================================

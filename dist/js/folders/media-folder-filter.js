@@ -21,7 +21,7 @@
  * roci_no_folder follows the same propmap bypass: setting it to 1 in the model
  * causes the PHP filter to apply a NOT EXISTS tax_query for unassigned files.
  *
- * Version: 1.7.2
+ * Version: 1.7.3
  * Updated: 2026-05-16
  */
 
@@ -155,14 +155,23 @@
 
 			// hasModal: true only on upload.php (rociAdminFolders is localised
 			// there). False on post.php/post-new.php (media picker modal).
-			var hasModal = typeof rociAdminFolders !== 'undefined';
+			var hasModal   = typeof rociAdminFolders !== 'undefined';
+			var hasSidebar = !! document.getElementById( 'roci-folders-sidebar' );
 
 			if ( rociMediaFolders.terms.length || hasModal ) {
-				this.toolbar.set( 'rociMediaFolderFilter', new RociMediaFolderFilter( {
+				// Always instantiate so activeFilter is set — the roci:sidebarFilter
+				// listener below references it to push folder selection into the
+				// Backbone model and trigger the grid-view AJAX refetch.
+				var filterView = new RociMediaFolderFilter( {
 					controller: this.controller,
 					model:      this.collection.props,
 					priority:   -70
-				} ).render() );
+				} );
+				// Suppress the toolbar dropdown when the sidebar is present; the
+				// sidebar already provides the filtering UI on upload.php.
+				if ( ! hasSidebar ) {
+					this.toolbar.set( 'rociMediaFolderFilter', filterView.render() );
+				}
 			}
 
 			// Sync the .view-list toggle href with the active folder filter so
