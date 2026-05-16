@@ -30,7 +30,7 @@
  *   termKey accepts an integer term ID or the sentinels '__all__' / '__unassigned__'.
  *
  * File:    dist/js/folders/folders-sidebar.js
- * Version: 2.5.0
+ * Version: 2.6.0
  * Updated: 2026-05-16
  */
 
@@ -323,12 +323,30 @@
 			// List view: let href navigate; PHP renders is-active on next load.
 		} );
 
-		// ── List-view: auto-submit on folder dropdown change ───────────────
+		// ── List-view: active-border class + auto-submit on folder dropdown change ─
 
 		if ( ! isGridView ) {
 			var folderSelect = document.getElementById( 'roci-media-folder-filter' );
 			if ( folderSelect ) {
+				if ( folderSelect.value && folderSelect.value !== '0' ) {
+					folderSelect.classList.add( 'is-active-filter' );
+				}
 				folderSelect.addEventListener( 'change', function () {
+					this.classList.toggle( 'is-active-filter', this.value !== '' && this.value !== '0' );
+					var form = document.getElementById( 'posts-filter' );
+					if ( form ) {
+						form.submit();
+					}
+				} );
+			}
+
+			var pageSelect = document.getElementById( 'roci-page-folder-filter' );
+			if ( pageSelect ) {
+				if ( pageSelect.value && pageSelect.value !== '0' ) {
+					pageSelect.classList.add( 'is-active-filter' );
+				}
+				pageSelect.addEventListener( 'change', function () {
+					this.classList.toggle( 'is-active-filter', this.value !== '' && this.value !== '0' );
 					var form = document.getElementById( 'posts-filter' );
 					if ( form ) {
 						form.submit();
