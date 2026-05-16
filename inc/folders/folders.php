@@ -14,7 +14,7 @@
  *   sidebar.php    — folder-tree sidebar, unassigned filter, JS enqueue
  *
  * File:    inc/folders/folders.php
- * Version: 1.7.0
+ * Version: 1.8.0
  * Updated: 2026-05-16
  *
  * @package ElRocinante
@@ -60,4 +60,5 @@ require_once get_template_directory() . '/inc/folders/filters.php';
 require_once get_template_directory() . '/inc/folders/create.php';
 require_once get_template_directory() . '/inc/folders/upload.php';
 require_once get_template_directory() . '/inc/folders/move.php';
+require_once get_template_directory() . '/inc/folders/order.php';
 require_once get_template_directory() . '/inc/folders/sidebar.php';
