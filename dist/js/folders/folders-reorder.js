@@ -13,7 +13,7 @@
  * off, so this bubble-phase handler only fires when the mode is active.
  *
  * File:    dist/js/folders/folders-reorder.js
- * Version: 1.0.0
+ * Version: 1.0.1
  * Updated: 2026-05-16
  *
  * @package ElRocinante
@@ -138,16 +138,25 @@
 	function handleDragOver( e ) {
 		var hoveredLi = e.target.closest( 'li.roci-folder-item' );
 		if ( ! hoveredLi || hoveredLi === draggedLi ) {
+			if ( indicator && indicator.parentNode ) {
+				indicator.parentNode.removeChild( indicator );
+			}
 			return;
 		}
 
 		var termId = hoveredLi.dataset.term;
 		if ( ! termId || termId === '__all__' || termId === '__unassigned__' ) {
+			if ( indicator && indicator.parentNode ) {
+				indicator.parentNode.removeChild( indicator );
+			}
 			return;
 		}
 
 		// Different sibling group — show no-drop cursor, do NOT call preventDefault.
 		if ( hoveredLi.dataset.parent !== draggedParentId ) {
+			if ( indicator && indicator.parentNode ) {
+				indicator.parentNode.removeChild( indicator );
+			}
 			return;
 		}
 
