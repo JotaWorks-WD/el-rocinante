@@ -25,7 +25,7 @@
  * a parent, the parent is upgraded to a branch node and auto-expanded.
  *
  * File:    dist/js/folders/folders-sidebar.js
- * Version: 2.3.2
+ * Version: 2.3.3
  * Updated: 2026-05-16
  */
 
@@ -316,5 +316,89 @@
 		}
 
 	} );
+
+	// -----------------------------------------------------------------
+	// Folder count updates on attachment delete
+	// -----------------------------------------------------------------
+
+	function bindAttachmentDeleteListener () {
+		if ( ! window.wp || ! wp.media || ! wp.media.model || ! wp.media.model.Attachment ) {
+			return false;
+		}
+		if ( wp.media.model.Attachment.prototype._rociDeletePatched ) {
+			return true;
+		}
+		var origDestroy = wp.media.model.Attachment.prototype.destroy;
+		wp.media.model.Attachment.prototype.destroy = function () {
+			var result = origDestroy.apply( this, arguments );
+			if ( result && typeof result.done === 'function' ) {
+				result.done( handleAttachmentDeleted );
+			} else if ( result && typeof result.then === 'function' ) {
+				result.then( handleAttachmentDeleted );
+			}
+			return result;
+		};
+		wp.media.model.Attachment.prototype._rociDeletePatched = true;
+		return true;
+	}
+
+	function handleAttachmentDeleted () {
+		// Always decrement "All Files" virtual entry.
+		decrementSidebarCount( '__all__' );
+
+		var params = new URLSearchParams( window.location.search );
+		var folderTerm = params.get( 'roci_media_folder' );
+		var noFolder = params.get( 'roci_no_folder' ) === '1';
+
+		if ( folderTerm ) {
+			var termId = parseInt( folderTerm, 10 );
+			decrementSidebarCount( termId );
+			decrementDropdownOption( termId );
+		} else if ( noFolder ) {
+			decrementSidebarCount( '__unassigned__' );
+		}
+		// "All Files" view (no folder filter): folder/unassigned counts drift
+		// until refresh because we don't know which folder the file was in.
+		// The "All Files" count itself is still updated above.
+	}
+
+	function decrementSidebarCount ( termKey ) {
+		var el = document.querySelector( '[data-term="' + termKey + '"] .roci-folder-count' );
+		if ( ! el ) {
+			return;
+		}
+		var match = el.textContent.match( /\((\d+)\)/ );
+		if ( ! match ) {
+			return;
+		}
+		var next = Math.max( 0, parseInt( match[ 1 ], 10 ) - 1 );
+		el.textContent = '(' + next + ')';
+	}
+
+	function decrementDropdownOption ( termId ) {
+		var option = document.querySelector( '#roci-media-folder-filter option[value="' + termId + '"]' );
+		if ( ! option ) {
+			return;
+		}
+		var match = option.textContent.match( /\((\d+)\)$/ );
+		if ( ! match ) {
+			return;
+		}
+		var next = Math.max( 0, parseInt( match[ 1 ], 10 ) - 1 );
+		option.textContent = option.textContent.replace( /\((\d+)\)$/, '(' + next + ')' );
+	}
+
+	( function () {
+		if ( bindAttachmentDeleteListener() ) {
+			return;
+		}
+		var attempts = 0;
+		var interval = setInterval( function () {
+			attempts++;
+			if ( bindAttachmentDeleteListener() || attempts > 50 ) {
+				clearInterval( interval );
+			}
+		}, 100 );
+	} )();
 
 } )();
