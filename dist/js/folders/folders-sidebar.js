@@ -25,7 +25,7 @@
  * a parent, the parent is upgraded to a branch node and auto-expanded.
  *
  * File:    dist/js/folders/folders-sidebar.js
- * Version: 2.3.5
+ * Version: 2.3.6
  * Updated: 2026-05-16
  */
 
@@ -330,11 +330,24 @@
 		}
 		var origDestroy = wp.media.model.Attachment.prototype.destroy;
 		wp.media.model.Attachment.prototype.destroy = function () {
+			// Capture folder taxonomy before destroy clears the model.
+			var capturedFolders = [];
+			try {
+				var folders = this.get( 'roci_media_folder' );
+				if ( Array.isArray( folders ) ) {
+					capturedFolders = folders;
+				}
+			} catch ( e ) {}
+
 			var result = origDestroy.apply( this, arguments );
 			if ( result && typeof result.done === 'function' ) {
-				result.done( handleAttachmentDeleted );
+				result.done( function () {
+					handleAttachmentDeleted( capturedFolders );
+				} );
 			} else if ( result && typeof result.then === 'function' ) {
-				result.then( handleAttachmentDeleted );
+				result.then( function () {
+					handleAttachmentDeleted( capturedFolders );
+				} );
 			}
 			return result;
 		};
@@ -342,13 +355,31 @@
 		return true;
 	}
 
-	function handleAttachmentDeleted () {
-		// Always decrement "All Files" virtual entry.
+	function handleAttachmentDeleted ( capturedFolders ) {
+		// Always decrement All Files.
 		decrementSidebarCount( '__all__' );
 
+		// Primary path: use captured taxonomy from the destroyed attachment.
+		if ( Array.isArray( capturedFolders ) && capturedFolders.length > 0 ) {
+			capturedFolders.forEach( function ( termId ) {
+				decrementSidebarCount( termId );
+				decrementDropdownOption( termId );
+			} );
+
+			if ( typeof window.rociForceLibraryRefresh === 'function' ) {
+				window.rociForceLibraryRefresh();
+			}
+			return;
+		}
+
+		// Fallback: empty captured → either unassigned or taxonomy not exposed.
+		// Try URL/props to disambiguate.
+		var folderTerm = null;
+		var noFolder   = false;
+
 		var params = new URLSearchParams( window.location.search );
-		var folderTerm = params.get( 'roci_media_folder' );
-		var noFolder = params.get( 'roci_no_folder' ) === '1';
+		folderTerm = params.get( 'roci_media_folder' );
+		noFolder   = params.get( 'roci_no_folder' ) === '1';
 
 		// Grid mode: filter lives in wp.media library props, not URL.
 		if ( ! folderTerm && ! noFolder && window.wp && wp.media && wp.media.frame ) {
@@ -368,12 +399,10 @@
 			var termId = parseInt( folderTerm, 10 );
 			decrementSidebarCount( termId );
 			decrementDropdownOption( termId );
-		} else if ( noFolder ) {
+		} else {
+			// Empty captured + no filter context = unassigned.
 			decrementSidebarCount( '__unassigned__' );
 		}
-		// "All Files" view (no folder filter): folder/unassigned counts drift
-		// until refresh because we don't know which folder the file was in.
-		// The "All Files" count itself is still updated above.
 
 		if ( typeof window.rociForceLibraryRefresh === 'function' ) {
 			window.rociForceLibraryRefresh();

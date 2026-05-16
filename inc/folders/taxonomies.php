@@ -11,8 +11,8 @@
  * WordPress's built-in term management UI — no custom tree needed.
  *
  * File:    inc/folders/taxonomies.php
- * Version: 1.3.0
- * Updated: 2026-05-14
+ * Version: 1.4.0
+ * Updated: 2026-05-16
  *
  * @package ElRocinante
  */
@@ -93,3 +93,20 @@ function roci_register_page_folder_taxonomy() {
 	) );
 }
 add_action( 'init', 'roci_register_page_folder_taxonomy' );
+
+
+// ============================================================
+// ATTACHMENT JS DATA
+// ============================================================
+
+/**
+ * Expose roci_media_folder term IDs on attachment JS data so client-side
+ * code can identify a deleted attachment's folder for accurate sidebar
+ * count decrement.
+ */
+add_filter( 'wp_prepare_attachment_for_js', 'roci_expose_attachment_folder', 10, 2 );
+function roci_expose_attachment_folder( $response, $attachment ) {
+	$terms = wp_get_object_terms( $attachment->ID, 'roci_media_folder', array( 'fields' => 'ids' ) );
+	$response['roci_media_folder'] = is_wp_error( $terms ) ? array() : array_map( 'intval', $terms );
+	return $response;
+}
