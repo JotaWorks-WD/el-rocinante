@@ -27,7 +27,7 @@
  *   multi-select drag, and folder reordering are out of scope for Phase 6.
  *
  * File:    dist/js/folders/folders-dragdrop.js
- * Version: 1.0.0
+ * Version: 1.1.0
  * Updated: 2026-05-16
  *
  * @package ElRocinante
@@ -336,5 +336,30 @@
 			}
 		}, 100 );
 	} )();
+
+
+	// ======================================================================
+	// WP UPLOAD OVERLAY SUPPRESSION
+	// ======================================================================
+	//
+	// WP's plupload drop zone adds the 'drag-drop' class to body on any
+	// dragenter event, which triggers its "Drop files to upload" overlay CSS.
+	// It cannot distinguish an OS file drag from our internal thumbnail drag.
+	// Capture-phase listeners (third arg = true) run before WP's bubble-phase
+	// listeners, so we strip 'drag-drop' off body before WP can restore it.
+	// The CSS in _admin-folders-dragdrop.scss hides the overlay elements as
+	// a belt-and-suspenders fallback.
+
+	document.addEventListener( 'dragenter', function () {
+		if ( document.body.classList.contains( 'roci-dragging' ) ) {
+			document.body.classList.remove( 'drag-drop' );
+		}
+	}, true );
+
+	document.addEventListener( 'dragover', function () {
+		if ( document.body.classList.contains( 'roci-dragging' ) ) {
+			document.body.classList.remove( 'drag-drop' );
+		}
+	}, true );
 
 } )();
