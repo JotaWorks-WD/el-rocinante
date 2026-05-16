@@ -12,7 +12,7 @@
  *     folder filter into the AttachmentsBrowser toolbar (after the type + date filters)
  *
  * File:    inc/folders/filters.php
- * Version: 2.2.0
+ * Version: 2.3.0
  * Updated: 2026-05-16
  *
  * @package ElRocinante
@@ -391,4 +391,37 @@ function roci_enqueue_media_folder_js( $hook_suffix ) {
 		'allLabel' => __( 'All Fauxlders', 'rocinante' ),
 	) );
 }
-add_action( 'admin_enqueue_scripts', 'roci_enqueue_media_folder_js' );
+// Grid-view folder-filter dropdown removed in favour of the sidebar.
+// The JS source (dist/js/folders/media-folder-filter.js) is retained as a
+// revert path. Re-enable by restoring the add_action call below.
+// add_action( 'admin_enqueue_scripts', 'roci_enqueue_media_folder_js' );
+
+
+// ============================================================
+// BULK ORGANIZE — ENQUEUE JS
+// ============================================================
+
+/**
+ * Enqueue bulk-organize-button.js on the Media Library screen.
+ *
+ * Scoped to upload.php only — the button is not relevant inside the modal
+ * media picker (post.php / post-new.php). Depends on media-views so
+ * wp.media.View and AttachmentsBrowser are available when the script runs.
+ *
+ * @param string $hook_suffix  Current admin page hook suffix.
+ */
+function roci_enqueue_bulk_organize_js( $hook_suffix ) {
+
+	if ( 'upload.php' !== $hook_suffix ) {
+		return;
+	}
+
+	wp_enqueue_script(
+		'roci-bulk-organize',
+		get_template_directory_uri() . '/dist/js/folders/bulk-organize-button.js',
+		array( 'media-views' ),
+		roci_asset_version( 'dist/js/folders/bulk-organize-button.js' ),
+		true
+	);
+}
+add_action( 'admin_enqueue_scripts', 'roci_enqueue_bulk_organize_js' );
