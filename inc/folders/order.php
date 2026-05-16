@@ -12,7 +12,7 @@
  *   roci_enqueue_reorder_assets()         — enqueues dist/js/folders/folders-reorder.js
  *
  * File:    inc/folders/order.php
- * Version: 1.1.0
+ * Version: 1.2.0
  * Updated: 2026-05-16
  *
  * @package ElRocinante
@@ -194,6 +194,68 @@ function roci_ajax_reorder_folders() {
 	) );
 }
 add_action( 'wp_ajax_roci_reorder_folders', 'roci_ajax_reorder_folders' );
+
+
+// ============================================================
+// NEW TERM — AUTO-ASSIGN DEFAULT ORDER
+// ============================================================
+
+/**
+ * Assign a default roci_folder_order to a newly created folder term.
+ *
+ * Hooked to created_{taxonomy} so every term-creation path (modal, WP admin
+ * UI, WP-CLI, plugin imports) triggers this — not just roci_ajax_create_folder.
+ *
+ * Determines the taxonomy from current_filter() so one function covers both
+ * taxonomies. Finds the maximum roci_folder_order value among existing siblings
+ * (same parent, same taxonomy, meta already set) and assigns max + 10, placing
+ * the new folder last in its sibling group.
+ *
+ * Defensive guard: if the meta already exists (e.g. seeded by
+ * roci_maybe_initialize_folder_order for a pre-existing term that was missed)
+ * the function returns without overwriting.
+ *
+ * @param int $term_id  Newly created term ID.
+ */
+function roci_assign_default_folder_order( $term_id ) {
+
+	$taxonomy = str_replace( 'created_', '', current_filter() );
+	if ( ! in_array( $taxonomy, array( 'roci_media_folder', 'roci_page_folder' ), true ) ) {
+		return;
+	}
+
+	// Defensive: don't overwrite an order that already exists.
+	if ( '' !== get_term_meta( $term_id, 'roci_folder_order', true ) ) {
+		return;
+	}
+
+	$term = get_term( $term_id, $taxonomy );
+	if ( ! $term || is_wp_error( $term ) ) {
+		return;
+	}
+
+	// Find the highest existing order among siblings that already have the meta.
+	$siblings_with_order = get_terms( array(
+		'taxonomy'   => $taxonomy,
+		'parent'     => (int) $term->parent,
+		'hide_empty' => false,
+		'fields'     => 'ids',
+		'meta_key'   => 'roci_folder_order',
+		'orderby'    => 'meta_value_num',
+		'order'      => 'DESC',
+		'number'     => 1,
+		'exclude'    => array( $term_id ),
+	) );
+
+	$max_order = 0;
+	if ( ! is_wp_error( $siblings_with_order ) && ! empty( $siblings_with_order ) ) {
+		$max_order = (int) get_term_meta( (int) $siblings_with_order[0], 'roci_folder_order', true );
+	}
+
+	update_term_meta( $term_id, 'roci_folder_order', $max_order + 10 );
+}
+add_action( 'created_roci_media_folder', 'roci_assign_default_folder_order' );
+add_action( 'created_roci_page_folder',  'roci_assign_default_folder_order' );
 
 
 // ============================================================
