@@ -24,8 +24,13 @@
  * the sidebar tree at the correct alphabetical position. If the folder has
  * a parent, the parent is upgraded to a branch node and auto-expanded.
  *
+ * Public cross-script helpers (for folders-dragdrop.js count updates):
+ *   window.rociIncrementSidebarCount( termKey ) — increment a badge by 1
+ *   window.rociDecrementSidebarCount( termKey ) — decrement a badge by 1 (floor 0)
+ *   termKey accepts an integer term ID or the sentinels '__all__' / '__unassigned__'.
+ *
  * File:    dist/js/folders/folders-sidebar.js
- * Version: 2.3.6
+ * Version: 2.4.0
  * Updated: 2026-05-16
  */
 
@@ -478,6 +483,8 @@
 	}
 
 	window.rociHandleAttachmentUploaded = handleAttachmentUploaded;
+	window.rociIncrementSidebarCount    = incrementSidebarCount;
+	window.rociDecrementSidebarCount    = decrementSidebarCount;
 
 	( function () {
 		if ( bindAttachmentDeleteListener() ) {
