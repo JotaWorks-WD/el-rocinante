@@ -15,8 +15,8 @@
  * ajax_query_attachments_args filter.
  *
  * File:    inc/folders/sidebar.php
- * Version: 1.6.0
- * Updated: 2026-05-15
+ * Version: 1.7.0
+ * Updated: 2026-05-16
  *
  * @package ElRocinante
  */
@@ -155,7 +155,7 @@ function roci_render_sidebar_tree_level( $children, $active_term_id, $parent_id,
 
 		$link = add_query_arg( $folder_url_key, $term->term_id, $base_url );
 		?>
-		<li class="<?php echo esc_attr( $li_class ); ?>" data-term="<?php echo esc_attr( $term->term_id ); ?>">
+		<li class="<?php echo esc_attr( $li_class ); ?>" data-term="<?php echo esc_attr( $term->term_id ); ?>" draggable="true" data-parent="<?php echo esc_attr( $term->parent ); ?>">
 			<div class="roci-item-row">
 				<?php if ( $has_children ) : ?>
 				<button class="roci-chevron" type="button"
@@ -165,6 +165,7 @@ function roci_render_sidebar_tree_level( $children, $active_term_id, $parent_id,
 				<?php else : ?>
 				<span class="roci-chevron-gap" aria-hidden="true"></span>
 				<?php endif; ?>
+				<span class="dashicons dashicons-menu roci-folder-drag-handle" aria-hidden="true"></span>
 				<span class="dashicons dashicons-category roci-folder-icon" aria-hidden="true"></span>
 				<a class="roci-folder-link" href="<?php echo esc_url( $link ); ?>">
 					<?php echo esc_html( $term->name ); ?>
@@ -204,12 +205,12 @@ function roci_render_sidebar_tree_level( $children, $active_term_id, $parent_id,
  */
 function roci_get_folder_tree_html( $taxonomy, $folder_url_key, $base_url, $active_term_id = 0, $is_unassigned = false ) {
 
-	$terms = get_terms( array(
+	roci_maybe_initialize_folder_order();
+
+	$terms = get_terms( array_merge( array(
 		'taxonomy'   => $taxonomy,
 		'hide_empty' => false,
-		'orderby'    => 'name',
-		'order'      => 'ASC',
-	) );
+	), roci_get_folder_order_query_args() ) );
 
 	if ( is_wp_error( $terms ) ) {
 		$terms = array();
@@ -314,6 +315,17 @@ function roci_render_folders_sidebar_html( $taxonomy, $folder_url_key, $base_url
 			        aria-label="<?php esc_attr_e( 'Collapse folder sidebar', 'rocinante' ); ?>"
 			        aria-expanded="true">
 				<span class="dashicons dashicons-arrow-left-alt2" aria-hidden="true"></span>
+			</button>
+		</div>
+
+		<div class="roci-sidebar-actions" role="toolbar" aria-label="<?php esc_attr_e( 'Folder actions', 'rocinante' ); ?>">
+			<button type="button"
+			        class="roci-action-toggle roci-action-organize"
+			        aria-pressed="false"
+			        data-action="organize"
+			        title="<?php esc_attr_e( 'Toggle organize mode (drag to reorder)', 'rocinante' ); ?>">
+				<span class="dashicons dashicons-move" aria-hidden="true"></span>
+				<span class="screen-reader-text"><?php esc_html_e( 'Toggle organize mode', 'rocinante' ); ?></span>
 			</button>
 		</div>
 

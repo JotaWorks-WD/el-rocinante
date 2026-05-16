@@ -13,8 +13,8 @@
  *   roci_enqueue_admin_folders_js()        — enqueues dist/js/folders/admin-folders.js
  *
  * File:    inc/folders/create.php
- * Version: 1.6.0
- * Updated: 2026-05-15
+ * Version: 1.7.0
+ * Updated: 2026-05-16
  *
  * @package ElRocinante
  */
@@ -42,12 +42,10 @@ if ( ! defined( 'ABSPATH' ) ) {
  */
 function roci_build_folder_options_for_select( $taxonomy ) {
 
-	$terms = get_terms( array(
+	$terms = get_terms( array_merge( array(
 		'taxonomy'   => $taxonomy,
 		'hide_empty' => false,
-		'orderby'    => 'name',
-		'order'      => 'ASC',
-	) );
+	), roci_get_folder_order_query_args() ) );
 
 	if ( is_wp_error( $terms ) || empty( $terms ) ) {
 		return array();
@@ -159,7 +157,8 @@ function roci_render_new_folder_modal() {
 					'taxonomy'          => $taxonomy,
 					'name'              => 'roci_folder_parent',
 					'id'                => 'roci-folder-parent',
-					'orderby'           => 'name',
+					'orderby'           => 'meta_value_num',
+					'meta_key'          => 'roci_folder_order',
 					'selected'          => 0,
 					'show_count'        => false,
 					'hide_empty'        => false,

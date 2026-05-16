@@ -12,8 +12,8 @@
  *     folder filter into the AttachmentsBrowser toolbar (after the type + date filters)
  *
  * File:    inc/folders/filters.php
- * Version: 1.9.0
- * Updated: 2026-05-15
+ * Version: 2.0.0
+ * Updated: 2026-05-16
  *
  * @package ElRocinante
  */
@@ -43,12 +43,10 @@ if ( ! defined( 'ABSPATH' ) ) {
  */
 function roci_render_folder_select_dropdown( $taxonomy, $name, $id, $show_option_all, $selected ) {
 
-	$terms = get_terms( array(
+	$terms = get_terms( array_merge( array(
 		'taxonomy'   => $taxonomy,
 		'hide_empty' => false,
-		'orderby'    => 'name',
-		'order'      => 'ASC',
-	) );
+	), roci_get_folder_order_query_args() ) );
 
 	if ( is_wp_error( $terms ) ) {
 		$terms = array();
@@ -293,12 +291,10 @@ add_filter( 'ajax_query_attachments_args', 'roci_media_folder_modal_ajax_filter'
  */
 function roci_get_folder_terms_for_js() {
 
-	$terms = get_terms( array(
+	$terms = get_terms( array_merge( array(
 		'taxonomy'   => 'roci_media_folder',
 		'hide_empty' => false,
-		'orderby'    => 'parent',
-		'order'      => 'ASC',
-	) );
+	), roci_get_folder_order_query_args() ) );
 
 	if ( is_wp_error( $terms ) || empty( $terms ) ) {
 		return array();
