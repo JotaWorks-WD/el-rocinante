@@ -115,7 +115,7 @@ function roci_ajax_reorder_folders() {
 	$parent_id = absint( isset( $_POST['parent_id'] ) ? $_POST['parent_id'] : 0 );
 
 	if ( $parent_id > 0 && ! roci_validate_folder_term( $parent_id, 'roci_media_folder' ) ) {
-		wp_send_json_error( 'Invalid parent folder.', 400 );
+		wp_send_json_error( __( 'Invalid parent fauxlder.', 'rocinante' ), 400 );
 	}
 
 	// ── Parse and sanitize ordered_term_ids ──────────────────────────────
