@@ -15,7 +15,7 @@
  * ajax_query_attachments_args filter.
  *
  * File:    inc/folders/sidebar.php
- * Version: 1.11.0
+ * Version: 1.12.0
  * Updated: 2026-05-17
  *
  * @package ElRocinante
@@ -190,8 +190,11 @@ function roci_render_sidebar_tree_level( $children, $active_term_id, $parent_id,
 /**
  * Return the inner HTML for <ul class="roci-folder-tree"> as a string.
  *
- * Renders the "All Files" and "Unassigned Files" virtual entries, the
- * divider (when real folders exist), and the recursive folder tree.
+ * Returns ONLY the real folder <li> items via roci_render_sidebar_tree_level().
+ * Virtual entries (All Files, Unassigned Files) and the toolbar are rendered
+ * as fixed chrome directly in roci_render_folders_sidebar_html() so they sit
+ * above the scroll boundary and do not scroll with the folder list.
+ *
  * Called by both roci_render_folders_sidebar_html() for the initial page
  * render and by the AJAX create-folder handler so JS can replace the tree
  * contents without rebuilding nodes client-side.
@@ -200,7 +203,7 @@ function roci_render_sidebar_tree_level( $children, $active_term_id, $parent_id,
  * @param string $folder_url_key  Query var used in filter links.
  * @param string $base_url        Base admin URL (without folder params).
  * @param int    $active_term_id  Currently active term (0 = none / All Files).
- * @param bool   $is_unassigned   Whether the "Unassigned Files" entry is active.
+ * @param bool   $is_unassigned   Whether the "Unassigned Files" entry is active (unused; kept for signature compat).
  * @return string
  */
 function roci_get_folder_tree_html( $taxonomy, $folder_url_key, $base_url, $active_term_id = 0, $is_unassigned = false ) {
@@ -221,52 +224,8 @@ function roci_get_folder_tree_html( $taxonomy, $folder_url_key, $base_url, $acti
 		$children[ $term->parent ][] = $term;
 	}
 
-	$is_all_active  = ( ! $is_unassigned && 0 === $active_term_id );
-	$unassigned_url = add_query_arg( 'roci_no_folder', '1', $base_url );
-
 	ob_start();
-	?>
-	<li class="roci-folder-item roci-item-virtual<?php echo $is_all_active ? ' is-active' : ''; ?>"
-	    data-term="__all__"
-	    role="treeitem">
-		<div class="roci-item-row">
-			<span class="roci-chevron-gap" aria-hidden="true"></span>
-			<a href="<?php echo esc_url( $base_url ); ?>">
-				<?php esc_html_e( 'All Files', 'rocinante' ); ?>
-				<span class="roci-folder-count">(<?php echo roci_get_all_count( $taxonomy ); ?>)</span>
-			</a>
-		</div>
-	</li>
-
-	<li class="roci-folder-item roci-item-virtual<?php echo $is_unassigned ? ' is-active' : ''; ?>"
-	    data-term="__unassigned__"
-	    role="treeitem">
-		<div class="roci-item-row">
-			<span class="roci-chevron-gap" aria-hidden="true"></span>
-			<a href="<?php echo esc_url( $unassigned_url ); ?>">
-				<?php esc_html_e( 'Unassigned Files', 'rocinante' ); ?>
-				<span class="roci-folder-count">(<?php echo roci_get_unassigned_count( $taxonomy ); ?>)</span>
-			</a>
-		</div>
-	</li>
-
-	<?php if ( ! empty( $terms ) ) : ?>
-	<li class="roci-sidebar-icon-row" role="presentation">
-		<div class="roci-sidebar-actions" role="toolbar" aria-label="<?php esc_attr_e( 'Fauxlder actions', 'rocinante' ); ?>">
-			<button type="button"
-			        class="roci-action-toggle roci-action-organize"
-			        aria-pressed="false"
-			        data-action="organize"
-			        title="<?php esc_attr_e( 'Toggle organize mode (drag to reorder)', 'rocinante' ); ?>">
-				<span class="dashicons dashicons-move" aria-hidden="true"></span>
-				<span class="screen-reader-text"><?php esc_html_e( 'Toggle organize mode', 'rocinante' ); ?></span>
-			</button>
-		</div>
-	</li>
-	<?php endif; ?>
-
-	<?php roci_render_sidebar_tree_level( $children, $active_term_id, 0, $folder_url_key, $base_url, $taxonomy ); ?>
-	<?php
+	roci_render_sidebar_tree_level( $children, $active_term_id, 0, $folder_url_key, $base_url, $taxonomy );
 	return ob_get_clean();
 }
 
@@ -302,6 +261,9 @@ function roci_render_folders_sidebar_html( $taxonomy, $folder_url_key, $base_url
 			}
 		}
 	}
+
+	$is_all_active  = ( ! $is_unassigned && 0 === $active_term_id );
+	$unassigned_url = add_query_arg( 'roci_no_folder', '1', $base_url );
 
 	?>
 	<aside id="roci-folders-sidebar"
@@ -340,9 +302,49 @@ function roci_render_folders_sidebar_html( $taxonomy, $folder_url_key, $base_url
 		</div>
 
 		<div class="roci-folders-content-container">
+
+			<ul class="roci-folder-virtuals">
+				<li class="roci-folder-item roci-item-virtual<?php echo $is_all_active ? ' is-active' : ''; ?>"
+				    data-term="__all__"
+				    role="treeitem">
+					<div class="roci-item-row">
+						<span class="roci-chevron-gap" aria-hidden="true"></span>
+						<a href="<?php echo esc_url( $base_url ); ?>">
+							<?php esc_html_e( 'All Files', 'rocinante' ); ?>
+							<span class="roci-folder-count">(<?php echo roci_get_all_count( $taxonomy ); ?>)</span>
+						</a>
+					</div>
+				</li>
+				<li class="roci-folder-item roci-item-virtual<?php echo $is_unassigned ? ' is-active' : ''; ?>"
+				    data-term="__unassigned__"
+				    role="treeitem">
+					<div class="roci-item-row">
+						<span class="roci-chevron-gap" aria-hidden="true"></span>
+						<a href="<?php echo esc_url( $unassigned_url ); ?>">
+							<?php esc_html_e( 'Unassigned Files', 'rocinante' ); ?>
+							<span class="roci-folder-count">(<?php echo roci_get_unassigned_count( $taxonomy ); ?>)</span>
+						</a>
+					</div>
+				</li>
+			</ul>
+
+			<div class="roci-sidebar-icon-row" role="presentation">
+				<div class="roci-sidebar-actions" role="toolbar" aria-label="<?php esc_attr_e( 'Fauxlder actions', 'rocinante' ); ?>">
+					<button type="button"
+					        class="roci-action-toggle roci-action-organize"
+					        aria-pressed="false"
+					        data-action="organize"
+					        title="<?php esc_attr_e( 'Toggle organize mode (drag to reorder)', 'rocinante' ); ?>">
+						<span class="dashicons dashicons-move" aria-hidden="true"></span>
+						<span class="screen-reader-text"><?php esc_html_e( 'Toggle organize mode', 'rocinante' ); ?></span>
+					</button>
+				</div>
+			</div>
+
 			<ul class="roci-folder-tree" role="tree">
 				<?php echo roci_get_folder_tree_html( $taxonomy, $folder_url_key, $base_url, $active_term_id, $is_unassigned ); ?>
 			</ul>
+
 		</div>
 
 		<div class="roci-sidebar-resize-handle" aria-hidden="true"></div>
