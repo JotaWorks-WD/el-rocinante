@@ -15,8 +15,8 @@
  * ajax_query_attachments_args filter.
  *
  * File:    inc/folders/sidebar.php
- * Version: 1.9.0
- * Updated: 2026-05-16
+ * Version: 1.10.0
+ * Updated: 2026-05-17
  *
  * @package ElRocinante
  */
@@ -329,17 +329,21 @@ function roci_render_folders_sidebar_html( $taxonomy, $folder_url_key, $base_url
 			</button>
 		</div>
 
-		<div class="roci-folder-search">
-			<span class="roci-folder-search__icon dashicons dashicons-search" aria-hidden="true"></span>
-			<input type="text"
-			       class="roci-folder-search__input"
-			       placeholder="<?php esc_attr_e( 'Search Fauxlders', 'rocinante' ); ?>"
-			       aria-label="<?php esc_attr_e( 'Search Fauxlders', 'rocinante' ); ?>">
+		<div class="roci-folders-search-container">
+			<div class="roci-folder-search">
+				<span class="roci-folder-search__icon dashicons dashicons-search" aria-hidden="true"></span>
+				<input type="text"
+				       class="roci-folder-search__input"
+				       placeholder="<?php esc_attr_e( 'Search Fauxlders', 'rocinante' ); ?>"
+				       aria-label="<?php esc_attr_e( 'Search Fauxlders', 'rocinante' ); ?>">
+			</div>
 		</div>
 
-		<ul class="roci-folder-tree" role="tree">
-			<?php echo roci_get_folder_tree_html( $taxonomy, $folder_url_key, $base_url, $active_term_id, $is_unassigned ); ?>
-		</ul>
+		<div class="roci-folders-content-container">
+			<ul class="roci-folder-tree" role="tree">
+				<?php echo roci_get_folder_tree_html( $taxonomy, $folder_url_key, $base_url, $active_term_id, $is_unassigned ); ?>
+			</ul>
+		</div>
 
 	</aside>
 	<?php
