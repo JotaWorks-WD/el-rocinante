@@ -30,7 +30,7 @@
  *   termKey accepts an integer term ID or the sentinels '__all__' / '__unassigned__'.
  *
  * File:    dist/js/folders/folders-sidebar.js
- * Version: 2.8.0
+ * Version: 2.8.1
  * Updated: 2026-05-17
  */
 
@@ -89,10 +89,17 @@
 		// ── Collapse toggle ────────────────────────────────────────────────
 
 		function applyCollapsed( collapsed ) {
-			var html = document.documentElement;
-			var icon = toggle ? toggle.querySelector( '.dashicons' ) : null;
+			var html      = document.documentElement;
+			var icon      = toggle ? toggle.querySelector( '.dashicons' ) : null;
+			var wpcontent = document.getElementById( 'wpcontent' );
 
 			if ( collapsed ) {
+				// Clear inline width/margin so the collapsed-state CSS rules take over.
+				// The resize IIFE sets both as inline styles, which would otherwise
+				// win over the html.roci-sidebar-is-collapsed CSS selectors.
+				sidebar.style.width = '';
+				if ( wpcontent ) { wpcontent.style.marginLeft = ''; }
+
 				html.classList.add( 'roci-sidebar-is-collapsed' );
 				if ( icon ) {
 					icon.classList.remove( 'dashicons-arrow-left-alt2' );
@@ -103,6 +110,23 @@
 					toggle.setAttribute( 'aria-expanded', 'false' );
 				}
 			} else {
+				// Restore the saved resize width before un-collapsing so the sidebar
+				// snaps to the user's saved size rather than the CSS default width.
+				// Storage key and bounds must match the resize IIFE below.
+				try {
+					var savedWidth = localStorage.getItem( 'roci-folders-sidebar-width' );
+					if ( savedWidth ) {
+						var w = parseInt( savedWidth, 10 );
+						if ( w >= 240 && w <= 480 ) {
+							sidebar.style.width = w + 'px';
+							if ( wpcontent ) {
+								var sidebarLeft = parseInt( window.getComputedStyle( sidebar ).left, 10 ) || 0;
+								wpcontent.style.marginLeft = ( sidebarLeft + w ) + 'px';
+							}
+						}
+					}
+				} catch ( e ) {}
+
 				html.classList.remove( 'roci-sidebar-is-collapsed' );
 				if ( icon ) {
 					icon.classList.remove( 'dashicons-arrow-right-alt2' );
