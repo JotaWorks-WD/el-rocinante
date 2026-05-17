@@ -12,7 +12,7 @@
  *   roci_enqueue_reorder_assets()         — enqueues dist/js/folders/folders-reorder.js
  *
  * File:    inc/folders/order.php
- * Version: 1.2.0
+ * Version: 1.3.0
  * Updated: 2026-05-16
  *
  * @package ElRocinante
@@ -89,16 +89,18 @@ function roci_maybe_initialize_folder_order() {
 // ============================================================
 
 /**
- * Persist a new sibling order for roci_media_folder terms.
+ * Persist a new sibling order for folder terms (roci_media_folder or roci_page_folder).
  *
  * Security chain:
  *   1. Nonce verification (dies on failure).
  *   2. manage_categories capability check.
- *   3. parent_id validated as a real roci_media_folder term (if non-zero).
- *   4. ordered_term_ids validated: non-empty, no duplicates, each a real term,
+ *   3. taxonomy validated against an explicit allowlist — POST data is never
+ *      trusted for taxonomy selection.
+ *   4. parent_id validated as a real term in the submitted taxonomy (if non-zero).
+ *   5. ordered_term_ids validated: non-empty, no duplicates, each a real term,
  *      each term's parent matches submitted parent_id, list is complete (all
  *      children of the parent must be present — no partial reorders).
- *   5. Loop and update roci_folder_order meta.
+ *   6. Loop and update roci_folder_order meta.
  *
  * Error HTTP codes: 400 (bad input), 403 (capability/nonce), 500 (db error).
  */
@@ -111,10 +113,17 @@ function roci_ajax_reorder_folders() {
 		wp_send_json_error( __( 'You do not have permission to reorder fauxlders.', 'rocinante' ), 403 );
 	}
 
+	// ── Validate taxonomy ─────────────────────────────────────────────────
+	$allowed  = array( 'roci_media_folder', 'roci_page_folder' );
+	$taxonomy = isset( $_POST['taxonomy'] ) ? sanitize_key( $_POST['taxonomy'] ) : '';
+	if ( ! in_array( $taxonomy, $allowed, true ) ) {
+		wp_send_json_error( __( 'Invalid taxonomy.', 'rocinante' ), 400 );
+	}
+
 	// ── Validate parent ───────────────────────────────────────────────────
 	$parent_id = absint( isset( $_POST['parent_id'] ) ? $_POST['parent_id'] : 0 );
 
-	if ( $parent_id > 0 && ! roci_validate_folder_term( $parent_id, 'roci_media_folder' ) ) {
+	if ( $parent_id > 0 && ! roci_validate_folder_term( $parent_id, $taxonomy ) ) {
 		wp_send_json_error( __( 'Invalid parent fauxlder.', 'rocinante' ), 400 );
 	}
 
@@ -131,16 +140,16 @@ function roci_ajax_reorder_folders() {
 		wp_send_json_error( 'Duplicate term IDs in order list.', 400 );
 	}
 
-	// ── Validate: each ID is a real roci_media_folder term ───────────────
+	// ── Validate: each ID is a real term in the submitted taxonomy ────────
 	foreach ( $ordered_ids as $term_id ) {
-		if ( ! roci_validate_folder_term( $term_id, 'roci_media_folder' ) ) {
+		if ( ! roci_validate_folder_term( $term_id, $taxonomy ) ) {
 			wp_send_json_error( 'Invalid term in order list.', 400 );
 		}
 	}
 
 	// ── Validate: each term's parent matches submitted parent_id ─────────
 	foreach ( $ordered_ids as $term_id ) {
-		$term = get_term( $term_id, 'roci_media_folder' );
+		$term = get_term( $term_id, $taxonomy );
 		if ( is_wp_error( $term ) || ! $term || (int) $term->parent !== $parent_id ) {
 			wp_send_json_error( 'Term parent mismatch — cannot reparent via this endpoint.', 400 );
 		}
@@ -148,7 +157,7 @@ function roci_ajax_reorder_folders() {
 
 	// ── Validate: submitted list contains ALL children of the parent ──────
 	$all_children = get_terms( array(
-		'taxonomy'   => 'roci_media_folder',
+		'taxonomy'   => $taxonomy,
 		'parent'     => $parent_id,
 		'hide_empty' => false,
 		'fields'     => 'ids',
@@ -176,7 +185,7 @@ function roci_ajax_reorder_folders() {
 	}
 
 	// ── Success response ──────────────────────────────────────────────────
-	$options = roci_build_folder_options_for_select( 'roci_media_folder' );
+	$options = roci_build_folder_options_for_select( $taxonomy );
 
 	wp_send_json_success( array(
 		'parent_id' => $parent_id,
@@ -263,25 +272,31 @@ add_action( 'created_roci_page_folder',  'roci_assign_default_folder_order' );
 // ============================================================
 
 /**
- * Enqueue folders-reorder.js on the Media Library screen.
+ * Enqueue folders-reorder.js on the Media Library and Pages list screens.
  *
- * Only loads on upload.php — reordering is not available in the modal
- * media picker or list-view.
- *
- * Depends on 'media-views' (consistent with folders-dragdrop.js).
+ * On upload.php, 'media-views' is declared as a dependency to ensure the
+ * script loads after the media library frame (timing). On Pages, no such
+ * dependency is needed.
  *
  * @param string $hook_suffix  Current admin page hook suffix.
  */
 function roci_enqueue_reorder_assets( $hook_suffix ) {
 
-	if ( 'upload.php' !== $hook_suffix ) {
+	$screen = get_current_screen();
+	if ( ! $screen ) {
 		return;
 	}
+
+	if ( 'upload' !== $screen->base && 'edit-page' !== $screen->id ) {
+		return;
+	}
+
+	$deps = ( 'upload' === $screen->base ) ? array( 'media-views' ) : array();
 
 	wp_enqueue_script(
 		'roci-folders-reorder',
 		get_template_directory_uri() . '/dist/js/folders/folders-reorder.js',
-		array( 'media-views' ),
+		$deps,
 		roci_asset_version( 'dist/js/folders/folders-reorder.js' ),
 		true
 	);

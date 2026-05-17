@@ -15,7 +15,7 @@
  * ajax_query_attachments_args filter.
  *
  * File:    inc/folders/sidebar.php
- * Version: 1.12.0
+ * Version: 1.13.0
  * Updated: 2026-05-17
  *
  * @package ElRocinante
@@ -265,6 +265,10 @@ function roci_render_folders_sidebar_html( $taxonomy, $folder_url_key, $base_url
 	$is_all_active  = ( ! $is_unassigned && 0 === $active_term_id );
 	$unassigned_url = add_query_arg( 'roci_no_folder', '1', $base_url );
 
+	$is_pages         = ( 'roci_page_folder' === $taxonomy );
+	$label_all        = $is_pages ? __( 'All Pages',        'rocinante' ) : __( 'All Files',        'rocinante' );
+	$label_unassigned = $is_pages ? __( 'Unassigned Pages', 'rocinante' ) : __( 'Unassigned Files', 'rocinante' );
+
 	?>
 	<aside id="roci-folders-sidebar"
 	       class="roci-folders-sidebar"
@@ -310,7 +314,7 @@ function roci_render_folders_sidebar_html( $taxonomy, $folder_url_key, $base_url
 					<div class="roci-item-row">
 						<span class="roci-chevron-gap" aria-hidden="true"></span>
 						<a href="<?php echo esc_url( $base_url ); ?>">
-							<?php esc_html_e( 'All Files', 'rocinante' ); ?>
+							<?php echo esc_html( $label_all ); ?>
 							<span class="roci-folder-count">(<?php echo roci_get_all_count( $taxonomy ); ?>)</span>
 						</a>
 					</div>
@@ -321,7 +325,7 @@ function roci_render_folders_sidebar_html( $taxonomy, $folder_url_key, $base_url
 					<div class="roci-item-row">
 						<span class="roci-chevron-gap" aria-hidden="true"></span>
 						<a href="<?php echo esc_url( $unassigned_url ); ?>">
-							<?php esc_html_e( 'Unassigned Files', 'rocinante' ); ?>
+							<?php echo esc_html( $label_unassigned ); ?>
 							<span class="roci-folder-count">(<?php echo roci_get_unassigned_count( $taxonomy ); ?>)</span>
 						</a>
 					</div>

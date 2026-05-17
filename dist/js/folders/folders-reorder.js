@@ -13,8 +13,8 @@
  * off, so this bubble-phase handler only fires when the mode is active.
  *
  * File:    dist/js/folders/folders-reorder.js
- * Version: 1.2.0
- * Updated: 2026-05-16
+ * Version: 1.3.0
+ * Updated: 2026-05-17
  *
  * @package ElRocinante
  */
@@ -22,11 +22,6 @@
 ( function () {
 
 	'use strict';
-
-	// ── Guard: only run on upload.php ──────────────────────────────────────
-	if ( window.location.pathname.indexOf( 'upload.php' ) === -1 ) {
-		return;
-	}
 
 	// ── Guard: require localised data ──────────────────────────────────────
 	if ( typeof rociFoldersReorder === 'undefined' ) {
@@ -263,6 +258,7 @@
 		var fd = new FormData();
 		fd.append( 'action',           'roci_reorder_folders' );
 		fd.append( 'nonce',            rociFoldersReorder.nonce );
+		fd.append( 'taxonomy',         ( sidebar && sidebar.dataset.taxonomy ) || 'roci_media_folder' );
 		fd.append( 'parent_id',        String( parentId ) );
 		fd.append( 'ordered_term_ids', orderedIds.join( ',' ) );
 
@@ -336,6 +332,15 @@
 		if ( ! sidebar ) {
 			return false;
 		}
+
+		// Capture-phase: block sidebar folder drags when organize mode is off.
+		// On upload.php, folders-dragdrop.js adds an equivalent listener; this
+		// ensures the same guard applies in all contexts (incl. edit.php?post_type=page).
+		sidebar.addEventListener( 'dragstart', function ( e ) {
+			if ( ! sidebar.classList.contains( 'roci-organize-mode' ) ) {
+				e.preventDefault();
+			}
+		}, true );
 
 		sidebar.addEventListener( 'click', function ( e ) {
 			if ( e.target.closest( '.roci-action-organize' ) ) {
