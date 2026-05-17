@@ -15,7 +15,7 @@
  * ajax_query_attachments_args filter.
  *
  * File:    inc/folders/sidebar.php
- * Version: 1.10.0
+ * Version: 1.11.0
  * Updated: 2026-05-17
  *
  * @package ElRocinante
@@ -344,6 +344,8 @@ function roci_render_folders_sidebar_html( $taxonomy, $folder_url_key, $base_url
 				<?php echo roci_get_folder_tree_html( $taxonomy, $folder_url_key, $base_url, $active_term_id, $is_unassigned ); ?>
 			</ul>
 		</div>
+
+		<div class="roci-sidebar-resize-handle" aria-hidden="true"></div>
 
 	</aside>
 	<?php

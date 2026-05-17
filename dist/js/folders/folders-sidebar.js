@@ -30,8 +30,8 @@
  *   termKey accepts an integer term ID or the sentinels '__all__' / '__unassigned__'.
  *
  * File:    dist/js/folders/folders-sidebar.js
- * Version: 2.7.0
- * Updated: 2026-05-16
+ * Version: 2.8.0
+ * Updated: 2026-05-17
  */
 
 ( function () {
@@ -559,5 +559,80 @@
 			}
 		}, 100 );
 	} )();
+
+} )();
+
+// ── Sidebar resize handle ─────────────────────────────────────────────────────
+// Separate IIFE — kept isolated for easy future extraction to its own file.
+
+( function () {
+	'use strict';
+
+	var STORAGE_KEY = 'roci-folders-sidebar-width';
+	var MIN_WIDTH   = 240;
+	var MAX_WIDTH   = 480;
+
+	var sidebar = document.getElementById( 'roci-folders-sidebar' );
+	if ( ! sidebar ) { return; }
+
+	var handle = sidebar.querySelector( '.roci-sidebar-resize-handle' );
+	if ( ! handle ) { return; }
+
+	// Restore saved width on load.
+	( function () {
+		try {
+			var savedWidth = localStorage.getItem( STORAGE_KEY );
+			if ( savedWidth ) {
+				var w = parseInt( savedWidth, 10 );
+				if ( w >= MIN_WIDTH && w <= MAX_WIDTH ) {
+					sidebar.style.width = w + 'px';
+					updateContentMargin( w );
+				}
+			}
+		} catch ( e ) {}
+	} )();
+
+	var isDragging = false;
+	var startX     = 0;
+	var startWidth = 0;
+
+	handle.addEventListener( 'mousedown', function ( e ) {
+		isDragging = true;
+		startX     = e.clientX;
+		startWidth = sidebar.offsetWidth;
+		handle.classList.add( 'is-dragging' );
+		document.body.style.cursor     = 'col-resize';
+		document.body.style.userSelect = 'none';
+		e.preventDefault();
+	} );
+
+	document.addEventListener( 'mousemove', function ( e ) {
+		if ( ! isDragging ) { return; }
+		var delta    = e.clientX - startX;
+		var newWidth = Math.max( MIN_WIDTH, Math.min( MAX_WIDTH, startWidth + delta ) );
+		sidebar.style.width = newWidth + 'px';
+		updateContentMargin( newWidth );
+	} );
+
+	document.addEventListener( 'mouseup', function () {
+		if ( ! isDragging ) { return; }
+		isDragging = false;
+		handle.classList.remove( 'is-dragging' );
+		document.body.style.cursor     = '';
+		document.body.style.userSelect = '';
+		try {
+			localStorage.setItem( STORAGE_KEY, sidebar.offsetWidth );
+		} catch ( err ) {}
+	} );
+
+	// Shift #wpcontent so it stays clear of the resized sidebar.
+	// Reads sidebar.style.left at call time so it works for both the
+	// normal (160px) and folded (36px) WP admin nav states.
+	function updateContentMargin( sidebarWidth ) {
+		var wpcontent = document.getElementById( 'wpcontent' );
+		if ( ! wpcontent ) { return; }
+		var sidebarLeft = parseInt( window.getComputedStyle( sidebar ).left, 10 ) || 0;
+		wpcontent.style.marginLeft = ( sidebarLeft + sidebarWidth ) + 'px';
+	}
 
 } )();
