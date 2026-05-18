@@ -12,8 +12,8 @@
  *   roci_enqueue_reorder_assets()         — enqueues dist/js/folders/folders-reorder.js
  *
  * File:    inc/folders/order.php
- * Version: 1.3.0
- * Updated: 2026-05-16
+ * Version: 1.4.0
+ * Updated: 2026-05-18
  *
  * @package ElRocinante
  */
@@ -49,38 +49,37 @@ function roci_get_folder_order_query_args() {
 // ============================================================
 
 /**
- * Seed roci_folder_order term meta for any terms that don't have it yet.
+ * Backfill roci_folder_order for any terms missing the meta.
  *
- * Called from roci_get_folder_tree_html() before the primary get_terms
- * query. On the first ever call it iterates all roci_media_folder terms
- * sorted by name and assigns order values spaced by 10 (10, 20, 30…).
- * Subsequent calls return immediately via the option flag.
+ * Covers both roci_media_folder and roci_page_folder. Fast-path: the
+ * NOT-EXISTS meta_query returns an empty array in steady state (every term
+ * already has an order), so subsequent calls cost one cheap query with no
+ * DB writes. Safe to call on every admin page load.
  *
- * Mirrors the fast-path pattern used by roci_maybe_recount_folder_terms()
- * in counts.php — same option-flag guard, same early-return shape.
+ * Called from roci_get_folder_tree_html() before the primary get_terms query.
+ * The legacy _roci_folder_order_initialized_v1 option is no longer used; any
+ * existing value in the DB is harmless.
  */
 function roci_maybe_initialize_folder_order() {
 
-	if ( get_option( '_roci_folder_order_initialized_v1' ) ) {
+	$orphans = get_terms( array(
+		'taxonomy'   => array( 'roci_media_folder', 'roci_page_folder' ),
+		'hide_empty' => false,
+		'meta_query' => array(
+			array(
+				'key'     => 'roci_folder_order',
+				'compare' => 'NOT EXISTS',
+			),
+		),
+	) );
+
+	if ( empty( $orphans ) || is_wp_error( $orphans ) ) {
 		return;
 	}
 
-	$terms = get_terms( array(
-		'taxonomy'   => 'roci_media_folder',
-		'orderby'    => 'name',
-		'order'      => 'ASC',
-		'hide_empty' => false,
-	) );
-
-	if ( ! empty( $terms ) && ! is_wp_error( $terms ) ) {
-		foreach ( $terms as $index => $term ) {
-			if ( '' === get_term_meta( $term->term_id, 'roci_folder_order', true ) ) {
-				update_term_meta( $term->term_id, 'roci_folder_order', ( $index + 1 ) * 10 );
-			}
-		}
+	foreach ( $orphans as $term ) {
+		roci_assign_default_folder_order( $term->term_id, $term->taxonomy );
 	}
-
-	update_option( '_roci_folder_order_initialized_v1', 1, false );
 }
 
 
@@ -215,20 +214,33 @@ add_action( 'wp_ajax_roci_reorder_folders', 'roci_ajax_reorder_folders' );
  * Hooked to created_{taxonomy} so every term-creation path (modal, WP admin
  * UI, WP-CLI, plugin imports) triggers this — not just roci_ajax_create_folder.
  *
- * Determines the taxonomy from current_filter() so one function covers both
- * taxonomies. Finds the maximum roci_folder_order value among existing siblings
- * (same parent, same taxonomy, meta already set) and assigns max + 10, placing
- * the new folder last in its sibling group.
+ * Determines the taxonomy from current_filter() when called via hook, or from
+ * the supplied $taxonomy argument when called directly (e.g. from the migration
+ * loop in roci_maybe_initialize_folder_order). Finds the maximum roci_folder_order
+ * value among existing siblings (same parent, same taxonomy, meta already set)
+ * and assigns max + 10, placing the new folder last in its sibling group.
  *
- * Defensive guard: if the meta already exists (e.g. seeded by
- * roci_maybe_initialize_folder_order for a pre-existing term that was missed)
- * the function returns without overwriting.
+ * Defensive guard: if the meta already exists the function returns without
+ * overwriting.
  *
- * @param int $term_id  Newly created term ID.
+ * @param int         $term_id   Newly created term ID.
+ * @param string|null $taxonomy  Taxonomy slug. When null, derived from current_filter().
  */
-function roci_assign_default_folder_order( $term_id ) {
+function roci_assign_default_folder_order( $term_id, $taxonomy = null ) {
 
-	$taxonomy = str_replace( 'created_', '', current_filter() );
+	if ( null === $taxonomy ) {
+		$filter = current_filter();
+		if ( strpos( $filter, 'created_' ) === 0 ) {
+			$taxonomy = str_replace( 'created_', '', $filter );
+		} else {
+			$term = get_term( $term_id );
+			if ( ! $term || is_wp_error( $term ) ) {
+				return;
+			}
+			$taxonomy = $term->taxonomy;
+		}
+	}
+
 	if ( ! in_array( $taxonomy, array( 'roci_media_folder', 'roci_page_folder' ), true ) ) {
 		return;
 	}
