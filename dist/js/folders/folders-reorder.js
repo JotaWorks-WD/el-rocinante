@@ -13,8 +13,8 @@
  * off, so this bubble-phase handler only fires when the mode is active.
  *
  * File:    dist/js/folders/folders-reorder.js
- * Version: 1.3.0
- * Updated: 2026-05-17
+ * Version: 1.4.0
+ * Updated: 2026-05-18
  *
  * @package ElRocinante
  */
@@ -242,6 +242,12 @@
 		draggedParentId      = null;
 		originalContainer    = null;
 		originalSiblingOrder = [];
+
+		// Belt-and-suspenders: clear any is-drop-target classes that snuck through
+		// (e.g. added by folders-dragdrop.js before the organize-mode guard was in place).
+		document.querySelectorAll( '.roci-folder-item.is-drop-target' ).forEach( function ( el ) {
+			el.classList.remove( 'is-drop-target' );
+		} );
 	}
 
 

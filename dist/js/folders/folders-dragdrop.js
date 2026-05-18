@@ -27,8 +27,8 @@
  *   multi-select drag, and folder reordering are out of scope for Phase 6.
  *
  * File:    dist/js/folders/folders-dragdrop.js
- * Version: 1.3.0
- * Updated: 2026-05-16
+ * Version: 1.4.0
+ * Updated: 2026-05-18
  *
  * @package ElRocinante
  */
@@ -241,6 +241,11 @@
 
 		// dragenter / dragover — highlight target, allow drop
 		function onDragOver( e ) {
+			// Folder-reorder drags are handled entirely by folders-reorder.js.
+			// Skip so is-drop-target is never added to folder rows during organize mode.
+			if ( sidebar.classList.contains( 'roci-organize-mode' ) ) {
+				return;
+			}
 			var target = e.target.closest( '.roci-folder-item' );
 			if ( ! target ) {
 				return;
