@@ -18,7 +18,7 @@
  * this script uses text/x-roci-page and ignores non-page drags.
  *
  * File:    dist/js/folders/folders-page-dragdrop.js
- * Version: 1.1.0
+ * Version: 1.2.0
  * Updated: 2026-05-19
  *
  * @package ElRocinante
@@ -133,80 +133,108 @@
 		};
 	}
 
-	// Decrement the "N item(s)" labels in both tablenav bars.
+	// Adjust the "N item(s)" labels in both tablenav bars by delta (+1 or -1).
 	// Only the digit is replaced; the translated word (item/items) is left
 	// as-is to avoid duplicating WP's pluralisation logic.
-	function decrementItemCount() {
+	function adjustItemCount( delta ) {
 		document.querySelectorAll( '.tablenav .displaying-num' ).forEach( function ( el ) {
 			var prev = parseInt( el.textContent.replace( /[^0-9]/g, '' ), 10 );
 			if ( isNaN( prev ) ) {
 				return;
 			}
-			var next = Math.max( 0, prev - 1 );
+			var next = Math.max( 0, prev + delta );
 			el.textContent = el.textContent.replace( /\d[\d,]*/, String( next ) );
 		} );
 	}
 
-	// Remove the list-table row for a page and decrement the item count.
-	function removeRow( pageId ) {
-		var row = document.getElementById( 'post-' + pageId );
-		if ( ! row || ! row.parentNode ) {
-			return;
-		}
-		row.parentNode.removeChild( row );
-		decrementItemCount();
-	}
-
-	// Update the auto-generated taxonomy column cell for a page row.
-	// WP generates class "column-taxonomy-{taxonomy}" when show_admin_column is true.
-	function updateFolderCell( pageId, newFolderTermId, newFolderName ) {
-		var row = document.getElementById( 'post-' + pageId );
-		if ( ! row ) {
-			return;
-		}
-		var cell = row.querySelector( '.column-taxonomy-roci_page_folder' );
-		if ( ! cell ) {
-			return;
-		}
-		cell.textContent = newFolderTermId ? ( newFolderName || '' ) : '—'; // — for unassigned
-	}
-
 	// Apply the correct table update based on the current filter view.
+	// Stashes the pre-mutation DOM state into a moveContext object and
+	// returns it so Undo can reverse the change via restoreTableUpdate().
 	//
-	// Asymmetric scope — rows are only ever REMOVED, never re-inserted:
 	//   Case A (folder filter) : remove row if page left this folder.
 	//   Case B (unassigned)    : remove row if page is now assigned.
 	//   Case C (all pages)     : update the folder cell in place (no removal).
-	//
-	// Undo note: when Undo fires, applyTableUpdate is called again with the
-	// restored state. In Case A/B a removed row will NOT reappear — the row
-	// was already detached from the DOM and re-inserting it would require
-	// knowing the original sort position. The data is correct server-side;
-	// the user sees the updated count and sidebar badge, and can refresh to
-	// see the full list. In Case C (All Pages) Undo correctly reverts the
-	// folder cell text because the row is never removed there.
 	function applyTableUpdate( pageId, newFolderTermId, newFolderName ) {
-		var ctx = getFilterContext();
+		var ctx         = getFilterContext();
+		var moveContext = {
+			case:                 'noChange',
+			row:                  null,
+			nextSibling:          null,
+			parent:               null,
+			folderCell:           null,
+			folderCellOriginalHTML: null
+		};
+		var row, cell;
 
 		if ( ctx.folderTermId ) {
-			// Case A — specific folder view
+			// Case A — specific folder view: remove if page left this folder.
 			if ( newFolderTermId !== ctx.folderTermId ) {
-				removeRow( pageId );
+				row = document.getElementById( 'post-' + pageId );
+				if ( row && row.parentNode ) {
+					moveContext.case        = 'removed';
+					moveContext.row         = row;
+					moveContext.nextSibling = row.nextElementSibling; // null if last row → insertBefore appends
+					moveContext.parent      = row.parentNode;
+					row.parentNode.removeChild( row );
+					adjustItemCount( -1 );
+				}
 			}
-			// newFolderTermId === ctx.folderTermId means the page is still here —
-			// only reachable via Undo restoring it to the current folder view.
-			// Row is already gone so this is a silent no-op.
 
 		} else if ( ctx.isUnassigned ) {
-			// Case B — Unassigned Pages view
+			// Case B — Unassigned Pages view: remove if page is now assigned.
 			if ( newFolderTermId ) {
-				removeRow( pageId );
+				row = document.getElementById( 'post-' + pageId );
+				if ( row && row.parentNode ) {
+					moveContext.case        = 'removed';
+					moveContext.row         = row;
+					moveContext.nextSibling = row.nextElementSibling;
+					moveContext.parent      = row.parentNode;
+					row.parentNode.removeChild( row );
+					adjustItemCount( -1 );
+				}
 			}
-			// Similarly, Undo restoring page to unassigned is a silent no-op here.
 
 		} else {
-			// Case C — All Pages view: update the taxonomy column cell in place.
-			updateFolderCell( pageId, newFolderTermId, newFolderName );
+			// Case C — All Pages view: update the taxonomy cell in place.
+			row = document.getElementById( 'post-' + pageId );
+			if ( row ) {
+				cell = row.querySelector( '.column-taxonomy-roci_page_folder' );
+				if ( cell ) {
+					moveContext.case                 = 'cellUpdated';
+					moveContext.folderCell           = cell;
+					moveContext.folderCellOriginalHTML = cell.innerHTML; // stash before mutation
+					cell.textContent = newFolderTermId ? ( newFolderName || '' ) : '—'; // — for unassigned
+				}
+			}
+		}
+
+		return moveContext;
+	}
+
+	// Reverse the DOM change recorded in moveContext (called on successful Undo).
+	//
+	// Navigation guard: if the user clicked a sidebar folder between the move
+	// and the Undo click, the parent tbody is no longer in the document. In that
+	// case skip DOM restoration — the AJAX already corrected server state, and
+	// the freshly loaded view will render the correct list automatically.
+	function restoreTableUpdate( moveContext ) {
+		if ( ! moveContext || moveContext.case === 'noChange' ) {
+			return;
+		}
+
+		if ( moveContext.case === 'removed' ) {
+			if ( ! moveContext.parent || ! document.contains( moveContext.parent ) ) {
+				return; // stale reference — parent left the document after navigation
+			}
+			// insertBefore(row, null) appends to end, which is correct when the
+			// row was originally the last sibling and nextSibling is null.
+			moveContext.parent.insertBefore( moveContext.row, moveContext.nextSibling );
+			adjustItemCount( +1 );
+
+		} else if ( moveContext.case === 'cellUpdated' ) {
+			if ( moveContext.folderCell ) {
+				moveContext.folderCell.innerHTML = moveContext.folderCellOriginalHTML;
+			}
 		}
 	}
 
@@ -313,7 +341,7 @@
 	// AJAX MOVE
 	// ======================================================================
 
-	function performMove( pageId, targetTerm, pageTitle, folderName, isUndo ) {
+	function performMove( pageId, targetTerm, pageTitle, folderName, isUndo, undoMoveContext ) {
 
 		var fd = new FormData();
 		fd.append( 'action',      'roci_move_page_to_folder' );
@@ -361,17 +389,27 @@
 						}
 					}
 
-					// Sync list-table DOM to the new state.
-					// Applies to both forward moves and Undo (isUndo path included).
-					// See applyTableUpdate comments for Undo asymmetry in filtered views.
 					var newFolderTermId = resp.data.new_folder_term_id || 0;
 					var newFolderName   = resp.data.new_folder_name    || '';
-					applyTableUpdate( pageId, newFolderTermId, newFolderName );
 
 					if ( isUndo ) {
+						// Restore the DOM change recorded during the forward move.
+						// undoMoveContext holds references to the row/cell that were
+						// mutated; restoreTableUpdate reverses that mutation in place.
+						// If the user navigated between the move and the Undo click,
+						// restoreTableUpdate's document.contains() guard skips the
+						// DOM step gracefully — AJAX already corrected server state.
+						restoreTableUpdate( undoMoveContext );
 						rociShowToast( { message: rociPageDragDrop.i18n.undone, duration: 3000 } );
 						return;
 					}
+
+					// Forward move — apply DOM change and stash context for Undo.
+					// When a new toast replaces this one, its undoCallback closure
+					// (which holds moveContext) becomes unreachable once the old
+					// toast button is removed from the DOM. No explicit context
+					// clearing is needed; the replacement is the natural reset.
+					var moveContext = applyTableUpdate( pageId, newFolderTermId, newFolderName );
 
 					var msg;
 					if ( targetTerm === '__unassigned__' ) {
@@ -388,7 +426,7 @@
 							var undoTerm = ( previousTerms.length > 0 )
 								? String( previousTerms[ 0 ] )
 								: '__unassigned__';
-							performMove( pageId, undoTerm, resolvedTitle, '', true );
+							performMove( pageId, undoTerm, resolvedTitle, '', true, moveContext );
 						}
 					} );
 
