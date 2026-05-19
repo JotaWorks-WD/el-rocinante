@@ -18,7 +18,7 @@
  * this script uses text/x-roci-page and ignores non-page drags.
  *
  * File:    dist/js/folders/folders-page-dragdrop.js
- * Version: 1.0.0
+ * Version: 1.1.0
  * Updated: 2026-05-19
  *
  * @package ElRocinante
@@ -116,6 +116,98 @@
 			countEl.parentNode.removeChild( countEl );
 		}
 		return clone.textContent.trim();
+	}
+
+
+	// ======================================================================
+	// TABLE UPDATE — live DOM sync after a successful move
+	// ======================================================================
+
+	// Return the current folder filter context from the URL.
+	// Unassigned uses ?roci_no_folder=1 (not roci_page_folder=unassigned).
+	function getFilterContext() {
+		var params = new URLSearchParams( window.location.search );
+		return {
+			folderTermId: parseInt( params.get( 'roci_page_folder' ), 10 ) || 0,
+			isUnassigned: params.get( 'roci_no_folder' ) === '1'
+		};
+	}
+
+	// Decrement the "N item(s)" labels in both tablenav bars.
+	// Only the digit is replaced; the translated word (item/items) is left
+	// as-is to avoid duplicating WP's pluralisation logic.
+	function decrementItemCount() {
+		document.querySelectorAll( '.tablenav .displaying-num' ).forEach( function ( el ) {
+			var prev = parseInt( el.textContent.replace( /[^0-9]/g, '' ), 10 );
+			if ( isNaN( prev ) ) {
+				return;
+			}
+			var next = Math.max( 0, prev - 1 );
+			el.textContent = el.textContent.replace( /\d[\d,]*/, String( next ) );
+		} );
+	}
+
+	// Remove the list-table row for a page and decrement the item count.
+	function removeRow( pageId ) {
+		var row = document.getElementById( 'post-' + pageId );
+		if ( ! row || ! row.parentNode ) {
+			return;
+		}
+		row.parentNode.removeChild( row );
+		decrementItemCount();
+	}
+
+	// Update the auto-generated taxonomy column cell for a page row.
+	// WP generates class "column-taxonomy-{taxonomy}" when show_admin_column is true.
+	function updateFolderCell( pageId, newFolderTermId, newFolderName ) {
+		var row = document.getElementById( 'post-' + pageId );
+		if ( ! row ) {
+			return;
+		}
+		var cell = row.querySelector( '.column-taxonomy-roci_page_folder' );
+		if ( ! cell ) {
+			return;
+		}
+		cell.textContent = newFolderTermId ? ( newFolderName || '' ) : '—'; // — for unassigned
+	}
+
+	// Apply the correct table update based on the current filter view.
+	//
+	// Asymmetric scope — rows are only ever REMOVED, never re-inserted:
+	//   Case A (folder filter) : remove row if page left this folder.
+	//   Case B (unassigned)    : remove row if page is now assigned.
+	//   Case C (all pages)     : update the folder cell in place (no removal).
+	//
+	// Undo note: when Undo fires, applyTableUpdate is called again with the
+	// restored state. In Case A/B a removed row will NOT reappear — the row
+	// was already detached from the DOM and re-inserting it would require
+	// knowing the original sort position. The data is correct server-side;
+	// the user sees the updated count and sidebar badge, and can refresh to
+	// see the full list. In Case C (All Pages) Undo correctly reverts the
+	// folder cell text because the row is never removed there.
+	function applyTableUpdate( pageId, newFolderTermId, newFolderName ) {
+		var ctx = getFilterContext();
+
+		if ( ctx.folderTermId ) {
+			// Case A — specific folder view
+			if ( newFolderTermId !== ctx.folderTermId ) {
+				removeRow( pageId );
+			}
+			// newFolderTermId === ctx.folderTermId means the page is still here —
+			// only reachable via Undo restoring it to the current folder view.
+			// Row is already gone so this is a silent no-op.
+
+		} else if ( ctx.isUnassigned ) {
+			// Case B — Unassigned Pages view
+			if ( newFolderTermId ) {
+				removeRow( pageId );
+			}
+			// Similarly, Undo restoring page to unassigned is a silent no-op here.
+
+		} else {
+			// Case C — All Pages view: update the taxonomy column cell in place.
+			updateFolderCell( pageId, newFolderTermId, newFolderName );
+		}
 	}
 
 
@@ -268,6 +360,13 @@
 							window.rociIncrementSidebarCount( parseInt( targetTerm, 10 ) );
 						}
 					}
+
+					// Sync list-table DOM to the new state.
+					// Applies to both forward moves and Undo (isUndo path included).
+					// See applyTableUpdate comments for Undo asymmetry in filtered views.
+					var newFolderTermId = resp.data.new_folder_term_id || 0;
+					var newFolderName   = resp.data.new_folder_name    || '';
+					applyTableUpdate( pageId, newFolderTermId, newFolderName );
 
 					if ( isUndo ) {
 						rociShowToast( { message: rociPageDragDrop.i18n.undone, duration: 3000 } );

@@ -12,7 +12,7 @@
  *   roci_enqueue_page_dragdrop_assets()   — enqueues dist/js/folders/folders-page-dragdrop.js
  *
  * File:    inc/folders/page-move.php
- * Version: 1.0.0
+ * Version: 1.1.0
  * Updated: 2026-05-19
  *
  * @package ElRocinante
@@ -108,12 +108,14 @@ function roci_ajax_move_page_to_folder() {
 	}
 
 	wp_send_json_success( array(
-		'no_change'          => false,
-		'page_id'            => $page_id,
-		'page_title'         => get_the_title( $page_id ),
-		'previous_terms'     => array_map( 'intval', $previous ),
-		'new_terms'          => array_map( 'intval', $terms_to_set ),
-		'target_folder_name' => $target_folder_name,
+		'no_change'           => false,
+		'page_id'             => $page_id,
+		'page_title'          => get_the_title( $page_id ),
+		'previous_terms'      => array_map( 'intval', $previous ),
+		'new_terms'           => array_map( 'intval', $terms_to_set ),
+		'new_folder_term_id'  => $term_id,           // scalar; 0 when moved to unassigned
+		'new_folder_name'     => $target_folder_name, // alias for JS clarity; '' when unassigned
+		'target_folder_name'  => $target_folder_name, // kept for backward-compat with toast logic
 	) );
 }
 add_action( 'wp_ajax_roci_move_page_to_folder', 'roci_ajax_move_page_to_folder' );
