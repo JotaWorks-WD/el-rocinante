@@ -27,8 +27,8 @@
  *   multi-select drag, and folder reordering are out of scope for Phase 6.
  *
  * File:    dist/js/folders/folders-dragdrop.js
- * Version: 1.4.0
- * Updated: 2026-05-18
+ * Version: 1.5.0
+ * Updated: 2026-05-19
  *
  * @package ElRocinante
  */
@@ -182,6 +182,56 @@
 
 
 	// ======================================================================
+	// BACKBONE GRID UPDATE
+	// ======================================================================
+
+	// After a successful move, surgically remove the attachment from the
+	// current Backbone library collection (filtered views only). This is
+	// faster and more reliable than re-fetching because WP's custom
+	// Attachments sync may call set() instead of reset() on the collection,
+	// leaving the moved attachment visible in the grid.
+	//
+	// Also updates the attachment model's roci_media_folder attribute so
+	// the next drag from any view uses the correct source terms.
+	//
+	// All-Files view: model attribute updated but no removal (file stays visible).
+	// Filtered view (folder or unassigned): model removed → Backbone re-renders.
+
+	function rociRemoveFromGrid( attachmentId, newTerms ) {
+		if ( ! window.wp || ! wp.media || ! wp.media.frame ) {
+			return;
+		}
+		try {
+			var state   = wp.media.frame.state();
+			var library = state && state.get( 'library' );
+			if ( ! library ) {
+				return;
+			}
+
+			// Always update the cached model's folder attribute so subsequent
+			// drags (from any view) read the correct sourceTerms.
+			var model = wp.media.attachment( attachmentId );
+			if ( model && Array.isArray( newTerms ) ) {
+				model.set( 'roci_media_folder', newTerms );
+			}
+
+			// Skip removal in All Files view — attachment remains visible.
+			var props         = library.props;
+			var currentFolder = props && props.get( 'roci_media_folder' );
+			var isUnassigned  = props && !! props.get( 'roci_no_folder' );
+			if ( ! currentFolder && ! isUnassigned ) {
+				return;
+			}
+
+			// Filtered view — remove the model so Backbone re-renders immediately.
+			if ( model ) {
+				library.remove( model );
+			}
+		} catch ( e ) {}
+	}
+
+
+	// ======================================================================
 	// AJAX MOVE
 	// ======================================================================
 
@@ -200,6 +250,10 @@
 				var resp;
 				try { resp = JSON.parse( xhr.responseText ); } catch ( e ) { resp = null; }
 				if ( resp && resp.success ) {
+					var newTerms = ( resp.data && Array.isArray( resp.data.new_terms ) )
+						? resp.data.new_terms
+						: [];
+					rociRemoveFromGrid( attachmentId, newTerms );
 					if ( typeof window.rociForceLibraryRefresh === 'function' ) {
 						window.rociForceLibraryRefresh();
 					}
