@@ -7,8 +7,8 @@
  * destroy callback can trigger the same re-fetch on delete.
  *
  * @package ElRocinante
- * @version 2.8.15
- * Updated: 2026-05-16
+ * @version 2.8.16
+ * Updated: 2026-05-19
  */
 
 ( function () {
@@ -28,7 +28,15 @@
 			if ( ! library ) {
 				return;
 			}
-			if ( typeof library._requery === 'function' ) {
+			// Prefer fetching the existing mirror query directly. _requery(true)
+			// passes cache:false to Query.get(), which caches the Query object in
+			// Query.all. On subsequent calls, Query.get() returns the same cached
+			// object and mirror() no-ops (this.mirroring === query early-return),
+			// so the grid never refreshes after the first drag in a filtered view.
+			// Fetching the mirror directly re-requests server data every time.
+			if ( library.mirroring && typeof library.mirroring.fetch === 'function' ) {
+				library.mirroring.fetch( { reset: true } );
+			} else if ( typeof library._requery === 'function' ) {
 				library._requery( true );
 			} else if ( typeof library.more === 'function' ) {
 				library.more( { reset: true } );
