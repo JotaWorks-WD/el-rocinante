@@ -12,8 +12,8 @@
  *     folder filter into the AttachmentsBrowser toolbar (after the type + date filters)
  *
  * File:    inc/folders/filters.php
- * Version: 2.4.0
- * Updated: 2026-05-16
+ * Version: 2.5.0
+ * Updated: 2026-05-20
  *
  * @package ElRocinante
  */
@@ -399,15 +399,59 @@ add_action( 'admin_enqueue_scripts', 'roci_enqueue_media_folder_js' );
 
 
 // ============================================================
+// BULK ORGANIZE — TERM DATA HELPER
+// ============================================================
+
+/**
+ * Build the roci_media_folder term list with depth for the bulk-organize
+ * Move dropdown. Returns terms in depth-first order with plain names (no
+ * em-dash prefix) so the JS can render pixel-based indentation.
+ *
+ * @return array  [ [ 'term_id' => int, 'name' => string, 'depth' => int ], … ]
+ */
+function roci_get_folder_terms_with_depth() {
+
+	$terms = get_terms( array_merge( array(
+		'taxonomy'   => 'roci_media_folder',
+		'hide_empty' => false,
+	), roci_get_folder_order_query_args() ) );
+
+	if ( is_wp_error( $terms ) || empty( $terms ) ) {
+		return array();
+	}
+
+	$children = array();
+	foreach ( $terms as $term ) {
+		$children[ $term->parent ][] = $term;
+	}
+
+	$ordered = array();
+	roci_walk_folder_terms_depth_first( $children, 0, $ordered );
+
+	$data = array();
+	foreach ( $ordered as $term ) {
+		$depth  = count( get_ancestors( $term->term_id, 'roci_media_folder', 'taxonomy' ) );
+		$data[] = array(
+			'term_id' => $term->term_id,
+			'name'    => $term->name,
+			'depth'   => $depth,
+		);
+	}
+
+	return $data;
+}
+
+
+// ============================================================
 // BULK ORGANIZE — ENQUEUE JS
 // ============================================================
 
 /**
- * Enqueue bulk-organize-button.js on the Media Library screen.
+ * Enqueue folders-bulk.js on the Media Library screen.
  *
- * Scoped to upload.php only — the button is not relevant inside the modal
- * media picker (post.php / post-new.php). Depends on media-views so
- * wp.media.View and AttachmentsBrowser are available when the script runs.
+ * Scoped to upload.php only. Depends on media-views so wp.media.View and
+ * AttachmentsBrowser are available. Replaces the disabled placeholder in
+ * bulk-organize-button.js with full selection-mode functionality.
  *
  * @param string $hook_suffix  Current admin page hook suffix.
  */
@@ -419,10 +463,34 @@ function roci_enqueue_bulk_organize_js( $hook_suffix ) {
 
 	wp_enqueue_script(
 		'roci-bulk-organize',
-		get_template_directory_uri() . '/dist/js/folders/bulk-organize-button.js',
+		get_template_directory_uri() . '/dist/js/folders/folders-bulk.js',
 		array( 'media-views' ),
-		roci_asset_version( 'dist/js/folders/bulk-organize-button.js' ),
+		roci_asset_version( 'dist/js/folders/folders-bulk.js' ),
 		true
 	);
+
+	wp_localize_script( 'roci-bulk-organize', 'rociFoldersBulk', array(
+		'ajaxUrl' => admin_url( 'admin-ajax.php' ),
+		'nonce'   => wp_create_nonce( 'roci_move_attachment' ),
+		'terms'   => roci_get_folder_terms_with_depth(),
+		'i18n'    => array(
+			'bulkOrganize'      => __( 'Bulk Organize',          'rocinante' ),
+			'countZero'         => __( '0 selected',             'rocinante' ),
+			'countN'            => __( '%d selected',            'rocinante' ),
+			'selectAll'         => __( 'Select All',             'rocinante' ),
+			'deselectAll'       => __( 'Deselect All',           'rocinante' ),
+			'move'              => __( 'Move ▼',                 'rocinante' ),
+			'moveNItems'        => __( 'Move %d items to…',      'rocinante' ),
+			'moved'             => __( 'Moved %d items to %s.',  'rocinante' ),
+			'movedUnassigned'   => __( 'Removed %d items from folder.', 'rocinante' ),
+			'deletePermanently' => __( 'Delete Permanently',    'rocinante' ),
+			'download'          => __( 'Download',               'rocinante' ),
+			'comingSoon'        => __( 'Coming in Phase 2',      'rocinante' ),
+			'cancel'            => __( 'Cancel',                 'rocinante' ),
+			'undo'              => __( 'Undo',                   'rocinante' ),
+			'undone'            => __( 'Undone.',                'rocinante' ),
+			'unassigned'        => __( 'Unassigned Files',       'rocinante' ),
+		),
+	) );
 }
 add_action( 'admin_enqueue_scripts', 'roci_enqueue_bulk_organize_js' );
