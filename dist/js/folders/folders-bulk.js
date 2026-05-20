@@ -21,7 +21,7 @@
  * Consolidation into a shared module is deferred to the audit phase (flagged).
  *
  * File:    dist/js/folders/folders-bulk.js
- * Version: 1.3.0
+ * Version: 1.4.0
  * Updated: 2026-05-20
  *
  * @package ElRocinante
@@ -500,6 +500,20 @@
 				undoneIds.forEach( function () {
 					if ( typeof window.rociDecrementSidebarCount === 'function' ) {
 						window.rociDecrementSidebarCount( undoTarget );
+					}
+				} );
+				undoneIds.forEach( function ( id ) {
+					var origins = previousAssignments[ String( id ) ];
+					if ( ! origins || origins.length === 0 ) {
+						if ( typeof window.rociIncrementSidebarCount === 'function' ) {
+							window.rociIncrementSidebarCount( '__unassigned__' );
+						}
+					} else {
+						origins.forEach( function ( termId ) {
+							if ( typeof window.rociIncrementSidebarCount === 'function' ) {
+								window.rociIncrementSidebarCount( parseInt( termId, 10 ) );
+							}
+						} );
 					}
 				} );
 				refreshGrid();
