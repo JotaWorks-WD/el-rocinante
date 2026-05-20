@@ -12,7 +12,7 @@
  *     folder filter into the AttachmentsBrowser toolbar (after the type + date filters)
  *
  * File:    inc/folders/filters.php
- * Version: 2.5.0
+ * Version: 2.5.1
  * Updated: 2026-05-20
  *
  * @package ElRocinante
@@ -483,13 +483,42 @@ function roci_enqueue_bulk_organize_js( $hook_suffix ) {
 			'moveNItems'        => __( 'Move %d items to…',      'rocinante' ),
 			'moved'             => __( 'Moved %d items to %s.',  'rocinante' ),
 			'movedUnassigned'   => __( 'Removed %d items from folder.', 'rocinante' ),
-			'deletePermanently' => __( 'Delete Permanently',    'rocinante' ),
+			'deletePermanently' => __( 'Delete Permanently',     'rocinante' ),
 			'download'          => __( 'Download',               'rocinante' ),
 			'comingSoon'        => __( 'Coming in Phase 2',      'rocinante' ),
 			'cancel'            => __( 'Cancel',                 'rocinante' ),
 			'undo'              => __( 'Undo',                   'rocinante' ),
 			'undone'            => __( 'Undone.',                'rocinante' ),
 			'unassigned'        => __( 'Unassigned Files',       'rocinante' ),
+			// Delete modal — singular/plural passed separately; JS switches on count.
+			'deleteModalTitleSingular'     => _n(
+				'Permanently delete 1 file?',
+				'Permanently delete %d files?',
+				1,
+				'rocinante'
+			),
+			'deleteModalTitlePlural'       => _n(
+				'Permanently delete 1 file?',
+				'Permanently delete %d files?',
+				2,
+				'rocinante'
+			),
+			'deleteModalBody'              => __( 'This cannot be undone.',                                 'rocinante' ),
+			'deleteConfirmLabel'           => __( 'Delete permanently',                                     'rocinante' ),
+			'deleteSuccessToastSingular'   => _n( 'Deleted 1 file.',   'Deleted %d files.',   1, 'rocinante' ),
+			'deleteSuccessToastPlural'     => _n( 'Deleted 1 file.',   'Deleted %d files.',   2, 'rocinante' ),
+			'deleteFailureToastSingular'   => _n(
+				'Failed to delete 1 file. Please try again.',
+				'Failed to delete %d files. Please try again.',
+				1,
+				'rocinante'
+			),
+			'deleteFailureToastPlural'     => _n(
+				'Failed to delete 1 file. Please try again.',
+				'Failed to delete %d files. Please try again.',
+				2,
+				'rocinante'
+			),
 		),
 	) );
 }

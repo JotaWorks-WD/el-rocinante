@@ -11,7 +11,7 @@
  *   roci_enqueue_dragdrop_assets()       — enqueues dist/js/folders/folders-dragdrop.js
  *
  * File:    inc/folders/move.php
- * Version: 1.2.0
+ * Version: 1.3.0
  * Updated: 2026-05-20
  *
  * @package ElRocinante
@@ -244,6 +244,71 @@ function roci_ajax_bulk_undo_move_attachments() {
 	) );
 }
 add_action( 'wp_ajax_roci_bulk_undo_move_attachments', 'roci_ajax_bulk_undo_move_attachments' );
+
+
+// ============================================================
+// BULK DELETE — AJAX HANDLER
+// ============================================================
+
+/**
+ * Permanently delete multiple attachments.
+ *
+ * Reuses the roci_move_attachment nonce (same AJAX context — same page,
+ * same user session). Each attachment is validated and deleted individually;
+ * partial success is allowed. wp_delete_attachment( $id, true ) skips the
+ * Trash — the second arg forces permanent deletion.
+ *
+ * Capability checked per-attachment (not a blanket current_user_can) to match
+ * the pattern established in roci_ajax_bulk_move_attachments().
+ *
+ * No Undo — permanent delete has no inverse operation.
+ *
+ * @param int[]  $_POST['attachment_ids']  Array of attachment post IDs.
+ */
+function roci_ajax_bulk_delete_attachments() {
+
+	check_ajax_referer( 'roci_move_attachment', 'nonce' );
+
+	// ── Validate & sanitize attachment IDs ──────────────────────────────
+	$raw_ids = isset( $_POST['attachment_ids'] ) ? (array) $_POST['attachment_ids'] : array();
+	if ( empty( $raw_ids ) ) {
+		wp_send_json_error( __( 'No attachments specified.', 'rocinante' ), 400 );
+	}
+	$attachment_ids = array_values( array_filter( array_map( 'absint', $raw_ids ) ) );
+	if ( empty( $attachment_ids ) ) {
+		wp_send_json_error( __( 'Invalid attachment IDs.', 'rocinante' ), 400 );
+	}
+
+	// ── Delete each attachment ───────────────────────────────────────────
+	$deleted = array();
+	$failed  = array();
+
+	foreach ( $attachment_ids as $id ) {
+		if ( get_post_type( $id ) !== 'attachment' ) {
+			$failed[] = $id;
+			continue;
+		}
+		if ( ! current_user_can( 'delete_post', $id ) ) {
+			$failed[] = $id;
+			continue;
+		}
+
+		// true = force delete (skip Trash).
+		$result = wp_delete_attachment( $id, true );
+		if ( false === $result || null === $result ) {
+			$failed[] = $id;
+			continue;
+		}
+
+		$deleted[] = $id;
+	}
+
+	wp_send_json_success( array(
+		'deleted' => $deleted,
+		'failed'  => $failed,
+	) );
+}
+add_action( 'wp_ajax_roci_bulk_delete_attachments', 'roci_ajax_bulk_delete_attachments' );
 
 
 // ============================================================
