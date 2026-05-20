@@ -21,7 +21,7 @@
  * Consolidation into a shared module is deferred to the audit phase (flagged).
  *
  * File:    dist/js/folders/folders-bulk.js
- * Version: 1.4.0
+ * Version: 1.4.1
  * Updated: 2026-05-20
  *
  * @package ElRocinante
@@ -525,11 +525,8 @@
 			var prevAssign   = resp.data.previous_assignments || {};
 			var resolvedName = resp.data.target_name          || targetName;
 
-			// Guard against in-flight more() XHRs racing the bulk-move commit.
-			// WP's collection.more() uses {remove:false, add:true}, so a stale
-			// XHR response can re-add models we're about to remove. Register an
-			// 'add' listener that immediately evicts any re-added moved IDs, and
-			// clean up after 3 s (long enough for any in-flight XHR to resolve).
+			// Guard against in-flight more() XHRs re-adding bulk-moved models.
+			// Delegated to rociWatchForReAdd() shared helper (wp-media-refresh-shim.js).
 			var guardSet    = new Set( movedIds.map( String ) );
 			var bulkLibrary = null;
 			if ( window.wp && wp.media && wp.media.frame ) {
@@ -538,17 +535,8 @@
 					bulkLibrary = guardState && guardState.get( 'library' );
 				} catch ( _e ) {}
 			}
-			var onReAdd = null;
-			if ( bulkLibrary ) {
-				onReAdd = function ( model ) {
-					if ( guardSet.has( String( model.id ) ) ) {
-						bulkLibrary.remove( model );
-					}
-				};
-				bulkLibrary.on( 'add', onReAdd );
-				setTimeout( function () {
-					bulkLibrary.off( 'add', onReAdd );
-				}, 3000 );
+			if ( bulkLibrary && typeof window.rociWatchForReAdd === 'function' ) {
+				window.rociWatchForReAdd( bulkLibrary, guardSet );
 			}
 
 			movedIds.forEach( function ( id ) {
