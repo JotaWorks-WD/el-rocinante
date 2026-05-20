@@ -4,10 +4,17 @@ Theme URI: https://jota.works
 Author: JotaWorks
 Author URI: https://jota.works
 Description: A lean, professional WordPress base theme by JotaWorks. Built for service businesses, tourism, and property management — with a custom SEO layer, schema markup, and no page builder bloat.
-Version: 2.9.6
+Version: 2.9.7
 License: Private
 License URI: https://jota.works
 Text Domain: rocinante
 GitHub Theme URI: https://github.com/JotaWorks-WD/el-rocinante
 GitHub Branch: main
+*/
+
+/*
+v2.9.7
+- Remove library.mirroring.fetch from wp-media-refresh-shim.js; fixes Unassigned → folder drag leaving the moved photo visible in both collections (the delayed collection.set() was undoing the v2.9.6 library.remove() work).
+- CSP audit: no string-eval patterns (eval, new Function, setTimeout/setInterval with string arg) found in dist/js/folders/ — browser console clean.
+- Widen blue flash focus suppression to descendant elements of .attachment[draggable="true"]; keyboard focus rings preserved via :not(:focus-visible).
 */
