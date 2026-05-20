@@ -21,7 +21,7 @@
  * Consolidation into a shared module is deferred to the audit phase (flagged).
  *
  * File:    dist/js/folders/folders-bulk.js
- * Version: 1.1.0
+ * Version: 1.2.0
  * Updated: 2026-05-20
  *
  * @package ElRocinante
@@ -265,7 +265,10 @@
 
 		var header = moveDropdown.querySelector( '.roci-bulk-move-header' );
 		if ( header ) {
-			header.textContent = rociFoldersBulk.i18n.moveNItems.replace( '%d', selectedIds.size );
+			var n = selectedIds.size;
+			header.textContent = n === 1
+				? rociFoldersBulk.i18n.moveNItemsSingular
+				: rociFoldersBulk.i18n.moveNItemsPlural.replace( '%d', n );
 		}
 
 		moveDropdown.classList.add( 'roci-bulk-move-dropdown--open' );
@@ -529,6 +532,30 @@
 
 			movedIds.forEach( function ( id ) {
 				updateAndRemoveFromGrid( String( id ), targetTerm );
+			} );
+
+			movedIds.forEach( function ( id ) {
+				var prevTerms = prevAssign[ id ];
+				if ( Array.isArray( prevTerms ) && prevTerms.length > 0 ) {
+					prevTerms.forEach( function ( termId ) {
+						if ( typeof window.rociDecrementSidebarCount === 'function' ) {
+							window.rociDecrementSidebarCount( termId );
+						}
+					} );
+				} else {
+					if ( typeof window.rociDecrementSidebarCount === 'function' ) {
+						window.rociDecrementSidebarCount( '__unassigned__' );
+					}
+				}
+				if ( targetTerm === '__unassigned__' ) {
+					if ( typeof window.rociIncrementSidebarCount === 'function' ) {
+						window.rociIncrementSidebarCount( '__unassigned__' );
+					}
+				} else {
+					if ( typeof window.rociIncrementSidebarCount === 'function' ) {
+						window.rociIncrementSidebarCount( parseInt( targetTerm, 10 ) );
+					}
+				}
 			} );
 
 			exitSelectionMode();
