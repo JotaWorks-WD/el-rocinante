@@ -21,7 +21,7 @@
  * Consolidation into a shared module is deferred to the audit phase (flagged).
  *
  * File:    dist/js/folders/folders-bulk.js
- * Version: 1.0.0
+ * Version: 1.1.0
  * Updated: 2026-05-20
  *
  * @package ElRocinante
@@ -50,7 +50,9 @@
 	var moveDropdown = null;
 	var countEl      = null;
 	var moveBtn      = null;
+	var deleteBtnEl  = null;
 	var selectAllBtn = null;
+	var activeModal  = null;
 
 	// Exposed so folders-dragdrop.js can gate drag initiation.
 	window.rociIsBulkSelectMode = function () {
@@ -128,14 +130,14 @@
 
 		actionBar.appendChild( moveWrap );
 
-		// Delete permanently (disabled placeholder)
-		var deleteBtn = document.createElement( 'button' );
-		deleteBtn.type        = 'button';
-		deleteBtn.className   = 'button roci-bulk-delete-btn';
-		deleteBtn.textContent = rociFoldersBulk.i18n.deletePermanently;
-		deleteBtn.disabled    = true;
-		deleteBtn.title       = rociFoldersBulk.i18n.comingSoon;
-		actionBar.appendChild( deleteBtn );
+		// Delete permanently
+		deleteBtnEl = document.createElement( 'button' );
+		deleteBtnEl.type        = 'button';
+		deleteBtnEl.className   = 'button roci-bulk-delete-btn';
+		deleteBtnEl.textContent = rociFoldersBulk.i18n.deletePermanently;
+		deleteBtnEl.disabled    = true; // enabled when items are selected (see updateActionBar)
+		deleteBtnEl.addEventListener( 'click', onDeleteBtnClick );
+		actionBar.appendChild( deleteBtnEl );
 
 		// Download (disabled placeholder)
 		var downloadBtn = document.createElement( 'button' );
@@ -181,6 +183,10 @@
 
 		if ( moveBtn ) {
 			moveBtn.disabled = ( n === 0 );
+		}
+
+		if ( deleteBtnEl ) {
+			deleteBtnEl.disabled = ( n === 0 );
 		}
 
 		if ( selectAllBtn ) {
@@ -487,9 +493,35 @@
 				return;
 			}
 
-			var movedIds    = resp.data.moved             || [];
-			var prevAssign  = resp.data.previous_assignments || {};
-			var resolvedName = resp.data.target_name || targetName;
+			var movedIds     = resp.data.moved                || [];
+			var prevAssign   = resp.data.previous_assignments || {};
+			var resolvedName = resp.data.target_name          || targetName;
+
+			// Guard against in-flight more() XHRs racing the bulk-move commit.
+			// WP's collection.more() uses {remove:false, add:true}, so a stale
+			// XHR response can re-add models we're about to remove. Register an
+			// 'add' listener that immediately evicts any re-added moved IDs, and
+			// clean up after 3 s (long enough for any in-flight XHR to resolve).
+			var guardSet    = new Set( movedIds.map( String ) );
+			var bulkLibrary = null;
+			if ( window.wp && wp.media && wp.media.frame ) {
+				try {
+					var guardState = wp.media.frame.state();
+					bulkLibrary = guardState && guardState.get( 'library' );
+				} catch ( _e ) {}
+			}
+			var onReAdd = null;
+			if ( bulkLibrary ) {
+				onReAdd = function ( model ) {
+					if ( guardSet.has( String( model.id ) ) ) {
+						bulkLibrary.remove( model );
+					}
+				};
+				bulkLibrary.on( 'add', onReAdd );
+				setTimeout( function () {
+					bulkLibrary.off( 'add', onReAdd );
+				}, 3000 );
+			}
 
 			movedIds.forEach( function ( id ) {
 				updateAndRemoveFromGrid( String( id ), targetTerm );
@@ -515,6 +547,182 @@
 		};
 
 		xhr.send( fd );
+	}
+
+
+	// ======================================================================
+	// DELETE HANDLER + CONFIRMATION MODAL
+	// ======================================================================
+
+	function onDeleteBtnClick() {
+		if ( selectedIds.size === 0 ) {
+			return;
+		}
+		showDeleteModal( selectedIds.size );
+	}
+
+	function showDeleteModal( n ) {
+		// Only one modal at a time.
+		if ( activeModal ) {
+			return;
+		}
+
+		var title = n === 1
+			? rociFoldersBulk.i18n.deleteModalTitleSingular
+			: rociFoldersBulk.i18n.deleteModalTitlePlural.replace( '%d', n );
+
+		var backdrop = document.createElement( 'div' );
+		backdrop.className = 'roci-modal-backdrop';
+
+		var modal = document.createElement( 'div' );
+		modal.className = 'roci-modal';
+		modal.setAttribute( 'role',            'dialog' );
+		modal.setAttribute( 'aria-modal',      'true' );
+		modal.setAttribute( 'aria-labelledby', 'roci-modal-title' );
+
+		var titleEl = document.createElement( 'h2' );
+		titleEl.id          = 'roci-modal-title';
+		titleEl.textContent = title;
+		modal.appendChild( titleEl );
+
+		var bodyEl = document.createElement( 'p' );
+		bodyEl.textContent = rociFoldersBulk.i18n.deleteModalBody;
+		modal.appendChild( bodyEl );
+
+		var actions = document.createElement( 'div' );
+		actions.className = 'roci-modal-actions';
+
+		var cancelBtn = document.createElement( 'button' );
+		cancelBtn.type        = 'button';
+		cancelBtn.className   = 'button roci-modal-cancel';
+		cancelBtn.textContent = rociFoldersBulk.i18n.cancel;
+		cancelBtn.addEventListener( 'click', dismissDeleteModal );
+		actions.appendChild( cancelBtn );
+
+		var confirmBtn = document.createElement( 'button' );
+		confirmBtn.type        = 'button';
+		confirmBtn.className   = 'button roci-modal-confirm roci-modal-destructive';
+		confirmBtn.textContent = rociFoldersBulk.i18n.deleteConfirmLabel;
+		confirmBtn.addEventListener( 'click', function () {
+			dismissDeleteModal();
+			var ids = [];
+			selectedIds.forEach( function ( id ) { ids.push( id ); } );
+			performBulkDelete( ids );
+		} );
+		actions.appendChild( confirmBtn );
+
+		modal.appendChild( actions );
+		backdrop.appendChild( modal );
+		document.body.appendChild( backdrop );
+		activeModal = backdrop;
+
+		// Keyboard: ESC = dismiss; Tab = focus trap between cancel and confirm.
+		backdrop.addEventListener( 'keydown', function ( e ) {
+			var key = e.key || '';
+			if ( key === 'Escape' || e.keyCode === 27 ) {
+				dismissDeleteModal();
+				return;
+			}
+			if ( key === 'Tab' || e.keyCode === 9 ) {
+				e.preventDefault();
+				var focused = document.activeElement;
+				if ( e.shiftKey ) {
+					( focused === cancelBtn ? confirmBtn : cancelBtn ).focus();
+				} else {
+					( focused === confirmBtn ? cancelBtn : confirmBtn ).focus();
+				}
+			}
+		} );
+
+		// Click on the backdrop (outside the modal box) = dismiss.
+		backdrop.addEventListener( 'click', function ( e ) {
+			if ( e.target === backdrop ) {
+				dismissDeleteModal();
+			}
+		} );
+
+		// Focus starts on Cancel — safer default for a destructive action.
+		cancelBtn.focus();
+	}
+
+	function dismissDeleteModal() {
+		if ( activeModal && activeModal.parentNode ) {
+			activeModal.parentNode.removeChild( activeModal );
+		}
+		activeModal = null;
+	}
+
+
+	// ======================================================================
+	// BULK AJAX DELETE
+	// ======================================================================
+
+	function performBulkDelete( ids ) {
+		var fd = new FormData();
+		fd.append( 'action', 'roci_bulk_delete_attachments' );
+		fd.append( 'nonce',  rociFoldersBulk.nonce );
+		ids.forEach( function ( id ) {
+			fd.append( 'attachment_ids[]', id );
+		} );
+
+		var xhr = new XMLHttpRequest();
+		xhr.open( 'POST', rociFoldersBulk.ajaxUrl );
+
+		xhr.onload = function () {
+			if ( xhr.status < 200 || xhr.status >= 300 ) {
+				console.error( '[roci-bulk] Delete failed: HTTP', xhr.status );
+				showDeleteToast( false, ids.length );
+				return;
+			}
+			var resp;
+			try { resp = JSON.parse( xhr.responseText ); } catch ( err ) { resp = null; }
+			if ( ! resp || ! resp.success ) {
+				console.error( '[roci-bulk] Delete failed:', ( resp && resp.data ) ? resp.data : 'Unknown error' );
+				showDeleteToast( false, ids.length );
+				return;
+			}
+
+			var deletedIds = resp.data.deleted || [];
+
+			if ( window.wp && wp.media && wp.media.frame ) {
+				try {
+					var delState   = wp.media.frame.state();
+					var delLibrary = delState && delState.get( 'library' );
+					if ( delLibrary ) {
+						deletedIds.forEach( function ( id ) {
+							var model = wp.media.attachment( String( id ) );
+							if ( model ) {
+								delLibrary.remove( model );
+							}
+						} );
+					}
+				} catch ( _e ) {}
+			}
+
+			exitSelectionMode();
+			showDeleteToast( true, deletedIds.length );
+		};
+
+		xhr.onerror = function () {
+			console.error( '[roci-bulk] Delete failed: network error' );
+			showDeleteToast( false, ids.length );
+		};
+
+		xhr.send( fd );
+	}
+
+	function showDeleteToast( success, n ) {
+		var msg;
+		if ( success ) {
+			msg = n === 1
+				? rociFoldersBulk.i18n.deleteSuccessToastSingular
+				: rociFoldersBulk.i18n.deleteSuccessToastPlural.replace( '%d', n );
+		} else {
+			msg = n === 1
+				? rociFoldersBulk.i18n.deleteFailureToastSingular
+				: rociFoldersBulk.i18n.deleteFailureToastPlural.replace( '%d', n );
+		}
+		rociShowBulkToast( { message: msg, duration: success ? 5000 : 8000 } );
 	}
 
 
