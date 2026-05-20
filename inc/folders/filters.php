@@ -12,7 +12,7 @@
  *     folder filter into the AttachmentsBrowser toolbar (after the type + date filters)
  *
  * File:    inc/folders/filters.php
- * Version: 2.5.1
+ * Version: 2.5.2
  * Updated: 2026-05-20
  *
  * @package ElRocinante
@@ -480,7 +480,9 @@ function roci_enqueue_bulk_organize_js( $hook_suffix ) {
 			'selectAll'         => __( 'Select All',             'rocinante' ),
 			'deselectAll'       => __( 'Deselect All',           'rocinante' ),
 			'move'              => __( 'Move ▼',                 'rocinante' ),
-			'moveNItems'        => __( 'Move %d items to…',      'rocinante' ),
+			// Move dropdown header — singular/plural passed separately; JS switches on count.
+			'moveNItemsSingular' => _n( 'Move 1 item to…',   'Move 1 item to…',   1, 'rocinante' ),
+			'moveNItemsPlural'   => _n( 'Move 1 item to…',   'Move %d items to…', 2, 'rocinante' ),
 			'moved'             => __( 'Moved %d items to %s.',  'rocinante' ),
 			'movedUnassigned'   => __( 'Removed %d items from folder.', 'rocinante' ),
 			'deletePermanently' => __( 'Delete Permanently',     'rocinante' ),
