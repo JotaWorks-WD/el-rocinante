@@ -4,7 +4,7 @@ Theme URI: https://jota.works
 Author: JotaWorks
 Author URI: https://jota.works
 Description: A lean, professional WordPress base theme by JotaWorks. Built for service businesses, tourism, and property management — with a custom SEO layer, schema markup, and no page builder bloat.
-Version: 2.10.3
+Version: 2.10.4
 License: Private
 License URI: https://jota.works
 Text Domain: rocinante
@@ -37,4 +37,7 @@ v2.10.3
 - Sidebar count sync: bulk move now calls rociDecrementSidebarCount / rociIncrementSidebarCount per moved attachment using previous_assignments from the server response; counts no longer stay stale after a bulk move.
 - Move dropdown header plural: replace static "Move %d items to…" with singular/plural pair ("Move 1 item to…" / "Move %d items to…"); filters.php uses _n() pattern matching the delete modal.
 - Move dropdown header padding: increase padding-left to 16px so the header text is flush with action bar rather than left-clipped at 12px.
+
+v2.10.4
+- Bulk move Undo now decrements the destination folder count once per successfully undone attachment (resp.data.moved), mirroring the forward path's rociIncrementSidebarCount loop. Resolves count compounding on repeated move + undo cycles.
 */

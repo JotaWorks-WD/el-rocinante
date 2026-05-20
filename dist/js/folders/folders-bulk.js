@@ -21,7 +21,7 @@
  * Consolidation into a shared module is deferred to the audit phase (flagged).
  *
  * File:    dist/js/folders/folders-bulk.js
- * Version: 1.2.0
+ * Version: 1.3.0
  * Updated: 2026-05-20
  *
  * @package ElRocinante
@@ -495,6 +495,13 @@
 			}
 
 			if ( isUndo ) {
+				var undoneIds  = resp.data.moved || [];
+				var undoTarget = targetTerm === '__unassigned__' ? '__unassigned__' : parseInt( targetTerm, 10 );
+				undoneIds.forEach( function () {
+					if ( typeof window.rociDecrementSidebarCount === 'function' ) {
+						window.rociDecrementSidebarCount( undoTarget );
+					}
+				} );
 				refreshGrid();
 				rociShowBulkToast( { message: rociFoldersBulk.i18n.undone, duration: 3000 } );
 				return;
