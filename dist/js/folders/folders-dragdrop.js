@@ -27,8 +27,8 @@
  *   multi-select drag, and folder reordering are out of scope for Phase 6.
  *
  * File:    dist/js/folders/folders-dragdrop.js
- * Version: 1.5.0
- * Updated: 2026-05-19
+ * Version: 1.6.0
+ * Updated: 2026-05-20
  *
  * @package ElRocinante
  */
@@ -81,6 +81,11 @@
 			} ),
 
 			rociOnDragStart: function ( e ) {
+				// Block single-photo drags while bulk selection mode is active.
+				if ( typeof window.rociIsBulkSelectMode === 'function' && window.rociIsBulkSelectMode() ) {
+					e.preventDefault();
+					return;
+				}
 				var sourceTerms = this.model.get( 'roci_media_folder' ) || [];
 				var payload     = JSON.stringify( {
 					id:          this.model.id,
