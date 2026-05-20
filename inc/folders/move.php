@@ -1,16 +1,18 @@
 <?php
 /**
- * Folder System — Move Attachment
+ * Folder System — Move Attachment (single + bulk)
  *
- * AJAX endpoint for reassigning a single attachment to a different folder
- * (or to unassigned). Mirrors the structure of create.php.
+ * AJAX endpoints for reassigning one or many attachments to a folder or to
+ * unassigned. Mirrors the structure of create.php.
  *
- *   roci_ajax_move_attachment()   — wp_ajax_roci_move_attachment
- *   roci_enqueue_dragdrop_assets() — enqueues dist/js/folders/folders-dragdrop.js
+ *   roci_ajax_move_attachment()          — wp_ajax_roci_move_attachment (single)
+ *   roci_ajax_bulk_move_attachments()    — wp_ajax_roci_bulk_move_attachments
+ *   roci_ajax_bulk_undo_move_attachments() — wp_ajax_roci_bulk_undo_move_attachments
+ *   roci_enqueue_dragdrop_assets()       — enqueues dist/js/folders/folders-dragdrop.js
  *
  * File:    inc/folders/move.php
- * Version: 1.1.0
- * Updated: 2026-05-16
+ * Version: 1.2.0
+ * Updated: 2026-05-20
  *
  * @package ElRocinante
  */
@@ -93,6 +95,155 @@ function roci_ajax_move_attachment() {
 	) );
 }
 add_action( 'wp_ajax_roci_move_attachment', 'roci_ajax_move_attachment' );
+
+
+// ============================================================
+// BULK MOVE — AJAX HANDLER
+// ============================================================
+
+/**
+ * Bulk-reassign multiple attachments to a folder (or unassigned).
+ *
+ * Reuses the roci_move_attachment nonce so no separate localisation is needed.
+ * Each attachment is validated and moved individually; partial success is
+ * allowed — moved and failed IDs are both returned. previous_assignments maps
+ * each moved ID to its prior term array (or null for previously unassigned)
+ * so the client can pass it back to roci_ajax_bulk_undo_move_attachments.
+ *
+ * @param int[]  $_POST['attachment_ids']  Array of attachment post IDs.
+ * @param string $_POST['target_term']     '__unassigned__' or numeric term ID.
+ */
+function roci_ajax_bulk_move_attachments() {
+
+	check_ajax_referer( 'roci_move_attachment', 'nonce' );
+
+	// ── Validate & sanitize attachment IDs ──────────────────────────────
+	$raw_ids = isset( $_POST['attachment_ids'] ) ? (array) $_POST['attachment_ids'] : array();
+	if ( empty( $raw_ids ) ) {
+		wp_send_json_error( __( 'No attachments specified.', 'rocinante' ), 400 );
+	}
+	$attachment_ids = array_values( array_filter( array_map( 'absint', $raw_ids ) ) );
+	if ( empty( $attachment_ids ) ) {
+		wp_send_json_error( __( 'Invalid attachment IDs.', 'rocinante' ), 400 );
+	}
+
+	// ── Validate target term ─────────────────────────────────────────────
+	$target_raw   = isset( $_POST['target_term'] ) ? sanitize_text_field( wp_unslash( $_POST['target_term'] ) ) : '';
+	$terms_to_set = array();
+	$target_name  = '';
+	$target_id    = 0;
+
+	if ( '__unassigned__' === $target_raw ) {
+		$terms_to_set = array();
+	} else {
+		$target_id = absint( $target_raw );
+		if ( ! $target_id || ! roci_validate_folder_term( $target_id, 'roci_media_folder' ) ) {
+			wp_send_json_error( __( 'Invalid target fauxlder.', 'rocinante' ), 400 );
+		}
+		$terms_to_set = array( $target_id );
+		$term = get_term( $target_id, 'roci_media_folder' );
+		if ( $term && ! is_wp_error( $term ) ) {
+			$target_name = $term->name;
+		}
+	}
+
+	// ── Move each attachment ─────────────────────────────────────────────
+	$moved        = array();
+	$failed       = array();
+	$prev_assign  = array();
+
+	foreach ( $attachment_ids as $id ) {
+		if ( get_post_type( $id ) !== 'attachment' ) {
+			$failed[] = $id;
+			continue;
+		}
+		if ( ! current_user_can( 'edit_post', $id ) ) {
+			$failed[] = $id;
+			continue;
+		}
+
+		$previous = wp_get_object_terms( $id, 'roci_media_folder', array( 'fields' => 'ids' ) );
+		if ( is_wp_error( $previous ) ) {
+			$previous = array();
+		}
+
+		$result = wp_set_object_terms( $id, $terms_to_set, 'roci_media_folder', false );
+		if ( is_wp_error( $result ) ) {
+			$failed[] = $id;
+			continue;
+		}
+
+		$moved[]              = $id;
+		$prev_assign[ $id ]   = empty( $previous ) ? null : array_map( 'intval', $previous );
+	}
+
+	wp_send_json_success( array(
+		'moved'                => $moved,
+		'failed'               => $failed,
+		'target_name'          => $target_name,
+		'previous_assignments' => $prev_assign,
+	) );
+}
+add_action( 'wp_ajax_roci_bulk_move_attachments', 'roci_ajax_bulk_move_attachments' );
+
+
+// ============================================================
+// BULK UNDO — AJAX HANDLER
+// ============================================================
+
+/**
+ * Reverse a bulk move using the previous_assignments map from the forward move.
+ *
+ * Accepts a JSON-encoded assignments object: { "id": [term_ids] | null }.
+ * null means the attachment was previously unassigned. Each attachment is
+ * moved back to its individual prior state, supporting mixed-origin undos.
+ *
+ * @param string $_POST['assignments']  JSON: { "50": [12], "51": null, ... }
+ */
+function roci_ajax_bulk_undo_move_attachments() {
+
+	check_ajax_referer( 'roci_move_attachment', 'nonce' );
+
+	$raw = isset( $_POST['assignments'] ) ? sanitize_text_field( wp_unslash( $_POST['assignments'] ) ) : '';
+	// JSON decode — sanitize_text_field strips slashes, safe for this use.
+	$assignments = json_decode( $raw, true );
+	if ( ! is_array( $assignments ) || empty( $assignments ) ) {
+		wp_send_json_error( __( 'Invalid assignments.', 'rocinante' ), 400 );
+	}
+
+	$moved  = array();
+	$failed = array();
+
+	foreach ( $assignments as $attachment_id => $prev_terms ) {
+		$id = absint( $attachment_id );
+		if ( ! $id || get_post_type( $id ) !== 'attachment' ) {
+			$failed[] = $id;
+			continue;
+		}
+		if ( ! current_user_can( 'edit_post', $id ) ) {
+			$failed[] = $id;
+			continue;
+		}
+
+		// null → previously unassigned → move back to unassigned (empty array).
+		$terms_to_set = ( is_array( $prev_terms ) && ! empty( $prev_terms ) )
+			? array_values( array_filter( array_map( 'absint', $prev_terms ) ) )
+			: array();
+
+		$result = wp_set_object_terms( $id, $terms_to_set, 'roci_media_folder', false );
+		if ( is_wp_error( $result ) ) {
+			$failed[] = $id;
+			continue;
+		}
+		$moved[] = $id;
+	}
+
+	wp_send_json_success( array(
+		'moved'  => $moved,
+		'failed' => $failed,
+	) );
+}
+add_action( 'wp_ajax_roci_bulk_undo_move_attachments', 'roci_ajax_bulk_undo_move_attachments' );
 
 
 // ============================================================
