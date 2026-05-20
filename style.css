@@ -4,7 +4,7 @@ Theme URI: https://jota.works
 Author: JotaWorks
 Author URI: https://jota.works
 Description: A lean, professional WordPress base theme by JotaWorks. Built for service businesses, tourism, and property management — with a custom SEO layer, schema markup, and no page builder bloat.
-Version: 2.9.7
+Version: 2.10.0
 License: Private
 License URI: https://jota.works
 Text Domain: rocinante
@@ -17,4 +17,10 @@ v2.9.7
 - Remove library.mirroring.fetch from wp-media-refresh-shim.js; fixes Unassigned → folder drag leaving the moved photo visible in both collections (the delayed collection.set() was undoing the v2.9.6 library.remove() work).
 - CSP audit: no string-eval patterns (eval, new Function, setTimeout/setInterval with string arg) found in dist/js/folders/ — browser console clean.
 - Widen blue flash focus suppression to descendant elements of .attachment[draggable="true"]; keyboard focus rings preserved via :not(:focus-visible).
+
+v2.10.0
+- Bulk Organize — selection mode for the media library grid. Click Bulk Organize to enter; click attachments to multi-select with checkmark overlays. Action bar shows count, Select All/Deselect All, Move dropdown, disabled Delete/Download placeholders, and Cancel.
+- Bulk move — Move dropdown renders the full folder tree with hierarchy indentation. AJAX bulk-moves selected attachments, removes them from the current filtered view via Backbone library.remove(), and shows a toast with Undo.
+- Undo — reverses each attachment to its individual prior folder state (mixed-origin supported) via roci_bulk_undo_move_attachments endpoint.
+- Drag gating — single-photo drags are suppressed while bulk selection mode is active.
 */
