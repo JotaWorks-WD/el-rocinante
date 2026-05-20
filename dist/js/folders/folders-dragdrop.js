@@ -27,7 +27,7 @@
  *   multi-select drag, and folder reordering are out of scope for Phase 6.
  *
  * File:    dist/js/folders/folders-dragdrop.js
- * Version: 1.6.0
+ * Version: 1.7.0
  * Updated: 2026-05-20
  *
  * @package ElRocinante
@@ -231,6 +231,11 @@
 			// Filtered view — remove the model so Backbone re-renders immediately.
 			if ( model ) {
 				library.remove( model );
+				// Guard against in-flight more() XHRs re-adding the removed model.
+				// Uses rociWatchForReAdd() shared helper (wp-media-refresh-shim.js).
+				if ( typeof window.rociWatchForReAdd === 'function' ) {
+					window.rociWatchForReAdd( library, new Set( [ String( attachmentId ) ] ) );
+				}
 			}
 		} catch ( e ) {}
 	}
