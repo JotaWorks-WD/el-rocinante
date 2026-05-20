@@ -4,7 +4,7 @@ Theme URI: https://jota.works
 Author: JotaWorks
 Author URI: https://jota.works
 Description: A lean, professional WordPress base theme by JotaWorks. Built for service businesses, tourism, and property management — with a custom SEO layer, schema markup, and no page builder bloat.
-Version: 2.10.4
+Version: 2.10.5
 License: Private
 License URI: https://jota.works
 Text Domain: rocinante
@@ -40,4 +40,8 @@ v2.10.3
 
 v2.10.4
 - Bulk move Undo now decrements the destination folder count once per successfully undone attachment (resp.data.moved), mirroring the forward path's rociIncrementSidebarCount loop. Resolves count compounding on repeated move + undo cycles.
+
+v2.10.5
+- Undo handler increments origin folder counts (including Unassigned virtual) after the destination decrement, completing full mirror symmetry with the forward bulk move path.
+- Enqueue cache-bust audit: all fauxlders enqueues confirmed using roci_asset_version() (filemtime-based) — no changes needed.
 */
