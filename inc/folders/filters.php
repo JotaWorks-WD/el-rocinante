@@ -12,7 +12,7 @@
  *     folder filter into the AttachmentsBrowser toolbar (after the type + date filters)
  *
  * File:    inc/folders/filters.php
- * Version: 2.5.2
+ * Version: 2.5.3
  * Updated: 2026-05-20
  *
  * @package ElRocinante
@@ -234,6 +234,14 @@ add_action( 'admin_init', 'roci_translate_folder_query_var', 1 );
  * @return array
  */
 function roci_media_folder_modal_ajax_filter( $query ) {
+
+	// WP 6.7 hardened wp_ajax_query_attachments() to strip $_REQUEST['query']
+	// down to a hardcoded allow-list before this filter fires. roci_no_folder
+	// isn't a registered taxonomy query_var, so it gets stripped. Re-inject
+	// from $_REQUEST here so the Unassigned branch below can fire.
+	if ( ! empty( $_REQUEST['query']['roci_no_folder'] ) ) {
+		$query['roci_no_folder'] = 1;
+	}
 
 	// Unassigned filter (sidebar "Unassigned Files" in grid view):
 	// show attachments with no roci_media_folder term assigned.

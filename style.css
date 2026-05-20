@@ -4,7 +4,7 @@ Theme URI: https://jota.works
 Author: JotaWorks
 Author URI: https://jota.works
 Description: A lean, professional WordPress base theme by JotaWorks. Built for service businesses, tourism, and property management — with a custom SEO layer, schema markup, and no page builder bloat.
-Version: 2.10.7
+Version: 2.10.8
 License: Private
 License URI: https://jota.works
 Text Domain: rocinante
@@ -52,4 +52,7 @@ v2.10.6
 
 v2.10.7
 - Filter-switch stale-view fix: roci:sidebarFilter handler now calls library._requery(true) after setting props. Confirmed on WP 6.9.4: setting library.props alone updates the filter state but does not trigger the mirroring collection to re-fetch — library.mirroring held stale models from the previous filter context, causing moved photos to remain visible in the wrong view. _requery(true) forces a fresh server fetch.
+
+v2.10.8
+- Unassigned filter server-side fix: WP 6.7's wp_ajax_query_attachments() security hardening strips $_REQUEST['query'] to a hardcoded allow-list (standard WP_Query keys + registered attachment taxonomy query_vars) before ajax_query_attachments_args fires. roci_no_folder is not a taxonomy and has no WP registration, so it was stripped — the NOT EXISTS tax_query branch never fired, returning all attachments unfiltered. No public filter exists on the allow-list itself. Fix: re-inject roci_no_folder from $_REQUEST at the top of roci_media_folder_modal_ajax_filter().
 */
