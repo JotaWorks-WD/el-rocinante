@@ -156,11 +156,15 @@
 		cancelBtn.addEventListener( 'click', exitSelectionMode );
 		actionBar.appendChild( cancelBtn );
 
-		// Inject before .attachments inside .attachments-browser
+		// Inject before .attachments inside .attachments-browser.
+		// Use attachmentsEl.parentNode instead of assuming browser is the direct parent.
+		// WP media library DOM structure varies between WP versions, contexts (modal vs
+		// full page), and plugin/theme wrappers. parentNode is always correct; browser
+		// may not be.
 		var browser       = document.querySelector( '.attachments-browser' );
 		var attachmentsEl = browser && browser.querySelector( '.attachments' );
-		if ( browser && attachmentsEl ) {
-			browser.insertBefore( actionBar, attachmentsEl );
+		if ( attachmentsEl && attachmentsEl.parentNode ) {
+			attachmentsEl.parentNode.insertBefore( actionBar, attachmentsEl );
 		} else if ( browser ) {
 			browser.appendChild( actionBar );
 		} else {

@@ -4,7 +4,7 @@ Theme URI: https://jota.works
 Author: JotaWorks
 Author URI: https://jota.works
 Description: A lean, professional WordPress base theme by JotaWorks. Built for service businesses, tourism, and property management — with a custom SEO layer, schema markup, and no page builder bloat.
-Version: 2.10.1
+Version: 2.10.2
 License: Private
 License URI: https://jota.works
 Text Domain: rocinante
@@ -29,4 +29,7 @@ v2.10.1
 - Real Delete — Delete Permanently button in the action bar now opens a custom confirmation modal and fires roci_bulk_delete_attachments endpoint (wp_delete_attachment with force=true per item, delete_post cap checked per attachment).
 - Phantom-in-Unassigned fix — Backbone 'add' watchdog on the library collection prevents in-flight more() XHR responses from re-adding bulk-moved items after library.remove() calls land.
 - Orphan cleanup — deleted dist/js/folders/bulk-organize-button.js (was not enqueued).
+
+v2.10.2
+- Fix action bar insert: use attachmentsEl.parentNode instead of assuming browser is the direct parent; resolves NotFoundError on Bulk Organize click when WP/plugin wrappers sit between .attachments-browser and .attachments.
 */
