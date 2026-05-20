@@ -4,7 +4,7 @@ Theme URI: https://jota.works
 Author: JotaWorks
 Author URI: https://jota.works
 Description: A lean, professional WordPress base theme by JotaWorks. Built for service businesses, tourism, and property management — with a custom SEO layer, schema markup, and no page builder bloat.
-Version: 2.10.6
+Version: 2.10.7
 License: Private
 License URI: https://jota.works
 Text Domain: rocinante
@@ -49,4 +49,7 @@ v2.10.6
 - Upload-to-grid sync restored: rociAddUploadToLibrary() in wp-media-refresh-shim.js adds the new attachment model directly to the active Backbone library collection after upload, covering all four view/target scenarios (All Files, Unassigned, specific folder, nested folder).
 - Single-photo move intermittency fixed: rociRemoveFromGrid() now calls rociWatchForReAdd() to guard against in-flight more() XHRs re-adding the removed model — mirrors the v2.10.1 bulk-move watchdog.
 - rociWatchForReAdd() extracted to wp-media-refresh-shim.js as a shared global; bulk move inline watchdog replaced with the shared call.
+
+v2.10.7
+- Filter-switch stale-view fix: roci:sidebarFilter handler now calls library._requery(true) after setting props. Confirmed on WP 6.9.4: setting library.props alone updates the filter state but does not trigger the mirroring collection to re-fetch — library.mirroring held stale models from the previous filter context, causing moved photos to remain visible in the wrong view. _requery(true) forces a fresh server fetch.
 */
