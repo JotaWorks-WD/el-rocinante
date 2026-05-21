@@ -18,10 +18,13 @@
  *
  * v2.9.7: mirroring.fetch() removed — was undoing library.remove() calls.
  * v2.10.6: rociWatchForReAdd() + rociAddUploadToLibrary() added.
+ * v2.10.9: rociCancelAllReAddGuards() added — cancels all active guards before
+ *          a deliberate _requery(true) so post-move folder-switch repopulation
+ *          isn't evicted by the 3-second guard window.
  *
  * File:    dist/js/folders/wp-media-refresh-shim.js
- * Version: 2.9.8
- * Updated: 2026-05-20
+ * Version: 2.9.9
+ * Updated: 2026-05-21
  *
  * @package ElRocinante
  */
@@ -33,12 +36,18 @@
 	// No-op since v2.9.7 — see file docblock.
 	function rociForceLibraryRefresh() {}
 
+	// All guards currently live; used by rociCancelAllReAddGuards().
+	var activeReAddGuards = [];
+
 	/**
 	 * Guard a library collection against re-addition of specific attachment IDs
 	 * by in-flight more() XHRs. WP's more() uses {remove:false, add:true}, so a
 	 * stale XHR response can re-add models that library.remove() already removed.
 	 * Listens for 3 s — long enough for any in-flight XHR to resolve — then tears
 	 * down automatically.
+	 *
+	 * Returns a guard object with a cancel() method so callers can disarm it
+	 * early (e.g. before a deliberate _requery that repopulates the collection).
 	 *
 	 * Shared by folders-bulk.js (bulk move) and folders-dragdrop.js (single drag).
 	 *
@@ -51,10 +60,44 @@
 				library.remove( model );
 			}
 		};
+
 		library.on( 'add', onReAdd );
-		setTimeout( function () {
+
+		var cancelled = false;
+
+		var removeGuard = function () {
+			activeReAddGuards = activeReAddGuards.filter( function ( g ) {
+				return g !== guard; // eslint-disable-line no-use-before-define
+			} );
+		};
+
+		var timer = setTimeout( function () {
 			library.off( 'add', onReAdd );
+			removeGuard();
 		}, 3000 );
+
+		var guard = {
+			cancel: function () {
+				if ( cancelled ) { return; }
+				cancelled = true;
+				clearTimeout( timer );
+				library.off( 'add', onReAdd );
+				removeGuard();
+			}
+		};
+
+		activeReAddGuards.push( guard );
+	}
+
+	/**
+	 * Cancel all active rociWatchForReAdd guards immediately.
+	 *
+	 * Call this before any deliberate _requery(true) — when the user switches
+	 * folders or an undo fires a full re-fetch, the guard's job is done and it
+	 * must not evict the newly-added models that the requery legitimately returns.
+	 */
+	function rociCancelAllReAddGuards() {
+		activeReAddGuards.slice().forEach( function ( g ) { g.cancel(); } );
 	}
 
 	/**
@@ -129,8 +172,9 @@
 		return true;
 	}
 
-	window.rociForceLibraryRefresh = rociForceLibraryRefresh;
-	window.rociWatchForReAdd       = rociWatchForReAdd;
+	window.rociForceLibraryRefresh  = rociForceLibraryRefresh;
+	window.rociWatchForReAdd        = rociWatchForReAdd;
+	window.rociCancelAllReAddGuards = rociCancelAllReAddGuards;
 
 	( function () {
 		if ( patchUploaderSuccess() ) {

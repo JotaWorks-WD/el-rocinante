@@ -21,8 +21,8 @@
  * roci_no_folder follows the same propmap bypass: setting it to 1 in the model
  * causes the PHP filter to apply a NOT EXISTS tax_query for unassigned files.
  *
- * Version: 1.7.4
- * Updated: 2026-05-20
+ * Version: 1.7.5
+ * Updated: 2026-05-21
  */
 
 ( function ( media ) {
@@ -212,12 +212,21 @@
 		// via runtime inspection on WP 6.9.4: without this call,
 		// library.mirroring continues holding stale models from the previous
 		// filter view, causing moved photos to appear in the wrong filter.
+		//
+		// Cancel any active rociWatchForReAdd guards first. The guards exist
+		// to stop stale more() XHRs from re-adding removed models, but they
+		// also fire on the add events that _requery(true) itself triggers when
+		// repopulating the collection — causing legitimately-moved photos to be
+		// evicted from the new folder view (v2.10.9 fix).
 		try {
 			var lib = wp.media.frame &&
 			          wp.media.frame.state &&
 			          wp.media.frame.state( 'library' ) &&
 			          wp.media.frame.state( 'library' ).get( 'library' );
 			if ( lib && typeof lib._requery === 'function' ) {
+				if ( typeof window.rociCancelAllReAddGuards === 'function' ) {
+					window.rociCancelAllReAddGuards();
+				}
 				lib._requery( true );
 			}
 		} catch ( err ) {}

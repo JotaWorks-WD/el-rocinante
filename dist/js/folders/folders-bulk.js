@@ -21,8 +21,8 @@
  * Consolidation into a shared module is deferred to the audit phase (flagged).
  *
  * File:    dist/js/folders/folders-bulk.js
- * Version: 1.4.1
- * Updated: 2026-05-20
+ * Version: 1.4.2
+ * Updated: 2026-05-21
  *
  * @package ElRocinante
  */
@@ -453,6 +453,9 @@
 			var state   = wp.media.frame.state();
 			var library = state && state.get( 'library' );
 			if ( library && typeof library._requery === 'function' ) {
+				if ( typeof window.rociCancelAllReAddGuards === 'function' ) {
+					window.rociCancelAllReAddGuards();
+				}
 				library._requery( true );
 			}
 		} catch ( e ) {}
@@ -535,8 +538,18 @@
 					bulkLibrary = guardState && guardState.get( 'library' );
 				} catch ( _e ) {}
 			}
+			// Guard only in filtered views — updateAndRemoveFromGrid returns
+			// early in All Files, so there are no removed models to protect.
+			// Installing the guard in All Files view makes it fire against
+			// _requery(true) repopulation when the user clicks the destination
+			// folder, evicting photos that should now be visible there.
 			if ( bulkLibrary && typeof window.rociWatchForReAdd === 'function' ) {
-				window.rociWatchForReAdd( bulkLibrary, guardSet );
+				var bulkProps        = bulkLibrary.props;
+				var bulkCurrFolder   = bulkProps && bulkProps.get( 'roci_media_folder' );
+				var bulkIsUnassigned = bulkProps && !! bulkProps.get( 'roci_no_folder' );
+				if ( bulkCurrFolder || bulkIsUnassigned ) {
+					window.rociWatchForReAdd( bulkLibrary, guardSet );
+				}
 			}
 
 			movedIds.forEach( function ( id ) {
