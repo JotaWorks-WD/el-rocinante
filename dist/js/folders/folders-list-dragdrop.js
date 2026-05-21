@@ -1,24 +1,36 @@
-/* global rociPageDragDrop */
+/* global rociDragDrop */
 
 /**
- * Folders Page Drag-and-Drop — page-to-folder assignment
+ * Folders List-Table Drag-and-Drop — unified config-driven post-to-folder assignment
  *
- * Listens for dragstart on .roci-page-drag-handle elements in the pages
- * list table and registers the sidebar folder rows as drop targets.
- * On drop, fires an AJAX call to roci_move_page_to_folder and shows a
- * toast notification with an Undo button.
+ * A single file serves all registered folder-enabled post types (Pages,
+ * Posts, any child-theme CPTs). Per-post-type behaviour is driven entirely
+ * by the rociDragDrop config object localised from PHP; no post-type strings
+ * are hardcoded here.
  *
- * Drag type: 'text/x-roci-page' — distinct from the media drag type
- * ('text/plain' JSON) and the folder reorder type ('text/plain' JSON)
- * so dragover handlers can safely differentiate page drags without
- * processing unrelated drags on the same sidebar.
+ * Config shape (provided via wp_localize_script / rociDragDrop):
+ *   postType      — WP post_type slug, e.g. 'page', 'post', 'tour'
+ *   handleClass   — CSS class on the drag handle cell, e.g. 'roci-page-drag-handle'
+ *   datasetAttr   — dataset key for the post ID, e.g. 'pageId', 'postId'
+ *   dragType      — MIME type for the drag payload, e.g. 'text/x-roci-page'
+ *   filterKey     — URL param for the folder filter, e.g. 'roci_page_folder'
+ *   columnClass   — CSS class for the taxonomy column cell
+ *   bodyDragClass — CSS class added to <body> during a drag
+ *   ajaxUrl, nonce, i18n — same as the former per-post-type files
  *
- * Works alongside folders-reorder.js (organize-mode folder reorder)
- * without conflict: reorder uses text/plain and gates on organize-mode;
- * this script uses text/x-roci-page and ignores non-page drags.
+ * Drag type is kept distinct per post type ('text/x-roci-page',
+ * 'text/x-roci-post', etc.) so drop handlers can discriminate during
+ * dragover/dragenter without reading the payload (blocked until drop).
  *
- * File:    dist/js/folders/folders-page-dragdrop.js
- * Version: 1.3.0
+ * Note: dist/js/folders/folders-dragdrop.js handles the Media Library grid
+ * view (upload.php, Backbone). This file is for edit.php list tables only.
+ *
+ * Works alongside folders-reorder.js without conflict: reorder uses
+ * text/plain and gates on organize-mode; this script uses its own MIME
+ * type and ignores other drags.
+ *
+ * File:    dist/js/folders/folders-list-dragdrop.js
+ * Version: 1.0.0
  * Updated: 2026-05-21
  *
  * @package ElRocinante
@@ -28,14 +40,21 @@
 
 	'use strict';
 
-	// ── Guard: only run on edit.php?post_type=page ─────────────────────────
-	if ( window.location.href.indexOf( 'edit.php' ) === -1 ||
-	     window.location.href.indexOf( 'post_type=page' ) === -1 ) {
+	// ── Guard: require localised config ───────────────────────────────────
+	if ( typeof rociDragDrop === 'undefined' ) {
 		return;
 	}
+	var config = rociDragDrop;
 
-	// ── Guard: require localised data ──────────────────────────────────────
-	if ( typeof rociPageDragDrop === 'undefined' ) {
+	// ── Guard: only run on the correct edit.php screen ────────────────────
+	// For 'post' (the WP default post type), accept both explicit
+	// ?post_type=post and the absence of the parameter.
+	if ( window.location.href.indexOf( 'edit.php' ) === -1 ) {
+		return;
+	}
+	var urlParams   = new URLSearchParams( window.location.search );
+	var urlPostType = urlParams.get( 'post_type' ) || 'post';
+	if ( urlPostType !== config.postType ) {
 		return;
 	}
 
@@ -44,46 +63,45 @@
 	// STATE
 	// ======================================================================
 
-	var draggedPageId    = '';
-	var draggedPageTitle = '';
+	var draggedItemId    = '';
+	var draggedItemTitle = '';
 
 
 	// ======================================================================
-	// DRAG SOURCE — .roci-page-drag-handle
+	// DRAG SOURCE
 	// ======================================================================
 
 	document.addEventListener( 'dragstart', function ( e ) {
-		var handle = e.target.closest( '.roci-page-drag-handle' );
+		var handle = e.target.closest( '.' + config.handleClass );
 		if ( ! handle ) {
 			return;
 		}
 
-		draggedPageId = handle.dataset.pageId || '';
-		if ( ! draggedPageId ) {
+		draggedItemId = handle.dataset[ config.datasetAttr ] || '';
+		if ( ! draggedItemId ) {
 			return;
 		}
 
-		// Read the page title from the list table row for use in the toast.
 		var row = handle.closest( 'tr' );
-		draggedPageTitle = '';
+		draggedItemTitle = '';
 		if ( row ) {
 			var titleEl = row.querySelector( '.column-title a.row-title' );
 			if ( titleEl ) {
-				draggedPageTitle = titleEl.textContent.trim();
+				draggedItemTitle = titleEl.textContent.trim();
 			}
 		}
 
 		e.dataTransfer.effectAllowed = 'move';
-		e.dataTransfer.setData( 'text/x-roci-page', draggedPageId );
+		e.dataTransfer.setData( config.dragType, draggedItemId );
 
-		document.body.classList.add( 'roci-dragging-page' );
+		document.body.classList.add( config.bodyDragClass );
 	}, false );
 
 	document.addEventListener( 'dragend', function ( e ) {
-		if ( ! e.target.closest( '.roci-page-drag-handle' ) ) {
+		if ( ! e.target.closest( '.' + config.handleClass ) ) {
 			return;
 		}
-		document.body.classList.remove( 'roci-dragging-page' );
+		document.body.classList.remove( config.bodyDragClass );
 		// Defensive: clear any orphaned drop-target highlights.
 		document.querySelectorAll( '.roci-folder-item.is-drop-target' ).forEach( function ( el ) {
 			el.classList.remove( 'is-drop-target' );
@@ -95,12 +113,12 @@
 	// HELPERS
 	// ======================================================================
 
-	// Check whether the current drag event carries a page payload.
+	// Check whether the current drag event carries this post type's payload.
 	// types is readable on dragenter/dragover/dragleave — not getData.
-	function isPageDrag( e ) {
+	function isCorrectDrag( e ) {
 		var types = e.dataTransfer.types;
 		for ( var i = 0; i < types.length; i++ ) {
-			if ( types[ i ] === 'text/x-roci-page' ) {
+			if ( types[ i ] === config.dragType ) {
 				return true;
 			}
 		}
@@ -110,8 +128,8 @@
 	// Extract just the folder name from a .roci-folder-link node,
 	// stripping the (count) span that trails the text.
 	function folderNameFromLink( linkEl ) {
-		var clone    = linkEl.cloneNode( true );
-		var countEl  = clone.querySelector( '.roci-folder-count' );
+		var clone   = linkEl.cloneNode( true );
+		var countEl = clone.querySelector( '.roci-folder-count' );
 		if ( countEl ) {
 			countEl.parentNode.removeChild( countEl );
 		}
@@ -124,11 +142,11 @@
 	// ======================================================================
 
 	// Return the current folder filter context from the URL.
-	// Unassigned uses ?roci_no_folder=1 (not roci_page_folder=unassigned).
+	// Unassigned uses ?roci_no_folder=1 (not a taxonomy param).
 	function getFilterContext() {
 		var params = new URLSearchParams( window.location.search );
 		return {
-			folderTermId: parseInt( params.get( 'roci_page_folder' ), 10 ) || 0,
+			folderTermId: parseInt( params.get( config.filterKey ), 10 ) || 0,
 			isUnassigned: params.get( 'roci_no_folder' ) === '1'
 		};
 	}
@@ -148,32 +166,32 @@
 	}
 
 	// Apply the correct table update based on the current filter view.
-	// Stashes the pre-mutation DOM state into a moveContext object and
-	// returns it so Undo can reverse the change via restoreTableUpdate().
+	// Stashes the pre-mutation DOM state and returns it so Undo can reverse
+	// the change via restoreTableUpdate().
 	//
-	//   Case A (folder filter) : remove row if page left this folder.
-	//   Case B (unassigned)    : remove row if page is now assigned.
-	//   Case C (all pages)     : update the folder cell in place (no removal).
-	function applyTableUpdate( pageId, newFolderTermId, newFolderName ) {
+	//   Case A (folder filter) : remove row if item left this folder.
+	//   Case B (unassigned)    : remove row if item is now assigned.
+	//   Case C (all items)     : update the folder cell in place (no removal).
+	function applyTableUpdate( itemId, newFolderTermId, newFolderName ) {
 		var ctx         = getFilterContext();
 		var moveContext = {
-			case:                 'noChange',
-			row:                  null,
-			nextSibling:          null,
-			parent:               null,
-			folderCell:           null,
+			case:                  'noChange',
+			row:                   null,
+			nextSibling:           null,
+			parent:                null,
+			folderCell:            null,
 			folderCellOriginalHTML: null
 		};
 		var row, cell;
 
 		if ( ctx.folderTermId ) {
-			// Case A — specific folder view: remove if page left this folder.
+			// Case A — specific folder view: remove if item left this folder.
 			if ( newFolderTermId !== ctx.folderTermId ) {
-				row = document.getElementById( 'post-' + pageId );
+				row = document.getElementById( 'post-' + itemId );
 				if ( row && row.parentNode ) {
 					moveContext.case        = 'removed';
 					moveContext.row         = row;
-					moveContext.nextSibling = row.nextElementSibling; // null if last row → insertBefore appends
+					moveContext.nextSibling = row.nextElementSibling;
 					moveContext.parent      = row.parentNode;
 					row.parentNode.removeChild( row );
 					adjustItemCount( -1 );
@@ -181,9 +199,9 @@
 			}
 
 		} else if ( ctx.isUnassigned ) {
-			// Case B — Unassigned Pages view: remove if page is now assigned.
+			// Case B — Unassigned view: remove if item is now assigned.
 			if ( newFolderTermId ) {
-				row = document.getElementById( 'post-' + pageId );
+				row = document.getElementById( 'post-' + itemId );
 				if ( row && row.parentNode ) {
 					moveContext.case        = 'removed';
 					moveContext.row         = row;
@@ -195,14 +213,14 @@
 			}
 
 		} else {
-			// Case C — All Pages view: update the taxonomy cell in place.
-			row = document.getElementById( 'post-' + pageId );
+			// Case C — All items view: update the taxonomy cell in place.
+			row = document.getElementById( 'post-' + itemId );
 			if ( row ) {
-				cell = row.querySelector( '.column-taxonomy-roci_page_folder' );
+				cell = row.querySelector( '.' + config.columnClass );
 				if ( cell ) {
-					moveContext.case                 = 'cellUpdated';
-					moveContext.folderCell           = cell;
-					moveContext.folderCellOriginalHTML = cell.innerHTML; // stash before mutation
+					moveContext.case                  = 'cellUpdated';
+					moveContext.folderCell            = cell;
+					moveContext.folderCellOriginalHTML = cell.innerHTML;
 					cell.textContent = newFolderTermId ? ( newFolderName || '' ) : '—'; // — for unassigned
 				}
 			}
@@ -246,14 +264,14 @@
 	function bindSidebarDropTargets( sidebar ) {
 
 		function onDragOver( e ) {
-			if ( ! isPageDrag( e ) ) {
+			if ( ! isCorrectDrag( e ) ) {
 				return;
 			}
 			var target = e.target.closest( '.roci-folder-item' );
 			if ( ! target ) {
 				return;
 			}
-			// __all__ (All Pages) is view-only — not a valid drop target.
+			// __all__ (All Pages/Posts/etc.) is view-only — not a valid drop target.
 			if ( target.dataset.term === '__all__' ) {
 				return;
 			}
@@ -277,7 +295,7 @@
 		} );
 
 		sidebar.addEventListener( 'drop', function ( e ) {
-			if ( ! isPageDrag( e ) ) {
+			if ( ! isCorrectDrag( e ) ) {
 				return;
 			}
 			e.preventDefault();
@@ -293,8 +311,8 @@
 				return;
 			}
 
-			var pageId = e.dataTransfer.getData( 'text/x-roci-page' );
-			if ( ! pageId ) {
+			var itemId = e.dataTransfer.getData( config.dragType );
+			if ( ! itemId ) {
 				return;
 			}
 
@@ -307,7 +325,7 @@
 				}
 			}
 
-			performMove( pageId, targetTerm, draggedPageTitle, folderName, false );
+			performMove( itemId, targetTerm, draggedItemTitle, folderName, false );
 		} );
 	}
 
@@ -341,16 +359,16 @@
 	// AJAX MOVE
 	// ======================================================================
 
-	function performMove( pageId, targetTerm, pageTitle, folderName, isUndo, undoMoveContext ) {
+	function performMove( itemId, targetTerm, itemTitle, folderName, isUndo, undoMoveContext ) {
 
 		var fd = new FormData();
 		fd.append( 'action',      'roci_move_item_to_folder' );
-		fd.append( 'nonce',       rociPageDragDrop.nonce );
-		fd.append( 'post_id',     String( pageId ) );
+		fd.append( 'nonce',       config.nonce );
+		fd.append( 'post_id',     String( itemId ) );
 		fd.append( 'target_term', String( targetTerm ) );
 
 		var xhr = new XMLHttpRequest();
-		xhr.open( 'POST', rociPageDragDrop.ajaxUrl );
+		xhr.open( 'POST', config.ajaxUrl );
 
 		xhr.onload = function () {
 			if ( xhr.status >= 200 && xhr.status < 300 ) {
@@ -365,11 +383,11 @@
 						return;
 					}
 
-					var previousTerms   = ( resp.data && resp.data.previous_terms ) ? resp.data.previous_terms : [];
-					var resolvedTitle   = ( resp.data && resp.data.post_title )     ? resp.data.post_title     : pageTitle;
-					var resolvedFolder  = ( resp.data && resp.data.target_folder_name && resp.data.target_folder_name !== '' )
-					                        ? resp.data.target_folder_name
-					                        : folderName;
+					var previousTerms  = ( resp.data && resp.data.previous_terms ) ? resp.data.previous_terms : [];
+					var resolvedTitle  = ( resp.data && resp.data.post_title )     ? resp.data.post_title     : itemTitle;
+					var resolvedFolder = ( resp.data && resp.data.target_folder_name && resp.data.target_folder_name !== '' )
+					                       ? resp.data.target_folder_name
+					                       : folderName;
 
 					// Update sidebar count badges.
 					if ( typeof window.rociDecrementSidebarCount === 'function' ) {
@@ -394,28 +412,21 @@
 
 					if ( isUndo ) {
 						// Restore the DOM change recorded during the forward move.
-						// undoMoveContext holds references to the row/cell that were
-						// mutated; restoreTableUpdate reverses that mutation in place.
-						// If the user navigated between the move and the Undo click,
-						// restoreTableUpdate's document.contains() guard skips the
-						// DOM step gracefully — AJAX already corrected server state.
+						// restoreTableUpdate's document.contains() guard handles
+						// the case where the user navigated between move and Undo.
 						restoreTableUpdate( undoMoveContext );
-						rociShowToast( { message: rociPageDragDrop.i18n.undone, duration: 3000 } );
+						rociShowToast( { message: config.i18n.undone, duration: 3000 } );
 						return;
 					}
 
 					// Forward move — apply DOM change and stash context for Undo.
-					// When a new toast replaces this one, its undoCallback closure
-					// (which holds moveContext) becomes unreachable once the old
-					// toast button is removed from the DOM. No explicit context
-					// clearing is needed; the replacement is the natural reset.
-					var moveContext = applyTableUpdate( pageId, newFolderTermId, newFolderName );
+					var moveContext = applyTableUpdate( itemId, newFolderTermId, newFolderName );
 
 					var msg;
 					if ( targetTerm === '__unassigned__' ) {
-						msg = rociPageDragDrop.i18n.movedUnassigned.replace( '%s', resolvedTitle );
+						msg = config.i18n.movedUnassigned.replace( '%s', resolvedTitle );
 					} else {
-						msg = rociPageDragDrop.i18n.moved
+						msg = config.i18n.moved
 							.replace( '%s', resolvedTitle )
 							.replace( '%s', resolvedFolder );
 					}
@@ -426,7 +437,7 @@
 							var undoTerm = ( previousTerms.length > 0 )
 								? String( previousTerms[ 0 ] )
 								: '__unassigned__';
-							performMove( pageId, undoTerm, resolvedTitle, '', true, moveContext );
+							performMove( itemId, undoTerm, resolvedTitle, '', true, moveContext );
 						}
 					} );
 
@@ -434,16 +445,16 @@
 				}
 
 				// Server returned success:false — log the error detail.
-				var detail = ( resp && resp.data ) ? resp.data : rociPageDragDrop.i18n.error;
-				console.error( '[roci-page-dragdrop] Move failed:', detail );
+				var detail = ( resp && resp.data ) ? resp.data : config.i18n.error;
+				console.error( '[roci-list-dragdrop] Move failed:', detail );
 
 			} else {
-				console.error( '[roci-page-dragdrop] Move failed: HTTP', xhr.status );
+				console.error( '[roci-list-dragdrop] Move failed: HTTP', xhr.status );
 			}
 		};
 
 		xhr.onerror = function () {
-			console.error( '[roci-page-dragdrop] Move failed: network error' );
+			console.error( '[roci-list-dragdrop] Move failed: network error' );
 		};
 
 		xhr.send( fd );
@@ -480,9 +491,9 @@
 
 		if ( opts.undoCallback ) {
 			var undoBtn = document.createElement( 'button' );
-			undoBtn.type      = 'button';
-			undoBtn.className = 'roci-toast__undo';
-			undoBtn.textContent = rociPageDragDrop.i18n.undo;
+			undoBtn.type        = 'button';
+			undoBtn.className   = 'roci-toast__undo';
+			undoBtn.textContent = config.i18n.undo;
 			undoBtn.addEventListener( 'click', function () {
 				dismiss();
 				opts.undoCallback();

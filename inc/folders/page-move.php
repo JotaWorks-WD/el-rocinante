@@ -5,19 +5,19 @@
  * Unified AJAX endpoint for reassigning any registered folder-enabled post
  * to a different taxonomy term (or to unassigned). Provides the generic
  * drag-handle column filter and render callbacks that roci_register_folder_type()
- * hooks onto each registered post type. Enqueues the per-post-type drag JS.
+ * hooks onto each registered post type. Enqueues the shared list-table drag JS.
  *
  *   roci_ajax_move_item_to_folder()   — wp_ajax_roci_move_item_to_folder
  *   roci_folder_drag_column_filter()  — manage_{post_type}_posts_columns
  *   roci_folder_drag_column_render()  — manage_{post_type}_posts_custom_column
- *   roci_enqueue_dragdrop_assets()    — enqueues dist/js/folders/folders-{type}-dragdrop.js
+ *   roci_enqueue_dragdrop_assets()    — enqueues dist/js/folders/folders-list-dragdrop.js
  *
  * Per-post-type hooks (column filter/action) are NOT registered here;
  * they are wired by roci_register_folder_type() in folders.php so that
  * any post type added to the registry automatically receives them.
  *
  * File:    inc/folders/page-move.php
- * Version: 2.0.0
+ * Version: 2.1.0
  * Updated: 2026-05-21
  *
  * @package ElRocinante
@@ -192,14 +192,23 @@ function roci_folder_drag_column_render( $column_name, $post_id ) {
 // ============================================================
 
 /**
- * Enqueue the per-post-type drag JS on the matching list screen.
+ * Enqueue the unified list-table drag JS on the matching screen.
  *
- * Resolves the current post type from the screen ID via the registry,
- * then enqueues dist/js/folders/folders-{post_type}-dragdrop.js with
- * localized roci{PostType}DragDrop data.
+ * Enqueues dist/js/folders/folders-list-dragdrop.js once per registered
+ * post type under a unique handle (roci-dragdrop-{post_type}), passing
+ * per-post-type config via the rociDragDrop global. WordPress loads the
+ * same file URL once from cache; each handle carries its own inline config.
  *
- * JS file naming convention:  folders-page-dragdrop.js, folders-post-dragdrop.js
- * JS global naming convention: rociPageDragDrop, rociPostDragDrop
+ * Config values derived from the post_type slug:
+ *   handleClass   — 'roci-{slug_hyphen}-drag-handle'
+ *   datasetAttr   — camelCase slug + 'Id' (e.g. 'pageId', 'postId', 'tourId')
+ *   dragType      — 'text/x-roci-{slug_hyphen}'
+ *   filterKey     — 'roci_{slug_underscore}_folder'
+ *   columnClass   — 'column-taxonomy-roci_{slug_underscore}_folder'
+ *   bodyDragClass — 'roci-dragging-{slug_hyphen}'
+ *
+ * Note: dist/js/folders/folders-dragdrop.js handles the Media grid view
+ * (upload.php, Backbone). This function is scoped to edit.php list tables.
  *
  * @param string $hook_suffix  Current admin page hook suffix (unused).
  */
@@ -222,14 +231,16 @@ function roci_enqueue_dragdrop_assets( $hook_suffix ) {
 		return;
 	}
 
-	$js_file   = 'dist/js/folders/folders-' . $current_post_type . '-dragdrop.js';
-	$js_global = 'roci' . implode( '', array_map( 'ucfirst', explode( '-', str_replace( '_', '-', $current_post_type ) ) ) ) . 'DragDrop';
+	$js_file = 'dist/js/folders/folders-list-dragdrop.js';
 
-	// Skip if no JS file exists for this post type yet (e.g. a CPT added
-	// to the registry before its JS file ships).
 	if ( ! file_exists( get_template_directory() . '/' . $js_file ) ) {
 		return;
 	}
+
+	// Derive per-post-type config from the slug.
+	$slug_hyphen  = str_replace( '_', '-', $current_post_type );
+	$parts        = explode( '-', $slug_hyphen );
+	$dataset_attr = $parts[0] . implode( '', array_map( 'ucfirst', array_slice( $parts, 1 ) ) ) . 'Id';
 
 	wp_enqueue_script(
 		'roci-dragdrop-' . $current_post_type,
@@ -239,15 +250,22 @@ function roci_enqueue_dragdrop_assets( $hook_suffix ) {
 		true
 	);
 
-	wp_localize_script( 'roci-dragdrop-' . $current_post_type, $js_global, array(
-		'ajaxUrl' => admin_url( 'admin-ajax.php' ),
-		'nonce'   => wp_create_nonce( 'roci_move_item_to_folder' ),
-		'i18n'    => array(
-			'moved'           => __( 'Moved "%s" to %s',              'rocinante' ),
-			'movedUnassigned' => __( 'Removed "%s" from folder',      'rocinante' ),
-			'undo'            => __( 'Undo',                          'rocinante' ),
-			'undone'          => __( 'Undone.',                       'rocinante' ),
-			'error'           => __( 'Move failed. Please try again.','rocinante' ),
+	wp_localize_script( 'roci-dragdrop-' . $current_post_type, 'rociDragDrop', array(
+		'ajaxUrl'       => admin_url( 'admin-ajax.php' ),
+		'nonce'         => wp_create_nonce( 'roci_move_item_to_folder' ),
+		'postType'      => $current_post_type,
+		'handleClass'   => 'roci-' . $slug_hyphen . '-drag-handle',
+		'datasetAttr'   => $dataset_attr,
+		'dragType'      => 'text/x-roci-' . $slug_hyphen,
+		'filterKey'     => 'roci_' . $current_post_type . '_folder',
+		'columnClass'   => 'column-taxonomy-roci_' . $current_post_type . '_folder',
+		'bodyDragClass' => 'roci-dragging-' . $slug_hyphen,
+		'i18n'          => array(
+			'moved'           => __( 'Moved "%s" to %s',               'rocinante' ),
+			'movedUnassigned' => __( 'Removed "%s" from folder',       'rocinante' ),
+			'undo'            => __( 'Undo',                           'rocinante' ),
+			'undone'          => __( 'Undone.',                        'rocinante' ),
+			'error'           => __( 'Move failed. Please try again.', 'rocinante' ),
 		),
 	) );
 }
