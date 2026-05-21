@@ -59,7 +59,7 @@ function roci_build_folder_options_for_select( $taxonomy ) {
 
 	$options = array();
 
-	$walk = function( $parent_id, $depth ) use ( &$walk, &$options, &$children ) {
+	$walk = function( $parent_id, $depth ) use ( &$walk, &$options, &$children, $taxonomy ) {
 		if ( empty( $children[ $parent_id ] ) ) {
 			return;
 		}

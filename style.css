@@ -4,7 +4,7 @@ Theme URI: https://jota.works
 Author: JotaWorks
 Author URI: https://jota.works
 Description: A lean, professional WordPress base theme by JotaWorks. Built for service businesses, tourism, and property management — with a custom SEO layer, schema markup, and no page builder bloat.
-Version: 2.11.2
+Version: 2.11.3
 License: Private
 License URI: https://jota.works
 Text Domain: rocinante
@@ -13,6 +13,9 @@ GitHub Branch: main
 */
 
 /*
+v2.11.3
+- Fix: add $taxonomy to closure use clause in roci_build_folder_options_for_select(); debug.log no longer floods with "Undefined variable $taxonomy" warnings during admin browsing.
+
 v2.11.2
 - Path C-lite: generic CPT folder API. roci_register_folder_type($post_type, $taxonomy_slug) exposes the full folder system to any post type. Pages and Posts ship as built-in registrations. Child themes opt CPTs in with one line.
 - Posts list table: sidebar with folders, drag handle column, filter dropdown, organize toggle, drag-to-folder with toast/undo — mirrors Pages feature set.
