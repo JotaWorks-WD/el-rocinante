@@ -145,7 +145,7 @@ function roci_register_folder_type( $post_type, $taxonomy_slug, $taxonomy_args =
 
 	$_roci_folder_registry[ $post_type ] = $taxonomy_slug;
 
-	// Per-post-type drag-handle column hooks (callbacks defined in page-move.php,
+	// Per-post-type drag-handle column hooks (callbacks defined in move.php,
 	// which is require_once'd before this function is first called).
 	add_filter( 'manage_' . $post_type . '_posts_columns',       'roci_folder_drag_column_filter' );
 	add_action( 'manage_' . $post_type . '_posts_custom_column', 'roci_folder_drag_column_render', 10, 2 );
@@ -203,7 +203,6 @@ require_once get_template_directory() . '/inc/folders/create.php';
 require_once get_template_directory() . '/inc/folders/upload.php';
 require_once get_template_directory() . '/inc/folders/move.php';
 require_once get_template_directory() . '/inc/folders/order.php';
-require_once get_template_directory() . '/inc/folders/page-move.php';
 require_once get_template_directory() . '/inc/folders/sidebar.php';
 
 
