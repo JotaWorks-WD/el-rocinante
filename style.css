@@ -13,7 +13,7 @@ GitHub Branch: main
 */
 
 /*
-v2.11.0
+v2.11.1
 - Path C-lite: generic CPT folder API. roci_register_folder_type($post_type, $taxonomy_slug) exposes the full folder system to any post type. Pages and Posts ship as built-in registrations. Child themes opt CPTs in with one line.
 - Posts list table: sidebar with folders, drag handle column, filter dropdown, organize toggle, drag-to-folder with toast/undo — mirrors Pages feature set.
 - Unified AJAX handler roci_move_item_to_folder replaces the page-specific endpoint; folders-page-dragdrop.js updated accordingly.
