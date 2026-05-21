@@ -19,8 +19,8 @@
  *   a scoped $wpdb->get_var() query and adjust the caching accordingly.
  *
  * File:    inc/folders/counts.php
- * Version: 1.2.0
- * Updated: 2026-05-14
+ * Version: 1.3.0
+ * Updated: 2026-05-21
  *
  * @package ElRocinante
  */
@@ -69,9 +69,9 @@ function roci_get_folder_count( $term, $taxonomy ) {
  *
  * Status scope matches term_taxonomy.count:
  *   roci_media_folder → 'inherit'   (all non-trashed attachments)
- *   roci_page_folder  → 'publish'   (published pages only)
+ *   any CPT taxonomy  → 'publish'   (published posts only)
  *
- * @param string $taxonomy  'roci_media_folder' or 'roci_page_folder'.
+ * @param string $taxonomy  Folder taxonomy slug.
  * @return int
  */
 function roci_get_unassigned_count( $taxonomy ) {
@@ -82,8 +82,17 @@ function roci_get_unassigned_count( $taxonomy ) {
 		return $cache[ $taxonomy ];
 	}
 
-	$post_type = ( 'roci_media_folder' === $taxonomy ) ? 'attachment' : 'page';
-	$status    = ( 'attachment' === $post_type ) ? 'inherit' : 'publish';
+	if ( 'roci_media_folder' === $taxonomy ) {
+		$post_type = 'attachment';
+		$status    = 'inherit';
+	} else {
+		$post_type = roci_get_post_type_for_folder_taxonomy( $taxonomy );
+		if ( ! $post_type ) {
+			$cache[ $taxonomy ] = 0;
+			return 0;
+		}
+		$status = 'publish';
+	}
 
 	$q = new WP_Query( array(
 		'post_type'              => $post_type,
@@ -119,7 +128,7 @@ function roci_get_unassigned_count( $taxonomy ) {
  * it keys by MIME type, not status, making ->inherit undefined.
  * Both calls are internally cached by WordPress.
  *
- * @param string $taxonomy  'roci_media_folder' or 'roci_page_folder'.
+ * @param string $taxonomy  Folder taxonomy slug.
  * @return int
  */
 function roci_get_all_count( $taxonomy ) {
@@ -129,7 +138,12 @@ function roci_get_all_count( $taxonomy ) {
 		return isset( $counts->inherit ) ? (int) $counts->inherit : 0;
 	}
 
-	$counts = wp_count_posts( 'page' );
+	$post_type = roci_get_post_type_for_folder_taxonomy( $taxonomy );
+	if ( ! $post_type ) {
+		return 0;
+	}
+
+	$counts = wp_count_posts( $post_type );
 	return isset( $counts->publish ) ? (int) $counts->publish : 0;
 }
 
@@ -154,7 +168,12 @@ function roci_maybe_recount_folder_terms() {
 		return;
 	}
 
-	foreach ( array( 'roci_media_folder', 'roci_page_folder' ) as $taxonomy ) {
+	$all_taxonomies = array_merge(
+		array( 'roci_media_folder' ),
+		array_values( roci_get_folder_registry() )
+	);
+
+	foreach ( $all_taxonomies as $taxonomy ) {
 		$tt_ids = get_terms( array(
 			'taxonomy'   => $taxonomy,
 			'hide_empty' => false,

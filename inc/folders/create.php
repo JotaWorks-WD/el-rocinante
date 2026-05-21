@@ -13,8 +13,8 @@
  *   roci_enqueue_admin_folders_js()        — enqueues dist/js/folders/admin-folders.js
  *
  * File:    inc/folders/create.php
- * Version: 1.8.0
- * Updated: 2026-05-16
+ * Version: 1.9.0
+ * Updated: 2026-05-21
  *
  * @package ElRocinante
  */
@@ -108,10 +108,17 @@ function roci_render_new_folder_modal() {
 
 	if ( 'upload' === $screen->base ) {
 		$taxonomy = 'roci_media_folder';
-	} elseif ( 'edit-page' === $screen->id ) {
-		$taxonomy = 'roci_page_folder';
 	} else {
-		return;
+		$taxonomy = null;
+		foreach ( roci_get_folder_registry() as $post_type => $tax ) {
+			if ( 'edit-' . $post_type === $screen->id ) {
+				$taxonomy = $tax;
+				break;
+			}
+		}
+		if ( ! $taxonomy ) {
+			return;
+		}
 	}
 
 	$done = true;
@@ -218,7 +225,10 @@ function roci_ajax_create_folder() {
 		wp_send_json_error( __( 'You do not have permission to create fauxlders.', 'rocinante' ), 403 );
 	}
 
-	$allowed  = array( 'roci_media_folder', 'roci_page_folder' );
+	$allowed  = array_merge(
+		array( 'roci_media_folder' ),
+		array_values( roci_get_folder_registry() )
+	);
 	$taxonomy = isset( $_POST['taxonomy'] ) ? sanitize_key( $_POST['taxonomy'] ) : '';
 	if ( ! in_array( $taxonomy, $allowed, true ) ) {
 		wp_send_json_error( __( 'Invalid taxonomy.', 'rocinante' ), 400 );
@@ -247,7 +257,14 @@ function roci_ajax_create_folder() {
 	// in the refreshed tree match what PHP would produce on a full page load.
 	$tree_base_url = isset( $_POST['tree_base_url'] ) ? esc_url_raw( wp_unslash( $_POST['tree_base_url'] ) ) : '';
 	if ( ! $tree_base_url || strpos( $tree_base_url, admin_url() ) !== 0 ) {
-		$tree_base_url = admin_url( 'roci_media_folder' === $taxonomy ? 'upload.php' : 'edit.php?post_type=page' );
+		if ( 'roci_media_folder' === $taxonomy ) {
+			$tree_base_url = admin_url( 'upload.php' );
+		} else {
+			$cpt_pt = roci_get_post_type_for_folder_taxonomy( $taxonomy );
+			$tree_base_url = ( 'post' === $cpt_pt )
+				? admin_url( 'edit.php' )
+				: admin_url( 'edit.php?post_type=' . $cpt_pt );
+		}
 	}
 
 	wp_send_json_success( array(
@@ -288,11 +305,19 @@ function roci_enqueue_admin_folders_js( $hook_suffix ) {
 	if ( 'upload' === $screen->base ) {
 		$taxonomy         = 'roci_media_folder';
 		$filter_select_id = 'roci-media-folder-filter';
-	} elseif ( 'edit-page' === $screen->id ) {
-		$taxonomy         = 'roci_page_folder';
-		$filter_select_id = 'roci-page-folder-filter';
 	} else {
-		return;
+		$taxonomy         = null;
+		$filter_select_id = null;
+		foreach ( roci_get_folder_registry() as $post_type => $tax ) {
+			if ( 'edit-' . $post_type === $screen->id ) {
+				$taxonomy         = $tax;
+				$filter_select_id = 'roci-' . str_replace( '_', '-', $post_type ) . '-folder-filter';
+				break;
+			}
+		}
+		if ( ! $taxonomy ) {
+			return;
+		}
 	}
 
 	wp_enqueue_script(

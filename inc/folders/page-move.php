@@ -1,19 +1,24 @@
 <?php
 /**
- * Folder System — Move Page to Folder
+ * Folder System — Move Post to Folder (generic, registry-driven)
  *
- * AJAX endpoint for reassigning a single page to a different roci_page_folder
- * term (or to unassigned). Adds a drag-handle column to the pages list table
- * and enqueues the client-side drag/drop script.
+ * Unified AJAX endpoint for reassigning any registered folder-enabled post
+ * to a different taxonomy term (or to unassigned). Provides the generic
+ * drag-handle column filter and render callbacks that roci_register_folder_type()
+ * hooks onto each registered post type. Enqueues the per-post-type drag JS.
  *
- *   roci_ajax_move_page_to_folder()       — wp_ajax_roci_move_page_to_folder
- *   roci_add_page_drag_column()           — manage_page_posts_columns filter
- *   roci_render_page_drag_column()        — manage_page_posts_custom_column action
- *   roci_enqueue_page_dragdrop_assets()   — enqueues dist/js/folders/folders-page-dragdrop.js
+ *   roci_ajax_move_item_to_folder()   — wp_ajax_roci_move_item_to_folder
+ *   roci_folder_drag_column_filter()  — manage_{post_type}_posts_columns
+ *   roci_folder_drag_column_render()  — manage_{post_type}_posts_custom_column
+ *   roci_enqueue_dragdrop_assets()    — enqueues dist/js/folders/folders-{type}-dragdrop.js
+ *
+ * Per-post-type hooks (column filter/action) are NOT registered here;
+ * they are wired by roci_register_folder_type() in folders.php so that
+ * any post type added to the registry automatically receives them.
  *
  * File:    inc/folders/page-move.php
- * Version: 1.1.0
- * Updated: 2026-05-19
+ * Version: 2.0.0
+ * Updated: 2026-05-21
  *
  * @package ElRocinante
  */
@@ -24,39 +29,50 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 
 // ============================================================
-// MOVE PAGE — AJAX HANDLER
+// MOVE ITEM — UNIFIED AJAX HANDLER
 // ============================================================
 
 /**
- * Reassign a page to a different roci_page_folder term (or unassigned).
+ * Reassign a post to a different folder term (or unassigned).
+ *
+ * Handles any post type registered via roci_register_folder_type().
+ * The taxonomy is derived server-side from the post's actual post_type
+ * via the registry — the client never specifies a taxonomy directly.
  *
  * Security chain:
  *   1. Nonce verification (dies on failure, HTTP 403).
- *   2. page_id validated as a real page post.
- *   3. edit_post capability check for the specific page.
- *   4. target_term validated — either '__unassigned__' sentinel or a real term ID
- *      in roci_page_folder via roci_validate_folder_term() from upload.php.
- *   5. No-op detection: if page is already in the target folder, returns early.
- *   6. Previous terms captured before the move for the success response (Undo support).
- *   7. wp_set_object_terms() with append=false replaces all folder assignments.
+ *   2. post_id validated as a real post.
+ *   3. Post type validated against the registry (only folder-enabled types).
+ *   4. edit_post capability check for the specific post.
+ *   5. target_term validated — either '__unassigned__' sentinel or a real
+ *      term ID in the derived taxonomy via roci_validate_folder_term().
+ *   6. No-op detection: returns early if already in the target folder.
+ *   7. Previous terms captured before the move for the success response.
+ *   8. wp_set_object_terms() with append=false replaces all folder assignments.
  *
- * Success response payload includes previous and new term arrays so the
- * client can compute count deltas and support Undo without a separate lookup.
- * target_folder_name is resolved server-side so toast messages are authoritative.
+ * Success response includes previous and new term arrays so the client
+ * can compute count deltas and support Undo without a separate lookup.
  */
-function roci_ajax_move_page_to_folder() {
+function roci_ajax_move_item_to_folder() {
 
-	check_ajax_referer( 'roci_move_page', 'nonce' );
+	check_ajax_referer( 'roci_move_item_to_folder', 'nonce' );
 
-	// ── Validate page ────────────────────────────────────────────────────
-	$page_id = absint( isset( $_POST['page_id'] ) ? $_POST['page_id'] : 0 );
-	if ( ! $page_id || get_post_type( $page_id ) !== 'page' ) {
-		wp_send_json_error( __( 'Invalid page.', 'rocinante' ), 400 );
+	// ── Validate post ─────────────────────────────────────────────────────
+	$post_id = absint( isset( $_POST['post_id'] ) ? $_POST['post_id'] : 0 );
+	if ( ! $post_id ) {
+		wp_send_json_error( __( 'Invalid post.', 'rocinante' ), 400 );
+	}
+
+	$post_type = get_post_type( $post_id );
+	$taxonomy  = roci_get_folder_taxonomy_for_post_type( $post_type );
+
+	if ( ! $taxonomy ) {
+		wp_send_json_error( __( 'Post type not supported.', 'rocinante' ), 400 );
 	}
 
 	// ── Capability check ─────────────────────────────────────────────────
-	if ( ! current_user_can( 'edit_post', $page_id ) ) {
-		wp_send_json_error( __( 'You do not have permission to move this page.', 'rocinante' ), 403 );
+	if ( ! current_user_can( 'edit_post', $post_id ) ) {
+		wp_send_json_error( __( 'You do not have permission to move this item.', 'rocinante' ), 403 );
 	}
 
 	// ── Validate target term ─────────────────────────────────────────────
@@ -68,14 +84,14 @@ function roci_ajax_move_page_to_folder() {
 		$terms_to_set = array();
 	} else {
 		$term_id = absint( $target_raw );
-		if ( ! $term_id || ! roci_validate_folder_term( $term_id, 'roci_page_folder' ) ) {
+		if ( ! $term_id || ! roci_validate_folder_term( $term_id, $taxonomy ) ) {
 			wp_send_json_error( __( 'Invalid target fauxlder.', 'rocinante' ), 400 );
 		}
 		$terms_to_set = array( $term_id );
 	}
 
 	// ── Capture previous terms before the move ───────────────────────────
-	$previous = wp_get_object_terms( $page_id, 'roci_page_folder', array( 'fields' => 'ids' ) );
+	$previous = wp_get_object_terms( $post_id, $taxonomy, array( 'fields' => 'ids' ) );
 	if ( is_wp_error( $previous ) ) {
 		$previous = array();
 	}
@@ -92,7 +108,7 @@ function roci_ajax_move_page_to_folder() {
 	}
 
 	// ── Perform the move ─────────────────────────────────────────────────
-	$result = wp_set_object_terms( $page_id, $terms_to_set, 'roci_page_folder', false );
+	$result = wp_set_object_terms( $post_id, $terms_to_set, $taxonomy, false );
 
 	if ( is_wp_error( $result ) ) {
 		wp_send_json_error( $result->get_error_message(), 500 );
@@ -101,37 +117,40 @@ function roci_ajax_move_page_to_folder() {
 	// ── Resolve folder name for the toast message ────────────────────────
 	$target_folder_name = '';
 	if ( $term_id ) {
-		$term = get_term( $term_id, 'roci_page_folder' );
+		$term = get_term( $term_id, $taxonomy );
 		if ( $term && ! is_wp_error( $term ) ) {
 			$target_folder_name = $term->name;
 		}
 	}
 
 	wp_send_json_success( array(
-		'no_change'           => false,
-		'page_id'             => $page_id,
-		'page_title'          => get_the_title( $page_id ),
-		'previous_terms'      => array_map( 'intval', $previous ),
-		'new_terms'           => array_map( 'intval', $terms_to_set ),
-		'new_folder_term_id'  => $term_id,           // scalar; 0 when moved to unassigned
-		'new_folder_name'     => $target_folder_name, // alias for JS clarity; '' when unassigned
-		'target_folder_name'  => $target_folder_name, // kept for backward-compat with toast logic
+		'no_change'          => false,
+		'post_id'            => $post_id,
+		'post_title'         => get_the_title( $post_id ),
+		'previous_terms'     => array_map( 'intval', $previous ),
+		'new_terms'          => array_map( 'intval', $terms_to_set ),
+		'new_folder_term_id' => $term_id,
+		'new_folder_name'    => $target_folder_name,
+		'target_folder_name' => $target_folder_name,
 	) );
 }
-add_action( 'wp_ajax_roci_move_page_to_folder', 'roci_ajax_move_page_to_folder' );
+add_action( 'wp_ajax_roci_move_item_to_folder', 'roci_ajax_move_item_to_folder' );
 
 
 // ============================================================
-// DRAG HANDLE COLUMN — PAGES LIST TABLE
+// DRAG HANDLE COLUMN — GENERIC (shared across all registered post types)
 // ============================================================
 
 /**
  * Insert the drag-handle column immediately after the checkbox column.
  *
+ * Hooked to manage_{post_type}_posts_columns for each post type registered
+ * via roci_register_folder_type(). The hook binding happens in folders.php.
+ *
  * @param  array $columns  Existing column slugs => header HTML.
  * @return array
  */
-function roci_add_page_drag_column( $columns ) {
+function roci_folder_drag_column_filter( $columns ) {
 	$new = array();
 	foreach ( $columns as $key => $value ) {
 		$new[ $key ] = $value;
@@ -141,68 +160,95 @@ function roci_add_page_drag_column( $columns ) {
 	}
 	return $new;
 }
-add_filter( 'manage_page_posts_columns', 'roci_add_page_drag_column' );
-
 
 /**
- * Render the drag-handle cell for each page row.
+ * Render the drag-handle cell for each post row.
  *
- * The handle is a span with draggable="true" so the HTML5 drag API fires
- * from this element. data-page-id is picked up by folders-page-dragdrop.js
- * on dragstart. aria-hidden keeps screen readers from announcing a
- * decorative icon that has no navigation purpose.
+ * CSS class and data attribute are derived from the post's post_type so
+ * the per-post-type JS file can target the correct element:
+ *   page  → .roci-page-drag-handle  data-page-id
+ *   post  → .roci-post-drag-handle  data-post-id
+ *   tour  → .roci-tour-drag-handle  data-tour-id
  *
  * @param string $column_name  Current column slug.
- * @param int    $post_id      Current page ID.
+ * @param int    $post_id      Current post ID.
  */
-function roci_render_page_drag_column( $column_name, $post_id ) {
+function roci_folder_drag_column_render( $column_name, $post_id ) {
 	if ( 'roci_drag_handle' !== $column_name ) {
 		return;
 	}
-	echo '<span class="roci-page-drag-handle" draggable="true" data-page-id="' . esc_attr( $post_id ) . '" aria-hidden="true">'
+	$post_type    = get_post_type( $post_id );
+	$handle_class = 'roci-' . $post_type . '-drag-handle';
+	$data_attr    = 'data-' . $post_type . '-id';
+	echo '<span class="' . esc_attr( $handle_class ) . '" draggable="true" '
+		. esc_attr( $data_attr ) . '="' . esc_attr( $post_id ) . '" aria-hidden="true">'
 		. '<span class="dashicons dashicons-move"></span>'
 		. '</span>';
 }
-add_action( 'manage_page_posts_custom_column', 'roci_render_page_drag_column', 10, 2 );
 
 
 // ============================================================
-// DRAG-DROP — ENQUEUE ASSETS
+// DRAG-DROP — ENQUEUE ASSETS (registry-driven)
 // ============================================================
 
 /**
- * Enqueue folders-page-dragdrop.js on the Pages list screen.
+ * Enqueue the per-post-type drag JS on the matching list screen.
  *
- * No dependency on 'media-views' — the pages list table is plain PHP output
- * and the drag source is a native HTML element, not a Backbone view.
+ * Resolves the current post type from the screen ID via the registry,
+ * then enqueues dist/js/folders/folders-{post_type}-dragdrop.js with
+ * localized roci{PostType}DragDrop data.
+ *
+ * JS file naming convention:  folders-page-dragdrop.js, folders-post-dragdrop.js
+ * JS global naming convention: rociPageDragDrop, rociPostDragDrop
  *
  * @param string $hook_suffix  Current admin page hook suffix (unused).
  */
-function roci_enqueue_page_dragdrop_assets( $hook_suffix ) {
+function roci_enqueue_dragdrop_assets( $hook_suffix ) {
 
 	$screen = get_current_screen();
-	if ( ! $screen || 'edit-page' !== $screen->id ) {
+	if ( ! $screen ) {
+		return;
+	}
+
+	$current_post_type = null;
+	foreach ( roci_get_folder_registry() as $post_type => $taxonomy ) {
+		if ( 'edit-' . $post_type === $screen->id ) {
+			$current_post_type = $post_type;
+			break;
+		}
+	}
+
+	if ( ! $current_post_type ) {
+		return;
+	}
+
+	$js_file   = 'dist/js/folders/folders-' . $current_post_type . '-dragdrop.js';
+	$js_global = 'roci' . implode( '', array_map( 'ucfirst', explode( '-', str_replace( '_', '-', $current_post_type ) ) ) ) . 'DragDrop';
+
+	// Skip if no JS file exists for this post type yet (e.g. a CPT added
+	// to the registry before its JS file ships).
+	if ( ! file_exists( get_template_directory() . '/' . $js_file ) ) {
 		return;
 	}
 
 	wp_enqueue_script(
-		'roci-page-dragdrop',
-		get_template_directory_uri() . '/dist/js/folders/folders-page-dragdrop.js',
+		'roci-dragdrop-' . $current_post_type,
+		get_template_directory_uri() . '/' . $js_file,
 		array(),
-		roci_asset_version( 'dist/js/folders/folders-page-dragdrop.js' ),
+		roci_asset_version( $js_file ),
 		true
 	);
 
-	wp_localize_script( 'roci-page-dragdrop', 'rociPageDragDrop', array(
+	wp_localize_script( 'roci-dragdrop-' . $current_post_type, $js_global, array(
 		'ajaxUrl' => admin_url( 'admin-ajax.php' ),
-		'nonce'   => wp_create_nonce( 'roci_move_page' ),
+		'nonce'   => wp_create_nonce( 'roci_move_item_to_folder' ),
 		'i18n'    => array(
-			'moved'           => __( 'Moved "%s" to %s', 'rocinante' ),
-			'movedUnassigned' => __( 'Removed "%s" from folder', 'rocinante' ),
-			'undo'            => __( 'Undo', 'rocinante' ),
-			'undone'          => __( 'Undone.', 'rocinante' ),
-			'error'           => __( 'Move failed. Please try again.', 'rocinante' ),
+			'moved'           => __( 'Moved "%s" to %s',              'rocinante' ),
+			'movedUnassigned' => __( 'Removed "%s" from folder',      'rocinante' ),
+			'undo'            => __( 'Undo',                          'rocinante' ),
+			'undone'          => __( 'Undone.',                       'rocinante' ),
+			'error'           => __( 'Move failed. Please try again.','rocinante' ),
 		),
 	) );
 }
-add_action( 'admin_enqueue_scripts', 'roci_enqueue_page_dragdrop_assets' );
+add_action( 'admin_enqueue_scripts', 'roci_enqueue_dragdrop_assets' );

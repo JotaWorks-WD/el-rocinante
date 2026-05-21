@@ -12,8 +12,8 @@
  *   roci_enqueue_reorder_assets()         — enqueues dist/js/folders/folders-reorder.js
  *
  * File:    inc/folders/order.php
- * Version: 1.4.0
- * Updated: 2026-05-18
+ * Version: 1.5.0
+ * Updated: 2026-05-21
  *
  * @package ElRocinante
  */
@@ -51,7 +51,7 @@ function roci_get_folder_order_query_args() {
 /**
  * Backfill roci_folder_order for any terms missing the meta.
  *
- * Covers both roci_media_folder and roci_page_folder. Fast-path: the
+ * Covers roci_media_folder and all CPT folder taxonomies in the registry. Fast-path: the
  * NOT-EXISTS meta_query returns an empty array in steady state (every term
  * already has an order), so subsequent calls cost one cheap query with no
  * DB writes. Safe to call on every admin page load.
@@ -62,8 +62,13 @@ function roci_get_folder_order_query_args() {
  */
 function roci_maybe_initialize_folder_order() {
 
+	$all_taxonomies = array_merge(
+		array( 'roci_media_folder' ),
+		array_values( roci_get_folder_registry() )
+	);
+
 	$orphans = get_terms( array(
-		'taxonomy'   => array( 'roci_media_folder', 'roci_page_folder' ),
+		'taxonomy'   => $all_taxonomies,
 		'hide_empty' => false,
 		'meta_query' => array(
 			array(
@@ -88,7 +93,7 @@ function roci_maybe_initialize_folder_order() {
 // ============================================================
 
 /**
- * Persist a new sibling order for folder terms (roci_media_folder or roci_page_folder).
+ * Persist a new sibling order for folder terms (roci_media_folder or any CPT folder taxonomy).
  *
  * Security chain:
  *   1. Nonce verification (dies on failure).
@@ -113,7 +118,10 @@ function roci_ajax_reorder_folders() {
 	}
 
 	// ── Validate taxonomy ─────────────────────────────────────────────────
-	$allowed  = array( 'roci_media_folder', 'roci_page_folder' );
+	$allowed  = array_merge(
+		array( 'roci_media_folder' ),
+		array_values( roci_get_folder_registry() )
+	);
 	$taxonomy = isset( $_POST['taxonomy'] ) ? sanitize_key( $_POST['taxonomy'] ) : '';
 	if ( ! in_array( $taxonomy, $allowed, true ) ) {
 		wp_send_json_error( __( 'Invalid taxonomy.', 'rocinante' ), 400 );
@@ -241,7 +249,11 @@ function roci_assign_default_folder_order( $term_id, $taxonomy = null ) {
 		}
 	}
 
-	if ( ! in_array( $taxonomy, array( 'roci_media_folder', 'roci_page_folder' ), true ) ) {
+	$allowed_order = array_merge(
+		array( 'roci_media_folder' ),
+		array_values( roci_get_folder_registry() )
+	);
+	if ( ! in_array( $taxonomy, $allowed_order, true ) ) {
 		return;
 	}
 
@@ -275,8 +287,10 @@ function roci_assign_default_folder_order( $term_id, $taxonomy = null ) {
 
 	update_term_meta( $term_id, 'roci_folder_order', $max_order + 10 );
 }
+// roci_media_folder is not in the CPT registry (it's the Media system),
+// so its created_ hook is wired here explicitly.
+// All CPT folder taxonomies get their created_ hooks via roci_register_folder_type().
 add_action( 'created_roci_media_folder', 'roci_assign_default_folder_order' );
-add_action( 'created_roci_page_folder',  'roci_assign_default_folder_order' );
 
 
 // ============================================================
@@ -299,7 +313,16 @@ function roci_enqueue_reorder_assets( $hook_suffix ) {
 		return;
 	}
 
-	if ( 'upload' !== $screen->base && 'edit-page' !== $screen->id ) {
+	$is_reorder_screen = ( 'upload' === $screen->base );
+	if ( ! $is_reorder_screen ) {
+		foreach ( roci_get_folder_registry() as $post_type => $taxonomy ) {
+			if ( 'edit-' . $post_type === $screen->id ) {
+				$is_reorder_screen = true;
+				break;
+			}
+		}
+	}
+	if ( ! $is_reorder_screen ) {
 		return;
 	}
 

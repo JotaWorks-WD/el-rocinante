@@ -15,8 +15,8 @@
  * ajax_query_attachments_args filter.
  *
  * File:    inc/folders/sidebar.php
- * Version: 1.13.0
- * Updated: 2026-05-17
+ * Version: 1.14.0
+ * Updated: 2026-05-21
  *
  * @package ElRocinante
  */
@@ -43,13 +43,21 @@ function roci_sidebar_early_state_script() {
 		return;
 	}
 
-	if ( 'upload' !== $screen->base && 'edit-page' !== $screen->id ) {
-		return;
+	if ( 'upload' === $screen->base ) {
+		$key = 'roci_sidebar_collapsed_media';
+	} else {
+		$screen_key = null;
+		foreach ( roci_get_folder_registry() as $post_type => $taxonomy ) {
+			if ( 'edit-' . $post_type === $screen->id ) {
+				$screen_key = ( 'page' === $post_type ) ? 'pages' : $post_type;
+				break;
+			}
+		}
+		if ( null === $screen_key ) {
+			return;
+		}
+		$key = 'roci_sidebar_collapsed_' . $screen_key;
 	}
-
-	$key = ( 'upload' === $screen->base )
-		? 'roci_sidebar_collapsed_media'
-		: 'roci_sidebar_collapsed_pages';
 	?>
 	<script>
 	( function () {
@@ -97,16 +105,17 @@ function roci_pre_get_posts_no_folder( $query ) {
 				'operator' => 'NOT EXISTS',
 			),
 		) );
-	} elseif ( 'edit.php' === $pagenow
-		&& ! empty( $_GET['post_type'] )
-		&& 'page' === sanitize_key( wp_unslash( $_GET['post_type'] ) )
-	) {
-		$query->set( 'tax_query', array(
-			array(
-				'taxonomy' => 'roci_page_folder',
-				'operator' => 'NOT EXISTS',
-			),
-		) );
+	} elseif ( 'edit.php' === $pagenow ) {
+		$pt_raw  = isset( $_GET['post_type'] ) ? sanitize_key( wp_unslash( $_GET['post_type'] ) ) : 'post';
+		$cpt_tax = roci_get_folder_taxonomy_for_post_type( $pt_raw );
+		if ( $cpt_tax ) {
+			$query->set( 'tax_query', array(
+				array(
+					'taxonomy' => $cpt_tax,
+					'operator' => 'NOT EXISTS',
+				),
+			) );
+		}
 	}
 }
 add_action( 'pre_get_posts', 'roci_pre_get_posts_no_folder' );
@@ -265,9 +274,19 @@ function roci_render_folders_sidebar_html( $taxonomy, $folder_url_key, $base_url
 	$is_all_active  = ( ! $is_unassigned && 0 === $active_term_id );
 	$unassigned_url = add_query_arg( 'roci_no_folder', '1', $base_url );
 
-	$is_pages         = ( 'roci_page_folder' === $taxonomy );
-	$label_all        = $is_pages ? __( 'All Pages',        'rocinante' ) : __( 'All Files',        'rocinante' );
-	$label_unassigned = $is_pages ? __( 'Unassigned Pages', 'rocinante' ) : __( 'Unassigned Files', 'rocinante' );
+	// Derive human-readable labels from the post type's label, or fall back
+	// to "Files" for the Media Library (roci_media_folder is not in the CPT registry).
+	$cpt_post_type = roci_get_post_type_for_folder_taxonomy( $taxonomy );
+	if ( $cpt_post_type ) {
+		$pt_obj    = get_post_type_object( $cpt_post_type );
+		$pt_plural = $pt_obj ? $pt_obj->labels->name : ucfirst( $cpt_post_type ) . 's';
+		/* translators: %s: post-type plural label, e.g. "Pages", "Posts" */
+		$label_all        = sprintf( __( 'All %s',        'rocinante' ), $pt_plural );
+		$label_unassigned = sprintf( __( 'Unassigned %s', 'rocinante' ), $pt_plural );
+	} else {
+		$label_all        = __( 'All Files',        'rocinante' );
+		$label_unassigned = __( 'Unassigned Files', 'rocinante' );
+	}
 
 	?>
 	<aside id="roci-folders-sidebar"
@@ -387,12 +406,17 @@ function roci_maybe_render_sidebar() {
 			$base = add_query_arg( 'mode', sanitize_key( wp_unslash( $_GET['mode'] ) ), $base );
 		}
 		roci_render_folders_sidebar_html( 'roci_media_folder', 'roci_media_folder', $base );
-	} elseif ( 'edit-page' === $screen->id ) {
-		roci_render_folders_sidebar_html(
-			'roci_page_folder',
-			'roci_page_folder',
-			admin_url( 'edit.php?post_type=page' )
-		);
+	} else {
+		foreach ( roci_get_folder_registry() as $post_type => $taxonomy ) {
+			if ( 'edit-' . $post_type !== $screen->id ) {
+				continue;
+			}
+			$base_url = ( 'post' === $post_type )
+				? admin_url( 'edit.php' )
+				: admin_url( 'edit.php?post_type=' . $post_type );
+			roci_render_folders_sidebar_html( $taxonomy, $taxonomy, $base_url );
+			break;
+		}
 	}
 }
 add_action( 'admin_footer', 'roci_maybe_render_sidebar' );
@@ -415,12 +439,26 @@ function roci_enqueue_sidebar_assets( $hook_suffix ) {
 		return;
 	}
 
-	if ( 'upload' !== $screen->base && 'edit-page' !== $screen->id ) {
-		return;
+	if ( 'upload' === $screen->base ) {
+		$screen_key       = 'media';
+		$filter_select_id = null; // Media uses its own dedicated dropdown, not a CPT filter.
+	} else {
+		$screen_key       = null;
+		$filter_select_id = null;
+		foreach ( roci_get_folder_registry() as $post_type => $taxonomy ) {
+			if ( 'edit-' . $post_type === $screen->id ) {
+				$screen_key       = ( 'page' === $post_type ) ? 'pages' : $post_type;
+				$filter_select_id = 'roci-' . str_replace( '_', '-', $post_type ) . '-folder-filter';
+				break;
+			}
+		}
+		if ( null === $screen_key ) {
+			return;
+		}
 	}
 
 	// Sidebar CSS is already loaded on upload.php by roci_enqueue_media_folder_js();
-	// enqueue it here too so the edit.php?post_type=page screen gets it as well.
+	// enqueue it here too so list-screen post-type views get it as well.
 	// WordPress deduplicates by handle, so no double-load occurs on upload.php.
 	wp_enqueue_style(
 		'roci-admin-folders',
@@ -437,8 +475,11 @@ function roci_enqueue_sidebar_assets( $hook_suffix ) {
 		true
 	);
 
-	wp_localize_script( 'roci-folders-sidebar', 'rociSidebar', array(
-		'screenKey' => ( 'upload' === $screen->base ) ? 'media' : 'pages',
-	) );
+	$localize = array( 'screenKey' => $screen_key );
+	if ( $filter_select_id ) {
+		$localize['filterSelectId'] = $filter_select_id;
+	}
+
+	wp_localize_script( 'roci-folders-sidebar', 'rociSidebar', $localize );
 }
 add_action( 'admin_enqueue_scripts', 'roci_enqueue_sidebar_assets' );

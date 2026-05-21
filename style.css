@@ -4,7 +4,7 @@ Theme URI: https://jota.works
 Author: JotaWorks
 Author URI: https://jota.works
 Description: A lean, professional WordPress base theme by JotaWorks. Built for service businesses, tourism, and property management — with a custom SEO layer, schema markup, and no page builder bloat.
-Version: 2.10.9
+Version: 2.11.0
 License: Private
 License URI: https://jota.works
 Text Domain: rocinante
@@ -13,6 +13,13 @@ GitHub Branch: main
 */
 
 /*
+v2.11.0
+- Path C-lite: generic CPT folder API. roci_register_folder_type($post_type, $taxonomy_slug) exposes the full folder system to any post type. Pages and Posts ship as built-in registrations. Child themes opt CPTs in with one line.
+- Posts list table: sidebar with folders, drag handle column, filter dropdown, organize toggle, drag-to-folder with toast/undo — mirrors Pages feature set.
+- Unified AJAX handler roci_move_item_to_folder replaces the page-specific endpoint; folders-page-dragdrop.js updated accordingly.
+- New: folders-post-dragdrop.js.
+- create.php, filters.php, counts.php, order.php, sidebar.php all read from the registry instead of hardcoded screen IDs.
+
 v2.9.7
 - Remove library.mirroring.fetch from wp-media-refresh-shim.js; fixes Unassigned → folder drag leaving the moved photo visible in both collections (the delayed collection.set() was undoing the v2.9.6 library.remove() work).
 - CSP audit: no string-eval patterns (eval, new Function, setTimeout/setInterval with string arg) found in dist/js/folders/ — browser console clean.

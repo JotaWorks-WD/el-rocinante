@@ -12,8 +12,8 @@
  *     folder filter into the AttachmentsBrowser toolbar (after the type + date filters)
  *
  * File:    inc/folders/filters.php
- * Version: 2.5.3
- * Updated: 2026-05-20
+ * Version: 2.6.0
+ * Updated: 2026-05-21
  *
  * @package ElRocinante
  */
@@ -126,47 +126,58 @@ add_action( 'restrict_manage_posts', 'roci_media_folder_filter_dropdown', 10, 2 
 
 
 // ============================================================
-// ADMIN LIST — PAGE FOLDER FILTER (edit.php?post_type=page)
+// ADMIN LIST — CPT FOLDER FILTER (edit.php for any registered post type)
 // ============================================================
 
 /**
- * Render the folder <select> in the Pages list-view toolbar.
+ * Render the folder <select> in the list-view toolbar for any registered
+ * folder-enabled post type (Pages, Posts, and future CPTs).
+ *
+ * Skips the 'attachment' post type (Media Library uses a separate dropdown).
+ * Only fires for the 'top' position to avoid a duplicate dropdown at bottom.
  *
  * @param string $post_type  Current list-table post type.
  * @param string $which      Toolbar position: 'top' or 'bottom'.
  */
-function roci_page_folder_filter_dropdown( $post_type, $which ) {
+function roci_cpt_folder_filter_dropdown( $post_type, $which ) {
 
-	if ( 'page' !== $post_type || 'top' !== $which ) {
+	if ( 'top' !== $which ) {
+		return;
+	}
+
+	$taxonomy = roci_get_folder_taxonomy_for_post_type( $post_type );
+	if ( ! $taxonomy ) {
 		return;
 	}
 
 	$selected = 0;
-	if ( ! empty( $_GET['roci_page_folder'] ) ) {
-		$val = sanitize_text_field( wp_unslash( $_GET['roci_page_folder'] ) );
+	if ( ! empty( $_GET[ $taxonomy ] ) ) {
+		$val = sanitize_text_field( wp_unslash( $_GET[ $taxonomy ] ) );
 		if ( is_numeric( $val ) ) {
 			$selected = absint( $val );
 		} else {
-			$term = get_term_by( 'slug', $val, 'roci_page_folder' );
+			$term = get_term_by( 'slug', $val, $taxonomy );
 			if ( $term ) {
 				$selected = $term->term_id;
 			}
 		}
 	}
 
-	echo '<label class="screen-reader-text" for="roci-page-folder-filter">'
-		. esc_html__( 'Filter by Page Fauxlder', 'rocinante' )
+	$select_id = 'roci-' . str_replace( '_', '-', $post_type ) . '-folder-filter';
+
+	echo '<label class="screen-reader-text" for="' . esc_attr( $select_id ) . '">'
+		. esc_html__( 'Filter by Fauxlder', 'rocinante' )
 		. '</label>';
 
 	roci_render_folder_select_dropdown(
-		'roci_page_folder',
-		'roci_page_folder',
-		'roci-page-folder-filter',
+		$taxonomy,
+		$taxonomy,
+		$select_id,
 		__( 'All Fauxlders', 'rocinante' ),
 		$selected
 	);
 }
-add_action( 'restrict_manage_posts', 'roci_page_folder_filter_dropdown', 10, 2 );
+add_action( 'restrict_manage_posts', 'roci_cpt_folder_filter_dropdown', 10, 2 );
 
 
 // ============================================================
@@ -200,13 +211,17 @@ function roci_translate_folder_query_var() {
 		}
 	}
 
-	if ( 'edit.php' === $pagenow && ! empty( $_GET['roci_page_folder'] ) ) {
-		$val = sanitize_text_field( wp_unslash( $_GET['roci_page_folder'] ) );
-		if ( is_numeric( $val ) ) {
-			$term = get_term( absint( $val ), 'roci_page_folder' );
-			if ( $term && ! is_wp_error( $term ) ) {
-				$_GET['roci_page_folder']     = $term->slug;
-				$_REQUEST['roci_page_folder'] = $term->slug;
+	if ( 'edit.php' === $pagenow ) {
+		$pt_raw  = isset( $_GET['post_type'] ) ? sanitize_key( wp_unslash( $_GET['post_type'] ) ) : 'post';
+		$cpt_tax = roci_get_folder_taxonomy_for_post_type( $pt_raw );
+		if ( $cpt_tax && ! empty( $_GET[ $cpt_tax ] ) ) {
+			$val = sanitize_text_field( wp_unslash( $_GET[ $cpt_tax ] ) );
+			if ( is_numeric( $val ) ) {
+				$term = get_term( absint( $val ), $cpt_tax );
+				if ( $term && ! is_wp_error( $term ) ) {
+					$_GET[ $cpt_tax ]     = $term->slug;
+					$_REQUEST[ $cpt_tax ] = $term->slug;
+				}
 			}
 		}
 	}

@@ -2,17 +2,18 @@
 /**
  * Folder System — Taxonomy Registration
  *
- * Registers two hierarchical taxonomies used throughout the folder system:
+ * Registers three hierarchical taxonomies used throughout the folder system:
  *
  *   roci_media_folder — on 'attachment'; appears in Media Library
  *   roci_page_folder  — on 'page'; appears in the Pages list
+ *   roci_post_folder  — on 'post'; appears in the Posts list
  *
- * Both are hierarchical so parent/child nesting works natively via
+ * All are hierarchical so parent/child nesting works natively via
  * WordPress's built-in term management UI — no custom tree needed.
  *
  * File:    inc/folders/taxonomies.php
- * Version: 1.5.0
- * Updated: 2026-05-16
+ * Version: 1.6.0
+ * Updated: 2026-05-21
  *
  * @package ElRocinante
  */
@@ -93,6 +94,38 @@ function roci_register_page_folder_taxonomy() {
 	) );
 }
 add_action( 'init', 'roci_register_page_folder_taxonomy' );
+
+
+/**
+ * Register the roci_post_folder taxonomy on posts.
+ */
+function roci_register_post_folder_taxonomy() {
+
+	$labels = array(
+		'name'              => _x( 'Post Fauxlders',          'taxonomy general name',  'rocinante' ),
+		'singular_name'     => _x( 'Post Fauxlder',           'taxonomy singular name', 'rocinante' ),
+		'search_items'      => __( 'Search Post Fauxlders',   'rocinante' ),
+		'all_items'         => __( 'All Post Fauxlders',      'rocinante' ),
+		'parent_item'       => __( 'Parent Fauxlder',         'rocinante' ),
+		'parent_item_colon' => __( 'Parent Fauxlder:',        'rocinante' ),
+		'edit_item'         => __( 'Edit Post Fauxlder',      'rocinante' ),
+		'update_item'       => __( 'Update Post Fauxlder',    'rocinante' ),
+		'add_new_item'      => __( 'Add New Post Fauxlder',   'rocinante' ),
+		'new_item_name'     => __( 'New Post Fauxlder Name',  'rocinante' ),
+		'menu_name'         => __( 'Post Fauxlders',          'rocinante' ),
+	);
+
+	register_taxonomy( 'roci_post_folder', 'post', array(
+		'labels'            => $labels,
+		'hierarchical'      => true,
+		'show_ui'           => true,
+		'show_admin_column' => true,
+		'show_in_rest'      => true,
+		'query_var'         => true,
+		'rewrite'           => false,
+	) );
+}
+add_action( 'init', 'roci_register_post_folder_taxonomy' );
 
 
 // ============================================================

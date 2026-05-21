@@ -390,12 +390,15 @@
 				} );
 			}
 
-			var pageSelect = document.getElementById( 'roci-page-folder-filter' );
-			if ( pageSelect ) {
-				if ( pageSelect.value && pageSelect.value !== '0' ) {
-					pageSelect.classList.add( 'is-active-filter' );
+			// Generic CPT folder filter auto-submit (Pages, Posts, and future CPTs).
+			// PHP passes filterSelectId via rociSidebar for all registered post types.
+			var cptFilterId = ( typeof rociSidebar !== 'undefined' && rociSidebar.filterSelectId ) ? rociSidebar.filterSelectId : null;
+			var cptSelect = cptFilterId ? document.getElementById( cptFilterId ) : null;
+			if ( cptSelect ) {
+				if ( cptSelect.value && cptSelect.value !== '0' ) {
+					cptSelect.classList.add( 'is-active-filter' );
 				}
-				pageSelect.addEventListener( 'change', function () {
+				cptSelect.addEventListener( 'change', function () {
 					this.classList.toggle( 'is-active-filter', this.value !== '' && this.value !== '0' );
 					var form = document.getElementById( 'posts-filter' );
 					if ( form ) {
