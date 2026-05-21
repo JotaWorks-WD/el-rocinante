@@ -539,4 +539,37 @@
 		currentTimeout = setTimeout( dismiss, opts.duration || 8000 );
 	}
 
+
+	// ======================================================================
+	// WP UPLOAD OVERLAY SUPPRESSION
+	// ======================================================================
+
+	// WP's plupload drop zone adds the 'drag-drop' class to body on any
+	// dragenter event, which triggers its "Drop files to upload" overlay CSS.
+	// It cannot distinguish an OS file drag from our internal folder drag.
+	// Capture-phase listeners (third arg = true) run before WP's bubble-phase
+	// listeners, so we strip 'drag-drop' off body before WP can restore it.
+	// The CSS in _admin-folders-dragdrop.scss hides the overlay elements as
+	// a belt-and-suspenders fallback.
+
+	document.addEventListener( 'dragstart', function () {
+		document.body.classList.add( 'roci-any-internal-drag' );
+	}, true );
+
+	document.addEventListener( 'dragend', function () {
+		document.body.classList.remove( 'roci-any-internal-drag' );
+	}, true );
+
+	document.addEventListener( 'dragenter', function () {
+		if ( document.body.classList.contains( 'roci-any-internal-drag' ) ) {
+			document.body.classList.remove( 'drag-drop' );
+		}
+	}, true );
+
+	document.addEventListener( 'dragover', function () {
+		if ( document.body.classList.contains( 'roci-any-internal-drag' ) ) {
+			document.body.classList.remove( 'drag-drop' );
+		}
+	}, true );
+
 } )();
