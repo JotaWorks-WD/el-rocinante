@@ -7,8 +7,8 @@
  * and template parts throughout El Rocinante and child themes.
  *
  * File:    inc/helpers.php
- * Version: 1.1.3
- * Updated: 2026-05-13
+ * Version: 1.1.4
+ * Updated: 2026-05-22
  *
  * @package ElRocinante
  *
@@ -41,7 +41,7 @@
  *
  * NOTE: The file_exists() call hits the filesystem on every page load.
  * If traffic scales, wrap in a transient keyed to "{$id}_{$size}_webp"
- * with a long expiry (e.g. 30 days). Not needed for Fish Potrero or BPC yet.
+ * with a long expiry (e.g. 30 days). Premature for low-traffic sites.
  *
  * @param  int    $attachment_id  WordPress attachment ID.
  * @param  string $size           WordPress image size slug. Default: 'full'.
