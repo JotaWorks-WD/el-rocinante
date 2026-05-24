@@ -4,7 +4,7 @@
  *
  * Registers a cloneable FAQ group field (question + answer pairs)
  * on posts and pages. Intended to expand to custom post types
- * such as 'tour' and 'property' when those are registered.
+ * registered by child themes via roci_get_faq_post_types().
  *
  * Field data is consumed by jw_faq_schema() in inc/helpers.php
  * for JSON-LD output, and by template-parts/faq.php in the
@@ -13,7 +13,7 @@
  * Note: collapsible groups require Meta Box Pro — not used here.
  *
  * File:    inc/metabox/metabox-faq-fields.php
- * Version: 1.2.1
+ * Version: 1.2.2
  * Updated: 2026-05-24
  *
  * @package ElRocinante
