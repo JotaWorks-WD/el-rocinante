@@ -6,8 +6,8 @@
  * Paste complete JSON-LD into the textarea — script tags are added automatically.
  *
  * File:    inc/metabox/metabox-schema-fields.php
- * Version: 1.1.0
- * Updated: 2026-05-07
+ * Version: 1.2.0
+ * Updated: 2026-05-24
  *
  * @package ElRocinante
  */
@@ -22,7 +22,7 @@ add_filter( 'rwmb_meta_boxes', function( $meta_boxes ) {
     $meta_boxes[] = array(
         'title'      => __( 'Schema Settings', 'rocinante' ),
         'id'         => 'roci_schema_fields',
-        'post_types' => array( 'post', 'page' ),
+        'post_types' => roci_get_schema_post_types(),
         'context'    => 'normal',
         'priority'   => 'default',
         'fields'     => array(

@@ -13,8 +13,8 @@
  * Note: collapsible groups require Meta Box Pro — not used here.
  *
  * File:    inc/metabox/metabox-faq-fields.php
- * Version: 1.1.0
- * Updated: 2026-05-07
+ * Version: 1.2.0
+ * Updated: 2026-05-24
  *
  * @package ElRocinante
  */
@@ -26,14 +26,10 @@
 
 add_filter( 'rwmb_meta_boxes', function( $meta_boxes ) {
 
-    // Post types that show the FAQ metabox.
-    // Add 'tour', 'property', etc. here when those CPTs are registered.
-    $post_types = apply_filters( 'jw_faq_post_types', array( 'post', 'page' ) );
-
     $meta_boxes[] = array(
         'title'      => __( 'FAQ Items', 'rocinante' ),
         'id'         => 'jw_faq_group',
-        'post_types' => $post_types,
+        'post_types' => roci_get_faq_post_types(),
         'context'    => 'normal',
         'priority'   => 'default',
         'fields'     => array(
