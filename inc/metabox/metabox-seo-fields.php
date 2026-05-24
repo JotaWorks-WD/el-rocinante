@@ -7,8 +7,8 @@
  * robots, OG image, and conditionally the preview/health panels.
  *
  * File:    metabox-seo-fields.php
- * Version: 1.0.0
- * Updated: 2026-05-03
+ * Version: 1.1.0
+ * Updated: 2026-05-24
  *
  * @package ElRocinante
  */
@@ -135,16 +135,33 @@ add_filter( 'rwmb_meta_boxes', function( $meta_boxes ) {
 // ============================================================
 // SLUG FIELD — pre-populate with current post_name
 // ============================================================
+//
+// Uses the display-time filter (rwmb_{field_id}_field_meta), NOT the
+// save-time filter (rwmb_{field_id}_value). The save-time filter has
+// an edge case under Gutenberg/REST saves where MB Pro can pass the
+// $field configuration array as the value when $_POST[field_id] is
+// missing — which, without a type guard, would persist the entire
+// serialized field config to wp_postmeta. The display-time filter is
+// the correct hook for pre-populating the edit form and cannot write
+// to the database by construction.
 
-add_filter( 'rwmb_roci_slug_value', function( $value, $field, $args, $object_id ) {
-    if ( ! $value && $object_id ) {
-        $post = get_post( $object_id );
-        if ( $post ) {
-            return $post->post_name;
+add_filter( 'rwmb_roci_slug_field_meta', function( $value, $field, $saved ) {
+    if ( ! $value && ! $saved ) {
+        $post_id = 0;
+        if ( isset( $_GET['post'] ) ) {
+            $post_id = absint( $_GET['post'] );
+        } elseif ( isset( $GLOBALS['post'] ) && $GLOBALS['post'] instanceof WP_Post ) {
+            $post_id = $GLOBALS['post']->ID;
+        }
+        if ( $post_id ) {
+            $post = get_post( $post_id );
+            if ( $post && $post->post_name ) {
+                return $post->post_name;
+            }
         }
     }
     return $value;
-}, 10, 4 );
+}, 10, 3 );
 
 
 // ============================================================
