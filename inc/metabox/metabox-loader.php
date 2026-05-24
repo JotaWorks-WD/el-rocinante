@@ -1,12 +1,12 @@
 <?php
 /**
- * Metabox Field Loaders
+ * Metabox Loader
  *
  * Loads all Meta Box field definition files for El Rocinante.
  * Add new field files here as post types and components are registered.
  *
- * File:    inc/metabox-fields.php
- * Version: 1.1.2
+ * File:    inc/metabox/metabox-loader.php
+ * Version: 1.1.3
  * Updated: 2026-05-24
  *
  * @package ElRocinante

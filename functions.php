@@ -6,8 +6,8 @@
  * loads includes, and outputs analytics/integration scripts.
  *
  * File:    functions.php
- * Version: 1.2.4
- * Updated: 2026-05-13
+ * Version: 1.2.5
+ * Updated: 2026-05-24
  *
  * @package ElRocinante
  */
@@ -162,7 +162,7 @@ require_once get_template_directory() . '/inc/customizer/customizer.php';
 // METABOX FIELD DEFINITIONS
 // ============================================================
 
-require_once get_template_directory() . '/inc/metabox/metabox-fields.php';
+require_once get_template_directory() . '/inc/metabox/metabox-loader.php';
 
 
 // ============================================================
