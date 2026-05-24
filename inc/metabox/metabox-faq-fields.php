@@ -13,7 +13,7 @@
  * Note: collapsible groups require Meta Box Pro — not used here.
  *
  * File:    inc/metabox/metabox-faq-fields.php
- * Version: 1.2.0
+ * Version: 1.2.1
  * Updated: 2026-05-24
  *
  * @package ElRocinante
@@ -48,7 +48,7 @@ add_filter( 'rwmb_meta_boxes', function( $meta_boxes ) {
                         'type'       => 'text',
                         'size'       => 80,
                         'attributes' => array(
-                            'placeholder' => __( 'e.g. What is included in the tour?', 'rocinante' ),
+                            'placeholder' => __( 'Example: What is your cancellation policy?', 'rocinante' ),
                         ),
                     ),
 
