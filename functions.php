@@ -6,7 +6,7 @@
  * loads includes, and outputs analytics/integration scripts.
  *
  * File:    functions.php
- * Version: 1.2.6
+ * Version: 1.2.7
  * Updated: 2026-05-26
  *
  * @package ElRocinante
@@ -149,6 +149,13 @@ require_once get_template_directory() . '/inc/class-wp-bootstrap-navwalker.php';
 // ============================================================
 
 require_once get_template_directory() . '/inc/theme-settings/settings-loader.php';
+
+
+// ============================================================
+// PAGES SETTINGS PAGE
+// ============================================================
+
+require_once get_template_directory() . '/inc/pages/pages-register.php';
 
 
 // ============================================================
