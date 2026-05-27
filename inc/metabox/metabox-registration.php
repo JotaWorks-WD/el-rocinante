@@ -29,8 +29,8 @@
  * themes register during that request.
  *
  * File:    inc/metabox/metabox-registration.php
- * Version: 1.0.0
- * Updated: 2026-05-24
+ * Version: 1.0.1
+ * Updated: 2026-05-27
  *
  * @package ElRocinante
  */
@@ -40,19 +40,28 @@
 // ============================================================
 
 /**
- * Get or extend the list of post types the SEO meta box appears on.
+ * Get the list of post types that receive the SEO meta box.
  *
- * Defaults to post and page. Child themes can extend this list by
- * calling the function with one or more post type slugs.
+ * Child themes extend the list via the `roci_seo_post_types` filter:
  *
- * @param  string|array|null $add Optional. A single post type slug, or
- *                                an array of slugs, to add to the list.
- *                                Omit to read the current list.
- * @return array                  The current list of post types,
- *                                deduplicated.
+ *     add_filter( 'roci_seo_post_types', function( $types ) {
+ *         $types[] = 'my_cpt';
+ *         return $types;
+ *     } );
+ *
+ * The $add parameter is deprecated — prefer the filter. Calls passing
+ * $add still work but emit no deprecation notice yet (planned removal
+ * in a subsequent commit).
+ *
+ * @param array|string|null $add Deprecated. Use the roci_seo_post_types filter instead.
+ * @return array Post type slugs receiving the SEO meta box.
  */
 function roci_get_seo_post_types( $add = null ) {
-    static $types = array( 'post', 'page' );
+    static $types = null;
+
+    if ( null === $types ) {
+        $types = apply_filters( 'roci_seo_post_types', array( 'post', 'page' ) );
+    }
 
     if ( $add !== null ) {
         if ( is_array( $add ) ) {
@@ -72,19 +81,28 @@ function roci_get_seo_post_types( $add = null ) {
 // ============================================================
 
 /**
- * Get or extend the list of post types the Schema meta box appears on.
+ * Get the list of post types that receive the Schema meta box.
  *
- * Defaults to post and page. Child themes can extend this list by
- * calling the function with one or more post type slugs.
+ * Child themes extend the list via the `roci_schema_post_types` filter:
  *
- * @param  string|array|null $add Optional. A single post type slug, or
- *                                an array of slugs, to add to the list.
- *                                Omit to read the current list.
- * @return array                  The current list of post types,
- *                                deduplicated.
+ *     add_filter( 'roci_schema_post_types', function( $types ) {
+ *         $types[] = 'my_cpt';
+ *         return $types;
+ *     } );
+ *
+ * The $add parameter is deprecated — prefer the filter. Calls passing
+ * $add still work but emit no deprecation notice yet (planned removal
+ * in a subsequent commit).
+ *
+ * @param array|string|null $add Deprecated. Use the roci_schema_post_types filter instead.
+ * @return array Post type slugs receiving the Schema meta box.
  */
 function roci_get_schema_post_types( $add = null ) {
-    static $types = array( 'post', 'page' );
+    static $types = null;
+
+    if ( null === $types ) {
+        $types = apply_filters( 'roci_schema_post_types', array( 'post', 'page' ) );
+    }
 
     if ( $add !== null ) {
         if ( is_array( $add ) ) {
@@ -104,19 +122,28 @@ function roci_get_schema_post_types( $add = null ) {
 // ============================================================
 
 /**
- * Get or extend the list of post types the FAQ meta box appears on.
+ * Get the list of post types that receive the FAQ meta box.
  *
- * Defaults to post and page. Child themes can extend this list by
- * calling the function with one or more post type slugs.
+ * Child themes extend the list via the `roci_faq_post_types` filter:
  *
- * @param  string|array|null $add Optional. A single post type slug, or
- *                                an array of slugs, to add to the list.
- *                                Omit to read the current list.
- * @return array                  The current list of post types,
- *                                deduplicated.
+ *     add_filter( 'roci_faq_post_types', function( $types ) {
+ *         $types[] = 'my_cpt';
+ *         return $types;
+ *     } );
+ *
+ * The $add parameter is deprecated — prefer the filter. Calls passing
+ * $add still work but emit no deprecation notice yet (planned removal
+ * in a subsequent commit).
+ *
+ * @param array|string|null $add Deprecated. Use the roci_faq_post_types filter instead.
+ * @return array Post type slugs receiving the FAQ meta box.
  */
 function roci_get_faq_post_types( $add = null ) {
-    static $types = array( 'post', 'page' );
+    static $types = null;
+
+    if ( null === $types ) {
+        $types = apply_filters( 'roci_faq_post_types', array( 'post', 'page' ) );
+    }
 
     if ( $add !== null ) {
         if ( is_array( $add ) ) {
