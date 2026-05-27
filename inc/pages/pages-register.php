@@ -1,15 +1,15 @@
 <?php
 /**
- * Pages — MB Pro Settings Page Registration
+ * Pages — Navigation Grouping
  *
- * Registers a tabbed Pages Settings Page under Theme Settings.
- * Tabs are contributed by child themes via the roci_pages_tabs filter.
- * Meta boxes attach to specific tabs via the 'tab' parameter in
- * their MB Pro meta box config.
+ * Registers the Pages submenu under Theme Settings as a navigation
+ * grouping only. Child themes register their own MB Pro Settings Pages
+ * with parent => 'roci-pages' to nest under this entry. Each child
+ * page owns its own option_name storage independently.
  *
  * File:    inc/pages/pages-register.php
- * Version: 1.0.0
- * Updated: 2026-05-26
+ * Version: 2.0.0
+ * Updated: 2026-05-27
  *
  * @package ElRocinante
  */
@@ -18,56 +18,31 @@ if ( ! defined( 'ABSPATH' ) ) exit;
 
 
 // ============================================================
-// REGISTER PAGES SETTINGS PAGE
+// REGISTER PAGES SUBMENU
 // ============================================================
 
-function roci_register_pages_settings( $pages ) {
-
-    $pages[] = array(
-        'id'          => 'roci-pages',
-        'option_name' => 'roci_pages_data',
-        'menu_title'  => __( 'Pages', 'rocinante' ),
-        'page_title'  => __( 'Pages', 'rocinante' ),
-        'parent'      => 'roci-theme-settings',
-        'capability'  => 'manage_options',
-        'columns'     => 1,
-        'icon_url'    => 'dashicons-admin-page',
-        'position'    => 4,
-        'tabs'        => apply_filters( 'roci_pages_tabs', array() ),
+function roci_register_pages_submenu() {
+    add_submenu_page(
+        'roci-theme-settings',
+        __( 'Pages', 'rocinante' ),
+        __( 'Pages', 'rocinante' ),
+        'manage_options',
+        'roci-pages',
+        'roci_pages_landing_screen'
     );
-
-    return $pages;
 }
-add_filter( 'mb_settings_pages', 'roci_register_pages_settings' );
+add_action( 'admin_menu', 'roci_register_pages_submenu', 11 );
 
 
 // ============================================================
-// LANDING REDIRECT — auto-select first tab, or show empty state
+// LANDING SCREEN
 // ============================================================
 
-function roci_pages_landing_redirect() {
-
-    if ( ! is_admin() ) {
-        return;
-    }
-
-    if ( ! isset( $_GET['page'] ) || 'roci-pages' !== $_GET['page'] ) { // phpcs:ignore WordPress.Security.NonceVerification
-        return;
-    }
-
-    if ( isset( $_GET['tab'] ) && '' !== $_GET['tab'] ) { // phpcs:ignore WordPress.Security.NonceVerification
-        return;
-    }
-
-    $tabs = apply_filters( 'roci_pages_tabs', array() );
-
-    if ( ! empty( $tabs ) ) {
-        wp_safe_redirect( admin_url( 'admin.php?page=roci-pages&tab=' . urlencode( array_key_first( $tabs ) ) ) );
-        exit;
-    }
-
-    add_action( 'admin_notices', function() {
-        echo '<div class="notice notice-info"><p>' . esc_html__( 'No page sections registered. Child themes add tabs via the roci_pages_tabs filter.', 'rocinante' ) . '</p></div>';
-    } );
+function roci_pages_landing_screen() {
+    ?>
+    <div class="wrap">
+        <h1><?php esc_html_e( 'Pages', 'rocinante' ); ?></h1>
+        <p><?php esc_html_e( 'Select a page from the submenu to edit its content. Pages are registered by the active child theme.', 'rocinante' ); ?></p>
+    </div>
+    <?php
 }
-add_action( 'admin_init', 'roci_pages_landing_redirect' );
