@@ -13,3 +13,6 @@ Thumbs.db
 # Editor
 .vscode/
 *.log
+
+# Claude
+.claude/
