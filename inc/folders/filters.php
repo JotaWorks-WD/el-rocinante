@@ -12,8 +12,8 @@
  *     folder filter into the AttachmentsBrowser toolbar (after the type + date filters)
  *
  * File:    inc/folders/filters.php
- * Version: 2.6.0
- * Updated: 2026-05-21
+ * Version: 2.6.1
+ * Updated: 2026-05-27
  *
  * @package ElRocinante
  */
@@ -329,6 +329,30 @@ function roci_walk_folder_terms_depth_first( $children, $parent_id, &$ordered ) 
 
 
 /**
+ * Compute a folder term's depth from a parent-id lookup map.
+ *
+ * Replaces get_ancestors() with an in-memory walk, eliminating the
+ * per-term DB query inside folder enqueue loops. The parent map is
+ * already constructed by the calling function from the same get_terms()
+ * result, so this is purely arithmetic.
+ *
+ * @param int   $term_id    The term to measure.
+ * @param array $parent_of  Map of term_id => parent_id (0 for root).
+ * @return int  Depth (0 = root-level term, 1 = first child, etc.).
+ */
+function _roci_folder_depth_from_map( $term_id, $parent_of ) {
+	$depth   = 0;
+	$current = isset( $parent_of[ $term_id ] ) ? (int) $parent_of[ $term_id ] : 0;
+	// Cycle guard: corrupted parent chains (A → B → A) must not infinite-loop.
+	while ( $current > 0 && $depth < 100 ) {
+		$depth++;
+		$current = isset( $parent_of[ $current ] ) ? (int) $parent_of[ $current ] : 0;
+	}
+	return $depth;
+}
+
+
+/**
  * Build the roci_media_folder term list for JS consumption.
  *
  * Returns a flat array in depth-first tree order so children always follow
@@ -350,9 +374,11 @@ function roci_get_folder_terms_for_js() {
 		return array();
 	}
 
-	$children = array();
+	$children  = array();
+	$parent_of = array();
 	foreach ( $terms as $term ) {
 		$children[ $term->parent ][] = $term;
+		$parent_of[ $term->term_id ] = (int) $term->parent;
 	}
 
 	$ordered = array();
@@ -361,7 +387,7 @@ function roci_get_folder_terms_for_js() {
 	$data = array();
 
 	foreach ( $ordered as $term ) {
-		$depth  = count( get_ancestors( $term->term_id, 'roci_media_folder', 'taxonomy' ) );
+		$depth  = _roci_folder_depth_from_map( $term->term_id, $parent_of );
 		$indent = $depth > 0 ? str_repeat( "\u{2014} ", $depth ) : '';
 		$data[] = array(
 			'term_id' => $term->term_id,
@@ -443,9 +469,11 @@ function roci_get_folder_terms_with_depth() {
 		return array();
 	}
 
-	$children = array();
+	$children  = array();
+	$parent_of = array();
 	foreach ( $terms as $term ) {
 		$children[ $term->parent ][] = $term;
+		$parent_of[ $term->term_id ] = (int) $term->parent;
 	}
 
 	$ordered = array();
@@ -453,7 +481,7 @@ function roci_get_folder_terms_with_depth() {
 
 	$data = array();
 	foreach ( $ordered as $term ) {
-		$depth  = count( get_ancestors( $term->term_id, 'roci_media_folder', 'taxonomy' ) );
+		$depth  = _roci_folder_depth_from_map( $term->term_id, $parent_of );
 		$data[] = array(
 			'term_id' => $term->term_id,
 			'name'    => $term->name,
