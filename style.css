@@ -4,7 +4,7 @@ Theme URI: https://jota.works
 Author: JotaWorks
 Author URI: https://jota.works
 Description: A lean, professional WordPress base theme by JotaWorks. Built for service businesses, tourism, and property management — with a custom SEO layer, schema markup, and no page builder bloat.
-Version: 2.12.3
+Version: 2.12.4
 License: Private
 License URI: https://jota.works
 Text Domain: rocinante
@@ -13,6 +13,9 @@ GitHub Branch: main
 */
 
 /*
+v2.12.4
+- Fix: Page Slug field now saves on child-theme CPTs that opt into the SEO meta box (audit 5-A)
+
 v2.11.4
 - Fix: add roci-any-internal-drag capture-phase listeners to folders-list-dragdrop.js so CPT list-table drags (pages, posts) suppress WP's "Drop files to upload" overlay, mirroring the mechanism already in folders-dragdrop.js for media grid drags. No SCSS/CSS change — existing body.roci-any-internal-drag rule in _admin-folders-dragdrop.scss already covers it.
 

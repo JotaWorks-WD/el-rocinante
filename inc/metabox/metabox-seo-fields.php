@@ -7,8 +7,8 @@
  * robots, OG image, and conditionally the preview/health panels.
  *
  * File:    metabox-seo-fields.php
- * Version: 1.2.0
- * Updated: 2026-05-24
+ * Version: 1.2.1
+ * Updated: 2026-05-27
  *
  * @package ElRocinante
  */
@@ -175,7 +175,7 @@ function roci_save_slug_field( $post_id, $post ) {
     if ( wp_is_post_revision( $post_id ) ) {
         return;
     }
-    if ( ! in_array( $post->post_type, [ 'post', 'page' ], true ) ) {
+    if ( ! in_array( $post->post_type, roci_get_seo_post_types(), true ) ) {
         return;
     }
     if ( ! current_user_can( 'edit_post', $post_id ) ) {
