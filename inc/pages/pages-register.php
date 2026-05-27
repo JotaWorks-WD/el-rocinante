@@ -8,7 +8,7 @@
  * page owns its own option_name storage independently.
  *
  * File:    inc/pages/pages-register.php
- * Version: 2.0.0
+ * Version: 2.1.0
  * Updated: 2026-05-27
  *
  * @package ElRocinante
@@ -39,10 +39,30 @@ add_action( 'admin_menu', 'roci_register_pages_submenu', 11 );
 // ============================================================
 
 function roci_pages_landing_screen() {
+    global $submenu;
+
+    $child_pages = array();
+
+    if ( ! empty( $submenu['roci-pages'] ) ) {
+        foreach ( $submenu['roci-pages'] as $entry ) {
+            if ( isset( $entry[2] ) && 'roci-pages' !== $entry[2] ) {
+                $child_pages[] = $entry;
+            }
+        }
+    }
     ?>
     <div class="wrap">
         <h1><?php esc_html_e( 'Pages', 'rocinante' ); ?></h1>
-        <p><?php esc_html_e( 'Select a page from the submenu to edit its content. Pages are registered by the active child theme.', 'rocinante' ); ?></p>
+        <?php if ( empty( $child_pages ) ) : ?>
+            <p><?php esc_html_e( 'Select a page from the submenu to edit its content. Pages are registered by the active child theme.', 'rocinante' ); ?></p>
+        <?php else : ?>
+            <p><?php esc_html_e( 'Select a page to edit its content:', 'rocinante' ); ?></p>
+            <ul>
+                <?php foreach ( $child_pages as $entry ) : ?>
+                    <li><a href="<?php echo esc_url( admin_url( 'admin.php?page=' . $entry[2] ) ); ?>"><?php echo esc_html( $entry[0] ); ?></a></li>
+                <?php endforeach; ?>
+            </ul>
+        <?php endif; ?>
     </div>
     <?php
 }
