@@ -7,8 +7,8 @@
  * to the individual files in tabs/.
  *
  * File:    inc/theme-settings/settings-page.php
- * Version: 1.1.3
- * Updated: 2026-05-10
+ * Version: 1.1.4
+ * Updated: 2026-05-28
  *
  * @package ElRocinante
  */
@@ -37,7 +37,7 @@ function roci_settings_page() {
     ?>
     <div class="wrap roci-settings-wrap">
 
-        <h1><?php _e( 'Theme Settings', 'rocinante' ); ?> <span style="font-size:13px;color:#666;font-weight:400;">El Rocinante</span></h1>
+        <h1><?php esc_html_e( 'Theme Settings', 'rocinante' ); ?> <span style="font-size:13px;color:#666;font-weight:400;">El Rocinante</span></h1>
 
         <style>
             .roci-settings-wrap .nav-tab-wrapper { margin-bottom: 20px; }

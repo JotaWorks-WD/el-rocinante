@@ -5,8 +5,8 @@
  * Included by settings-page.php inside roci_settings_page().
  *
  * File:    inc/theme-settings/tabs/tab-social.php
- * Version: 1.1.1
- * Updated: 2026-05-10
+ * Version: 1.1.2
+ * Updated: 2026-05-28
  *
  * @package ElRocinante
  */
@@ -27,7 +27,7 @@ $platforms = apply_filters( 'roci_social_platforms', array(
     'tripadvisor' => 'TripAdvisor',
 ) );
 ?>
-<h2 class="roci-section-title"><?php _e( 'Social Profiles', 'rocinante' ); ?></h2>
+<h2 class="roci-section-title"><?php esc_html_e( 'Social Profiles', 'rocinante' ); ?></h2>
 <p class="roci-note" style="margin-bottom:16px;"><?php _e( 'Child themes can add additional platforms via the <code>roci_social_platforms</code> filter.', 'rocinante' ); ?></p>
 <table class="form-table">
     <?php foreach ( $platforms as $key => $label ) : ?>

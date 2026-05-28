@@ -5,8 +5,8 @@
  * Included by settings-page.php inside roci_settings_page().
  *
  * File:    inc/theme-settings/tabs/tab-identity.php
- * Version: 1.1.1
- * Updated: 2026-05-10
+ * Version: 1.1.2
+ * Updated: 2026-05-28
  *
  * @package ElRocinante
  */
@@ -28,53 +28,53 @@ $logo_url = $logo_id ? wp_get_attachment_image_url( $logo_id, 'medium' ) : '';
 
 <p class="roci-sync-note">&#8505; These settings are synced with Appearance → Customize → Site Identity. Changes here update both locations automatically.</p>
 
-<h2 class="roci-section-title"><?php _e( 'Site Information', 'rocinante' ); ?></h2>
+<h2 class="roci-section-title"><?php esc_html_e( 'Site Information', 'rocinante' ); ?></h2>
 <table class="form-table">
     <tr>
-        <th><label for="roci_blogname"><?php _e( 'Site Title', 'rocinante' ); ?></label></th>
+        <th><label for="roci_blogname"><?php esc_html_e( 'Site Title', 'rocinante' ); ?></label></th>
         <td>
             <input type="text" name="blogname" id="roci_blogname" class="regular-text" value="<?php echo esc_attr( $site_title ); ?>">
-            <p class="roci-note"><?php _e( 'Used in browser tab, SEO title tags, and schema markup.', 'rocinante' ); ?></p>
+            <p class="roci-note"><?php esc_html_e( 'Used in browser tab, SEO title tags, and schema markup.', 'rocinante' ); ?></p>
         </td>
     </tr>
     <tr>
-        <th><label for="roci_blogdescription"><?php _e( 'Tagline', 'rocinante' ); ?></label></th>
+        <th><label for="roci_blogdescription"><?php esc_html_e( 'Tagline', 'rocinante' ); ?></label></th>
         <td>
             <input type="text" name="blogdescription" id="roci_blogdescription" class="regular-text" value="<?php echo esc_attr( $tagline ); ?>">
-            <p class="roci-note"><?php _e( 'Displayed in some themes and used in schema markup.', 'rocinante' ); ?></p>
+            <p class="roci-note"><?php esc_html_e( 'Displayed in some themes and used in schema markup.', 'rocinante' ); ?></p>
         </td>
     </tr>
 </table>
 
-<h2 class="roci-section-title"><?php _e( 'Logo & Icon', 'rocinante' ); ?></h2>
+<h2 class="roci-section-title"><?php esc_html_e( 'Logo & Icon', 'rocinante' ); ?></h2>
 <table class="form-table">
     <tr>
-        <th><label><?php _e( 'Site Logo', 'rocinante' ); ?></label></th>
+        <th><label><?php esc_html_e( 'Site Logo', 'rocinante' ); ?></label></th>
         <td>
             <div class="roci-media-wrap">
                 <img src="<?php echo esc_url( $logo_url ); ?>" class="roci-media-preview <?php echo $logo_url ? 'has-image' : ''; ?>" id="roci_logo_preview">
                 <input type="hidden" name="custom_logo_id" id="roci_logo_id" value="<?php echo esc_attr( $logo_id ); ?>">
                 <input type="hidden" name="custom_logo_url" id="roci_logo_url" value="<?php echo esc_url( $logo_url ); ?>">
-                <button type="button" class="button button-small roci-logo-upload"><?php _e( 'Select Logo', 'rocinante' ); ?></button>
+                <button type="button" class="button button-small roci-logo-upload"><?php esc_html_e( 'Select Logo', 'rocinante' ); ?></button>
                 <?php if ( $logo_url ) : ?>
-                    <button type="button" class="button button-small roci-logo-remove"><?php _e( 'Remove', 'rocinante' ); ?></button>
+                    <button type="button" class="button button-small roci-logo-remove"><?php esc_html_e( 'Remove', 'rocinante' ); ?></button>
                 <?php endif; ?>
             </div>
-            <p class="roci-note"><?php _e( 'Recommended: SVG or PNG with transparent background.', 'rocinante' ); ?></p>
+            <p class="roci-note"><?php esc_html_e( 'Recommended: SVG or PNG with transparent background.', 'rocinante' ); ?></p>
         </td>
     </tr>
     <tr>
-        <th><label><?php _e( 'Site Icon (Favicon)', 'rocinante' ); ?></label></th>
+        <th><label><?php esc_html_e( 'Site Icon (Favicon)', 'rocinante' ); ?></label></th>
         <td>
             <div class="roci-media-wrap">
                 <img src="<?php echo esc_url( $icon_url ); ?>" class="roci-media-preview <?php echo $icon_url ? 'has-image' : ''; ?>" id="roci_icon_preview">
                 <input type="hidden" name="site_icon" id="roci_site_icon_id" value="<?php echo esc_attr( $site_icon ); ?>">
-                <button type="button" class="button button-small roci-icon-upload"><?php _e( 'Select Icon', 'rocinante' ); ?></button>
+                <button type="button" class="button button-small roci-icon-upload"><?php esc_html_e( 'Select Icon', 'rocinante' ); ?></button>
                 <?php if ( $icon_url ) : ?>
-                    <button type="button" class="button button-small roci-icon-remove"><?php _e( 'Remove', 'rocinante' ); ?></button>
+                    <button type="button" class="button button-small roci-icon-remove"><?php esc_html_e( 'Remove', 'rocinante' ); ?></button>
                 <?php endif; ?>
             </div>
-            <p class="roci-note"><?php _e( 'Square PNG or SVG, minimum 512×512px. WordPress generates all favicon sizes automatically.', 'rocinante' ); ?></p>
+            <p class="roci-note"><?php esc_html_e( 'Square PNG or SVG, minimum 512×512px. WordPress generates all favicon sizes automatically.', 'rocinante' ); ?></p>
         </td>
     </tr>
 </table>
