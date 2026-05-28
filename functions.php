@@ -6,7 +6,7 @@
  * loads includes, and outputs analytics/integration scripts.
  *
  * File:    functions.php
- * Version: 1.2.8
+ * Version: 1.2.9
  * Updated: 2026-05-28
  *
  * @package ElRocinante
@@ -246,6 +246,10 @@ function el_rocinante_analytics() {
     <?php endif;
 
     if ( $head_script ) :
+        // Intentionally unescaped: $head_script is sanitized at save time via
+        // wp_kses_post(), which permits <script> tags for users with the
+        // unfiltered_html capability. Wrapping this in esc_html() would break
+        // the custom-scripts feature for admins.
         echo $head_script;
     endif;
 
@@ -260,6 +264,10 @@ add_action( 'wp_head', 'el_rocinante_analytics' );
 function el_rocinante_footer_scripts() {
     $footer_script = roci_setting( 'integrations', 'custom_footer_script' );
     if ( $footer_script ) {
+        // Intentionally unescaped: $footer_script is sanitized at save time via
+        // wp_kses_post(), which permits <script> tags for users with the
+        // unfiltered_html capability. Wrapping this in esc_html() would break
+        // the custom-scripts feature for admins.
         echo $footer_script;
     }
 }

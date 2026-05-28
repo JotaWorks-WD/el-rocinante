@@ -1,4 +1,16 @@
-<?php get_header(); ?>
+<?php
+/**
+ * Archive — Archive Page Template
+ *
+ * Displays posts for category, tag, author, date, and post-type archives.
+ *
+ * File:    archive.php
+ * Version: 1.0.0
+ * Updated: 2026-05-28
+ *
+ * @package ElRocinante
+ */
+get_header(); ?>
 
 <main id="main-content" class="site-main">
     <div class="container">
@@ -11,7 +23,7 @@
                 } elseif ( is_tag() ) {
                     single_tag_title();
                 } elseif ( is_author() ) {
-                    echo get_the_author();
+                    echo esc_html( get_the_author() );
                 } elseif ( is_date() ) {
                     echo get_the_date( 'F Y' );
                 } else {
