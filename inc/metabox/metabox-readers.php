@@ -17,8 +17,8 @@
  * and may be consolidated here in a future refactor.
  *
  * File:    inc/metabox/metabox-readers.php
- * Version: 1.0.0
- * Updated: 2026-05-24
+ * Version: 1.0.1
+ * Updated: 2026-05-28
  *
  * @package ElRocinante
  */
@@ -39,8 +39,8 @@
  * with 'roci_page_' to produce the actual wp_options row name. So a
  * call like roci_get_setting( 'home', 'hero_headline' ) reads from the
  * wp_options row named 'roci_page_home'. Child themes that register
- * page sections via roci_register_page_section() must use the same
- * convention so reads and writes line up.
+ * MB Pro Settings Pages directly via the mb_settings_pages filter
+ * must use the same convention so reads and writes line up.
  *
  * Defensive behavior: if MB Pro is not active (rwmb_meta() does not
  * exist), the wrapper returns $default instead of fataling. This lets

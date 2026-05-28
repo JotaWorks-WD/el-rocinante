@@ -1,13 +1,15 @@
 <?php
 /**
- * Folder upload handler.
- * Assigns attachments to a roci_media_folder term when a target folder
- * is provided via the upload POST payload (Plupload multipart_params,
- * wired in commit 2).
+ * Folder Upload Handler
  *
- * @package El_Rocinante
- * @version 2.8.14
- * Updated: 2026-05-16
+ * Assigns attachments to a roci_media_folder term when a target folder
+ * is provided via the upload POST payload (wired via Plupload multipart_params).
+ *
+ * File:    inc/folders/upload.php
+ * Version: 2.8.15
+ * Updated: 2026-05-28
+ *
+ * @package ElRocinante
  */
 
 defined( 'ABSPATH' ) || exit;

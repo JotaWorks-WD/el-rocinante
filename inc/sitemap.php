@@ -1,4 +1,18 @@
 <?php
+/**
+ * Sitemap Filters
+ *
+ * Restricts the WordPress XML sitemap to posts and pages only.
+ * Removes users, unwanted taxonomies, and non-standard post types.
+ *
+ * File:    inc/sitemap.php
+ * Version: 1.0.0
+ * Updated: 2026-05-28
+ *
+ * @package ElRocinante
+ */
+
+defined( 'ABSPATH' ) || exit;
 
 // ============================================================
 // SITEMAP FILTERS
