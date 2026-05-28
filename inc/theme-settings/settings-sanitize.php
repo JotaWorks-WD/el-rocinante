@@ -3,8 +3,8 @@
  * Theme Settings — Sanitize Callbacks
  *
  * File:    inc/theme-settings/settings-sanitize.php
- * Version: 1.1.1
- * Updated: 2026-05-10
+ * Version: 1.1.2
+ * Updated: 2026-05-28
  *
  * @package ElRocinante
  */
@@ -70,12 +70,17 @@ function roci_sanitize_seo( $input ) {
 }
 
 function roci_sanitize_integrations( $input ) {
+    // These fields output raw <script> verbatim into the head/footer, so an
+    // admin with unfiltered_html stores them unfiltered. Lower-privileged
+    // users fall back to wp_kses_post() and can never inject scripts.
+    $can_raw = current_user_can( 'unfiltered_html' );
+
     return array(
         'ga_id'                => isset( $input['ga_id'] )                ? sanitize_text_field( $input['ga_id'] )                : '',
         'gtm_id'               => isset( $input['gtm_id'] )               ? sanitize_text_field( $input['gtm_id'] )               : '',
         'fb_pixel_id'          => isset( $input['fb_pixel_id'] )          ? sanitize_text_field( $input['fb_pixel_id'] )          : '',
-        'custom_head_script'   => isset( $input['custom_head_script'] )   ? wp_kses_post( $input['custom_head_script'] )          : '',
-        'custom_footer_script' => isset( $input['custom_footer_script'] ) ? wp_kses_post( $input['custom_footer_script'] )        : '',
+        'custom_head_script'   => isset( $input['custom_head_script'] )   ? ( $can_raw ? $input['custom_head_script'] : wp_kses_post( $input['custom_head_script'] ) )   : '',
+        'custom_footer_script' => isset( $input['custom_footer_script'] ) ? ( $can_raw ? $input['custom_footer_script'] : wp_kses_post( $input['custom_footer_script'] ) ) : '',
     );
 }
 
