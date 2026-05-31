@@ -4,7 +4,7 @@ Theme URI: https://jota.works
 Author: JotaWorks
 Author URI: https://jota.works
 Description: A lean, professional WordPress base theme by JotaWorks. Built for service businesses, tourism, and property management — with a custom SEO layer, schema markup, and no page builder bloat.
-Version: 2.12.12
+Version: 2.12.13
 License: Private
 License URI: https://jota.works
 Text Domain: rocinante
@@ -13,65 +13,5 @@ GitHub Branch: main
 */
 
 /*
-v2.12.5
-- Perf: eliminate per-term get_ancestors() DB calls in folder enqueue functions; depth now computed from in-memory parent map (audit 8-A)
-
-v2.12.4
-- Fix: Page Slug field now saves on child-theme CPTs that opt into the SEO meta box (audit 5-A)
-
-v2.11.4
-- Fix: add roci-any-internal-drag capture-phase listeners to folders-list-dragdrop.js so CPT list-table drags (pages, posts) suppress WP's "Drop files to upload" overlay, mirroring the mechanism already in folders-dragdrop.js for media grid drags. No SCSS/CSS change — existing body.roci-any-internal-drag rule in _admin-folders-dragdrop.scss already covers it.
-
-v2.11.3
-- Fix: add $taxonomy to closure use clause in roci_build_folder_options_for_select(); debug.log no longer floods with "Undefined variable $taxonomy" warnings during admin browsing.
-
-v2.11.2
-- Path C-lite: generic CPT folder API. roci_register_folder_type($post_type, $taxonomy_slug) exposes the full folder system to any post type. Pages and Posts ship as built-in registrations. Child themes opt CPTs in with one line.
-- Posts list table: sidebar with folders, drag handle column, filter dropdown, organize toggle, drag-to-folder with toast/undo — mirrors Pages feature set.
-- Unified AJAX handler roci_move_item_to_folder replaces the page-specific endpoint; folders-page-dragdrop.js updated accordingly.
-- New: folders-post-dragdrop.js.
-- create.php, filters.php, counts.php, order.php, sidebar.php all read from the registry instead of hardcoded screen IDs.
-
-v2.9.7
-- Remove library.mirroring.fetch from wp-media-refresh-shim.js; fixes Unassigned → folder drag leaving the moved photo visible in both collections (the delayed collection.set() was undoing the v2.9.6 library.remove() work).
-- CSP audit: no string-eval patterns (eval, new Function, setTimeout/setInterval with string arg) found in dist/js/folders/ — browser console clean.
-- Widen blue flash focus suppression to descendant elements of .attachment[draggable="true"]; keyboard focus rings preserved via :not(:focus-visible).
-
-v2.10.0
-- Bulk Organize — selection mode for the media library grid. Click Bulk Organize to enter; click attachments to multi-select with checkmark overlays. Action bar shows count, Select All/Deselect All, Move dropdown, disabled Delete/Download placeholders, and Cancel.
-- Bulk move — Move dropdown renders the full folder tree with hierarchy indentation. AJAX bulk-moves selected attachments, removes them from the current filtered view via Backbone library.remove(), and shows a toast with Undo.
-- Undo — reverses each attachment to its individual prior folder state (mixed-origin supported) via roci_bulk_undo_move_attachments endpoint.
-- Drag gating — single-photo drags are suppressed while bulk selection mode is active.
-
-v2.10.1
-- Single bulk mode — suppress WP core's native Bulk Select button via CSS (.media-toolbar-secondary .select-mode-toggle-button) so Bulk Organize is the only entry point.
-- Real Delete — Delete Permanently button in the action bar now opens a custom confirmation modal and fires roci_bulk_delete_attachments endpoint (wp_delete_attachment with force=true per item, delete_post cap checked per attachment).
-- Phantom-in-Unassigned fix — Backbone 'add' watchdog on the library collection prevents in-flight more() XHR responses from re-adding bulk-moved items after library.remove() calls land.
-- Orphan cleanup — deleted dist/js/folders/bulk-organize-button.js (was not enqueued).
-
-v2.10.2
-- Fix action bar insert: use attachmentsEl.parentNode instead of assuming browser is the direct parent; resolves NotFoundError on Bulk Organize click when WP/plugin wrappers sit between .attachments-browser and .attachments.
-
-v2.10.3
-- Sidebar count sync: bulk move now calls rociDecrementSidebarCount / rociIncrementSidebarCount per moved attachment using previous_assignments from the server response; counts no longer stay stale after a bulk move.
-- Move dropdown header plural: replace static "Move %d items to…" with singular/plural pair ("Move 1 item to…" / "Move %d items to…"); filters.php uses _n() pattern matching the delete modal.
-- Move dropdown header padding: increase padding-left to 16px so the header text is flush with action bar rather than left-clipped at 12px.
-
-v2.10.4
-- Bulk move Undo now decrements the destination folder count once per successfully undone attachment (resp.data.moved), mirroring the forward path's rociIncrementSidebarCount loop. Resolves count compounding on repeated move + undo cycles.
-
-v2.10.5
-- Undo handler increments origin folder counts (including Unassigned virtual) after the destination decrement, completing full mirror symmetry with the forward bulk move path.
-- Enqueue cache-bust audit: all fauxlders enqueues confirmed using roci_asset_version() (filemtime-based) — no changes needed.
-
-v2.10.6
-- Upload-to-grid sync restored: rociAddUploadToLibrary() in wp-media-refresh-shim.js adds the new attachment model directly to the active Backbone library collection after upload, covering all four view/target scenarios (All Files, Unassigned, specific folder, nested folder).
-- Single-photo move intermittency fixed: rociRemoveFromGrid() now calls rociWatchForReAdd() to guard against in-flight more() XHRs re-adding the removed model — mirrors the v2.10.1 bulk-move watchdog.
-- rociWatchForReAdd() extracted to wp-media-refresh-shim.js as a shared global; bulk move inline watchdog replaced with the shared call.
-
-v2.10.7
-- Filter-switch stale-view fix: roci:sidebarFilter handler now calls library._requery(true) after setting props. Confirmed on WP 6.9.4: setting library.props alone updates the filter state but does not trigger the mirroring collection to re-fetch — library.mirroring held stale models from the previous filter context, causing moved photos to remain visible in the wrong view. _requery(true) forces a fresh server fetch.
-
-v2.10.8
-- Unassigned filter server-side fix: WP 6.7's wp_ajax_query_attachments() security hardening strips $_REQUEST['query'] to a hardcoded allow-list (standard WP_Query keys + registered attachment taxonomy query_vars) before ajax_query_attachments_args fires. roci_no_folder is not a taxonomy and has no WP registration, so it was stripped — the NOT EXISTS tax_query branch never fired, returning all attachments unfiltered. No public filter exists on the allow-list itself. Fix: re-inject roci_no_folder from $_REQUEST at the top of roci_media_folder_modal_ajax_filter().
+v2.12.13 — CLAUDE.md convention blocks added (version tracking, Fauxlders, audit verification); root style.css changelog wiped and reset for rolling-6 convention
 */
