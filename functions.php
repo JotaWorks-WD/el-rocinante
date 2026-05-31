@@ -173,6 +173,13 @@ require_once get_template_directory() . '/inc/sitemap.php';
 
 
 // ============================================================
+// ARCHIVE SUPPRESSION
+// ============================================================
+
+require_once get_template_directory() . '/inc/archive-suppression.php';
+
+
+// ============================================================
 // HELPER FUNCTIONS — image & video output
 // ============================================================
 
