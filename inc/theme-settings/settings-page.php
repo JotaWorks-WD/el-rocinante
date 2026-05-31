@@ -7,8 +7,8 @@
  * to the individual files in tabs/.
  *
  * File:    inc/theme-settings/settings-page.php
- * Version: 1.1.4
- * Updated: 2026-05-28
+ * Version: 1.1.5
+ * Updated: 2026-05-31
  *
  * @package ElRocinante
  */
@@ -119,10 +119,11 @@ function roci_settings_page() {
     <script>
     jQuery(document).ready(function($) {
         $('form').on('submit', function() {
-            var logoId = $('#roci_logo_id').val();
+            var $logoField = $('#roci_logo_id');
+            if ( ! $logoField.length ) return; // Site Identity tab not active — nothing to save
             $.post(ajaxurl, {
                 action: 'roci_save_custom_logo',
-                logo_id: logoId,
+                logo_id: $logoField.val(),
                 nonce: '<?php echo wp_create_nonce( "roci_save_logo" ); ?>'
             });
         });
