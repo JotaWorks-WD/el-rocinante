@@ -7,7 +7,7 @@
  * to the individual files in tabs/.
  *
  * File:    inc/theme-settings/settings-page.php
- * Version: 1.1.5
+ * Version: 1.1.6
  * Updated: 2026-05-31
  *
  * @package ElRocinante
@@ -20,6 +20,16 @@ if ( ! defined( 'ABSPATH' ) ) exit;
 // SETTINGS PAGE OUTPUT
 // ============================================================
 
+/**
+ * Render the Theme Settings admin page.
+ *
+ * Outputs the tab nav, single form wrapper, active tab content,
+ * and submit button. Tab content is delegated to tabs/*.
+ *
+ * Filters dispatched:
+ * - roci_settings_tabs — array of tab_id => label pairs; child themes
+ *   may add tabs by appending to this array.
+ */
 function roci_settings_page() {
 
     $active_tab = isset( $_GET['tab'] ) ? sanitize_key( $_GET['tab'] ) : 'identity';

@@ -6,8 +6,8 @@
  * loads includes, and outputs analytics/integration scripts.
  *
  * File:    functions.php
- * Version: 1.2.9
- * Updated: 2026-05-28
+ * Version: 1.2.10
+ * Updated: 2026-05-31
  *
  * @package ElRocinante
  */
