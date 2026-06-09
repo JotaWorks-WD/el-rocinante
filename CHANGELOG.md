@@ -4,6 +4,9 @@ All notable changes to the El Rocinante parent theme are recorded here. Entries 
 
 ---
 
+## [2.13.2] — 2026-06-09
+Fix `jw_link_atts()`: `mailto:` and `tel:` now return `''` instead of new-tab attributes. These are protocol links that open the mail client or phone dialer — `target="_blank"` is meaningless and can flash an orphan blank tab. They fall through to the existing `return ''` at the end of the function. `wa.me` and cross-host `http(s)` links are unchanged.
+
 ## [2.13.1] — 2026-06-09
 Changelog migrated from style.css rolling block to CHANGELOG.md. style.css now carries only its Version header field.
 

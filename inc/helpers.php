@@ -7,7 +7,7 @@
  * and template parts throughout El Rocinante and child themes.
  *
  * File:    inc/helpers.php
- * Version: 1.2.0
+ * Version: 1.2.1
  * Updated: 2026-06-09
  *
  * @package ElRocinante
@@ -378,15 +378,16 @@ function jw_faq_schema( $post_id = null ) {
  * Returns the target and rel attribute string for a link, with a leading
  * space so it drops cleanly inline into an <a> tag. Returns the string
  * ' target="_blank" rel="noopener noreferrer"' for external URLs,
- * or '' for internal or empty URLs.
+ * or '' for all other URLs.
  *
- * A URL is considered external when:
- *   - It begins with 'mailto:' or 'tel:'
- *   - It contains 'wa.me' (WhatsApp short links)
+ * Returns new-tab attributes when:
+ *   - The URL contains 'wa.me' (WhatsApp short links)
  *   - It is an http(s) URL whose host does not match the host of home_url()
  *
- * Relative URLs, fragment-only strings, and same-host http(s) URLs
- * are treated as internal and return ''.
+ * Returns '' when:
+ *   - The URL begins with 'mailto:' or 'tel:' — these open the mail client
+ *     or phone dialer, not a navigable page; target="_blank" is meaningless.
+ *   - Relative URLs, fragment-only strings, and same-host http(s) URLs.
  *
  * Usage:
  *   <a href="<?php echo esc_url( $url ); ?>"<?php echo jw_link_atts( $url ); ?>>Link text</a>
@@ -398,11 +399,6 @@ function jw_link_atts( $url ) {
 
     if ( ! $url ) {
         return '';
-    }
-
-    // mailto: and tel: are always external.
-    if ( 0 === strpos( $url, 'mailto:' ) || 0 === strpos( $url, 'tel:' ) ) {
-        return ' target="_blank" rel="noopener noreferrer"';
     }
 
     // WhatsApp short links.
