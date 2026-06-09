@@ -7,8 +7,8 @@
  * and template parts throughout El Rocinante and child themes.
  *
  * File:    inc/helpers.php
- * Version: 1.1.4
- * Updated: 2026-05-22
+ * Version: 1.2.0
+ * Updated: 2026-06-09
  *
  * @package ElRocinante
  *
@@ -18,6 +18,7 @@
  *   jw_hero_picture()    — Art-directed hero <picture> (desktop + mobile crop)
  *   jw_bunny_video()     — Clean Bunny Stream iframe embed
  *   jw_faq_schema()      — FAQPage JSON-LD schema output from jw_faq_items field
+ *   jw_link_atts()       — Returns target + rel attribute string for external links
  *
  * Future expansion:
  *   If this file grows significantly, split into:
@@ -364,4 +365,60 @@ function jw_faq_schema( $post_id = null ) {
     );
 
     echo '<script type="application/ld+json">' . wp_json_encode( $schema, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE ) . '</script>' . "\n";
+}
+
+
+// ============================================================
+// LINK HELPERS
+// ============================================================
+
+/**
+ * jw_link_atts()
+ *
+ * Returns the target and rel attribute string for a link, with a leading
+ * space so it drops cleanly inline into an <a> tag. Returns the string
+ * ' target="_blank" rel="noopener noreferrer"' for external URLs,
+ * or '' for internal or empty URLs.
+ *
+ * A URL is considered external when:
+ *   - It begins with 'mailto:' or 'tel:'
+ *   - It contains 'wa.me' (WhatsApp short links)
+ *   - It is an http(s) URL whose host does not match the host of home_url()
+ *
+ * Relative URLs, fragment-only strings, and same-host http(s) URLs
+ * are treated as internal and return ''.
+ *
+ * Usage:
+ *   <a href="<?php echo esc_url( $url ); ?>"<?php echo jw_link_atts( $url ); ?>>Link text</a>
+ *
+ * @param  string $url  The href value to evaluate.
+ * @return string       Attribute string with leading space, or empty string.
+ */
+function jw_link_atts( $url ) {
+
+    if ( ! $url ) {
+        return '';
+    }
+
+    // mailto: and tel: are always external.
+    if ( 0 === strpos( $url, 'mailto:' ) || 0 === strpos( $url, 'tel:' ) ) {
+        return ' target="_blank" rel="noopener noreferrer"';
+    }
+
+    // WhatsApp short links.
+    if ( false !== strpos( $url, 'wa.me' ) ) {
+        return ' target="_blank" rel="noopener noreferrer"';
+    }
+
+    // For http(s) URLs, compare hosts against the current site.
+    if ( preg_match( '#^https?://#i', $url ) ) {
+        $link_host = parse_url( $url, PHP_URL_HOST );
+        $home_host = parse_url( home_url(), PHP_URL_HOST );
+
+        if ( $link_host && $home_host && $link_host !== $home_host ) {
+            return ' target="_blank" rel="noopener noreferrer"';
+        }
+    }
+
+    return '';
 }
