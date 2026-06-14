@@ -6,8 +6,8 @@
  * loads includes, and outputs analytics/integration scripts.
  *
  * File:    functions.php
- * Version: 1.2.10
- * Updated: 2026-05-31
+ * Version: 1.2.11
+ * Updated: 2026-06-14
  *
  * @package ElRocinante
  */
@@ -184,6 +184,13 @@ require_once get_template_directory() . '/inc/archive-suppression.php';
 // ============================================================
 
 require_once get_template_directory() . '/inc/helpers.php';
+
+
+// ============================================================
+// BLOG SHORTCODES
+// ============================================================
+
+require_once get_template_directory() . '/inc/blog-shortcodes.php';
 
 
 // ============================================================
