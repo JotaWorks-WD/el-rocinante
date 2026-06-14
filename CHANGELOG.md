@@ -4,6 +4,9 @@ All notable changes to the El Rocinante parent theme are recorded here. Entries 
 
 ---
 
+## [2.14.1] — 2026-06-14
+Move `CONVENTIONS.md` from theme repo root to workspace root (sibling of `CLAUDE.md`). File is documentation only — no PHP, no CSS, no WP hooks affected. Removal from the theme repo keeps deployed files clean; content is preserved outside the repo.
+
 ## [2.14.0] — 2026-06-14
 Add `inc/blog-shortcodes.php`: seven reusable blog body-module shortcodes (`roci_image`, `roci_pair`, `roci_quote`, `roci_expect`, `roci_notes`, `roci_stats`, `roci_related`). Icon helper `roci_blog_icon()` ships five inline SVGs (anchor, helm-wheel, external-link, wave, info). Both `roci_expect` and `roci_notes` accept a `title=""` attribute for per-instance heading override. Child themes opt in via `roci_register_blog_shortcodes()` and customise labels and icons via `roci_blog_config()`. No SCSS this pass — child themes own all output styling.
 
