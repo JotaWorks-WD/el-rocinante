@@ -17,7 +17,7 @@
  * and may be consolidated here in a future refactor.
  *
  * File:    inc/metabox/metabox-readers.php
- * Version: 1.0.2
+ * Version: 1.1.0
  * Updated: 2026-06-14
  *
  * @package ElRocinante
@@ -110,4 +110,69 @@ function roci_get_setting( $page, $field, $default = '' ) {
     }
 
     return $value;
+}
+
+
+/**
+ * Read a raw field value from an MB Pro Settings Page.
+ *
+ * Returns the bare stored value exactly as it sits in wp_options — a
+ * scalar, attachment ID, or primitive — without routing through
+ * rwmb_meta(). This contrasts with roci_get_setting(), which pipes the
+ * value through MB Pro's field hydration layer and returns an expanded
+ * data structure (e.g. a full image array for image fields, resolved
+ * group data for clone groups).
+ *
+ * WHY TWO READERS
+ *
+ * MB Pro's rwmb_meta() hydration is convenient when a template needs
+ * full image metadata (URL, width, height, alt, etc.) in one call. But
+ * many templates — and all child-theme raw readers (e.g. FP's
+ * fpp_setting()) — expect a bare attachment ID that they pass to
+ * wp_get_attachment_image() or jw_picture() themselves. Passing an
+ * already-hydrated array to those functions produces incorrect output.
+ * roci_get_setting_raw() is the drop-in replacement for those raw child
+ * readers: same get_option() path, same isset() && !== '' empty-value
+ * semantics, same result shape. A forking dev should use this reader
+ * anywhere the child theme was previously calling its own raw wrapper
+ * (fpp_setting(), etc.) so the migration is a straight substitution.
+ *
+ * WHEN TO USE EACH
+ *
+ *   roci_get_setting()     — when the template wants MB Pro's hydrated
+ *                            field data (full image arrays, expanded
+ *                            groups). Requires MB Pro to be active.
+ *
+ *   roci_get_setting_raw() — when the template expects a bare scalar or
+ *                            attachment ID. Works whether or not MB Pro
+ *                            is active; reads directly from wp_options.
+ *
+ * This function shares the 'roci_page_option_prefix' filter with
+ * roci_get_setting(), so child-prefix overrides apply automatically —
+ * no extra wiring needed in the child.
+ *
+ * Usage:
+ *
+ *     $image_id = roci_get_setting_raw( 'home', 'hero_image' );
+ *     $headline = roci_get_setting_raw( 'home', 'hero_headline', 'Default text' );
+ *
+ * Empty-value semantics: returns $default when the field key is absent
+ * OR when the stored value is exactly '' (empty string). Does NOT treat
+ * null or false as empty — this is intentionally narrower than
+ * roci_get_setting()'s broader (=== '' || null || false) check, and
+ * matches the behavior of raw get_option-based child readers exactly.
+ *
+ * @param  string $page    Page slug matching the template filename
+ *                         (e.g. 'home', 'charters', 'tours').
+ * @param  string $field   Field ID within the page's Settings Page.
+ * @param  mixed  $default Value to return if the field is absent or ''.
+ *                         Default: empty string.
+ * @return mixed           The raw stored value, or $default if not set.
+ */
+function roci_get_setting_raw( $page, $field, $default = '' ) {
+    $option_name = roci_page_option_prefix() . $page;
+    $options     = get_option( $option_name, array() );
+    return isset( $options[ $field ] ) && $options[ $field ] !== ''
+        ? $options[ $field ]
+        : $default;
 }
