@@ -17,8 +17,8 @@
  * and may be consolidated here in a future refactor.
  *
  * File:    inc/metabox/metabox-readers.php
- * Version: 1.0.1
- * Updated: 2026-05-28
+ * Version: 1.0.2
+ * Updated: 2026-06-14
  *
  * @package ElRocinante
  */
@@ -28,6 +28,25 @@
 // ============================================================
 
 /**
+ * Resolve the option-name prefix for page settings.
+ *
+ * Returns the string prepended to the page slug when building the
+ * wp_options row name for MB Pro Settings Pages. Defaults to the parent
+ * theme's own 'roci_page_'. Child themes that register their Settings
+ * Pages under a different namespace override via:
+ *
+ *     add_filter( 'roci_page_option_prefix', function() {
+ *         return 'fpp_page_';
+ *     } );
+ *
+ * @return string
+ */
+function roci_page_option_prefix() {
+    return apply_filters( 'roci_page_option_prefix', 'roci_page_' );
+}
+
+
+/**
  * Read a field value from an MB Pro Settings Page.
  *
  * The canonical API for reading per-page content fields stored in the
@@ -35,12 +54,12 @@
  * themes should read through this wrapper — never call rwmb_meta()
  * directly for Settings Page reads.
  *
- * Option name convention: the wrapper internally prefixes the page slug
- * with 'roci_page_' to produce the actual wp_options row name. So a
- * call like roci_get_setting( 'home', 'hero_headline' ) reads from the
- * wp_options row named 'roci_page_home'. Child themes that register
- * MB Pro Settings Pages directly via the mb_settings_pages filter
- * must use the same convention so reads and writes line up.
+ * Option name convention: the wrapper builds the option name via
+ * roci_page_option_prefix() — default 'roci_page_' — appended with the
+ * page slug. So roci_get_setting( 'home', 'hero_headline' ) reads from
+ * 'roci_page_home' by default. Child themes that register MB Pro Settings
+ * Pages under a different prefix must override 'roci_page_option_prefix'
+ * via add_filter() so their prefix matches their option_name registration.
  *
  * Defensive behavior: if MB Pro is not active (rwmb_meta() does not
  * exist), the wrapper returns $default instead of fataling. This lets
@@ -73,11 +92,9 @@ function roci_get_setting( $page, $field, $default = '' ) {
         return $default;
     }
 
-    // Internal storage convention: page slugs are prefixed with
-    // 'roci_page_' to namespace the wp_options row names. This keeps
-    // our option names from colliding with WordPress core options,
-    // other plugins, or future legacy Theme Settings migration keys.
-    $option_name = 'roci_page_' . $page;
+    // Build the option name from the filterable prefix (default 'roci_page_').
+    // Children override 'roci_page_option_prefix' to supply their namespace.
+    $option_name = roci_page_option_prefix() . $page;
 
     $value = rwmb_meta(
         $field,

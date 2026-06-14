@@ -4,11 +4,16 @@ Theme URI: https://jota.works
 Author: JotaWorks
 Author URI: https://jota.works
 Description: A lean, professional WordPress base theme by JotaWorks. Built for service businesses, tourism, and property management — with a custom SEO layer, schema markup, and no page builder bloat.
-Version: 2.14.1
+Version: 2.15.0
 License: Private
 License URI: https://jota.works
 Text Domain: rocinante
 GitHub Theme URI: https://github.com/JotaWorks-WD/el-rocinante
 GitHub Branch: main
+*/
+
+/*
+Changelog (newest first, rolling 6):
+v2.15.0 — 2026-06-14 — Added filterable roci_page_option_prefix() accessor + 'roci_page_option_prefix' filter; roci_get_setting() now resolves its option prefix through the accessor. Behavior-identical on a bare parent (default 'roci_page_'). Enables child themes to supply their own namespace without overriding the reader.
 */
 
