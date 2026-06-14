@@ -4,7 +4,7 @@ Theme URI: https://jota.works
 Author: JotaWorks
 Author URI: https://jota.works
 Description: A lean, professional WordPress base theme by JotaWorks. Built for service businesses, tourism, and property management — with a custom SEO layer, schema markup, and no page builder bloat.
-Version: 2.16.0
+Version: 2.17.0
 License: Private
 License URI: https://jota.works
 Text Domain: rocinante
@@ -14,6 +14,7 @@ GitHub Branch: main
 
 /*
 Changelog (newest first, rolling 6):
+v2.17.0 — 2026-06-14 — Added "Used On" media column — lists pages referencing each attachment in the Media list table; fork-safe via roci_page_option_prefix + mb_settings_pages; wp_attachment_is_image() gates prevent false positives from coincidental integers.
 v2.16.0 — 2026-06-14 — Added roci_get_setting_raw() — raw-value sibling to roci_get_setting(), prefix-filter aware via 'roci_page_option_prefix', drop-in for child raw readers expecting bare stored values (bare IDs/scalars, not rwmb_meta-hydrated arrays).
 v2.15.0 — 2026-06-14 — Added filterable roci_page_option_prefix() accessor + 'roci_page_option_prefix' filter; roci_get_setting() now resolves its option prefix through the accessor. Behavior-identical on a bare parent (default 'roci_page_'). Enables child themes to supply their own namespace without overriding the reader.
 */
