@@ -8,8 +8,8 @@
  * Nav output is controlled per child theme via do_action('roci_nav').
  *
  * File:    header.php
- * Version: 1.2.0
- * Updated: 2026-05-09
+ * Version: 1.3.1
+ * Updated: 2026-06-27
  *
  * @package ElRocinante
  */
@@ -56,25 +56,46 @@
     // OG IMAGE
     // Priority: OG Image field → Featured Image → Site Default
     // --------------------------------------------------------
-    $roci_og_image_url = '';
+    $roci_og_image_url    = '';
+    $roci_og_image_att_id = 0; // attachment ID of the image that won the URL race (0 = none / site default)
 
     // 1. OG Image field (Metabox)
     $roci_og_image_field = roci_get_field( 'roci_og_image', $roci_post_id );
     if ( $roci_og_image_field ) {
         $roci_og_image_ids = array_keys( $roci_og_image_field );
         if ( ! empty( $roci_og_image_ids ) ) {
-            $roci_og_image_url = wp_get_attachment_image_url( $roci_og_image_ids[0], 'full' );
+            $roci_og_image_att_id = $roci_og_image_ids[0];
+            $roci_og_image_url    = wp_get_attachment_image_url( $roci_og_image_att_id, 'full' );
         }
     }
 
     // 2. Featured Image fallback
     if ( ! $roci_og_image_url && has_post_thumbnail( $roci_post_id ) ) {
-        $roci_og_image_url = get_the_post_thumbnail_url( $roci_post_id, 'full' );
+        $roci_og_image_att_id = get_post_thumbnail_id( $roci_post_id );
+        $roci_og_image_url    = get_the_post_thumbnail_url( $roci_post_id, 'full' );
     }
 
     // 3. Site default fallback (Theme Settings → SEO)
     if ( ! $roci_og_image_url ) {
-        $roci_og_image_url = roci_setting( 'seo', 'default_og_image' );
+        $roci_og_image_att_id = 0; // site default is a bare URL — no attachment
+        $roci_og_image_url    = roci_setting( 'seo', 'default_og_image' );
+    }
+
+    // --------------------------------------------------------
+    // OG IMAGE ALT
+    // Priority: typed field → attachment alt of the winning image
+    //           → meta description → meta title
+    // --------------------------------------------------------
+    $roci_og_image_alt = roci_get_field( 'roci_og_image_alt', $roci_post_id );
+
+    if ( ! $roci_og_image_alt && $roci_og_image_att_id ) {
+        $roci_og_image_alt = get_post_meta( $roci_og_image_att_id, '_wp_attachment_image_alt', true );
+    }
+    if ( ! $roci_og_image_alt ) {
+        $roci_og_image_alt = $roci_description;
+    }
+    if ( ! $roci_og_image_alt ) {
+        $roci_og_image_alt = $roci_title;
     }
 
     // --------------------------------------------------------
@@ -102,6 +123,7 @@
     <meta property="og:locale" content="<?php echo esc_attr( get_locale() ); ?>">
     <?php if ( $roci_og_image_url ) : ?>
     <meta property="og:image" content="<?php echo esc_url( $roci_og_image_url ); ?>">
+    <meta property="og:image:alt" content="<?php echo esc_attr( $roci_og_image_alt ); ?>">
     <meta property="og:image:width" content="1200">
     <meta property="og:image:height" content="630">
     <meta property="og:image:type" content="image/webp">
@@ -124,10 +146,14 @@
     <?php endif; ?>
 
     <?php if ( is_front_page() ) :
-        $roci_biz_name    = roci_setting( 'business', 'name' );
-        $roci_biz_phone   = roci_setting( 'business', 'phone' );
-        $roci_biz_email   = roci_setting( 'business', 'email' );
-        $roci_biz_address = roci_setting( 'business', 'address' );
+        $roci_biz_name     = roci_setting( 'business', 'name' );
+        $roci_biz_phone    = roci_setting( 'business', 'phone' );
+        $roci_biz_email    = roci_setting( 'business', 'email' );
+        $roci_biz_street   = roci_setting( 'business', 'street' );
+        $roci_biz_locality = roci_setting( 'business', 'locality' );
+        $roci_biz_region   = roci_setting( 'business', 'region' );
+        $roci_biz_postal   = roci_setting( 'business', 'postal' );
+        $roci_biz_country  = roci_setting( 'business', 'country' );
 
         $roci_same_as = array_values( array_filter( [
             roci_setting( 'social', 'facebook' ),
@@ -141,19 +167,29 @@
         ] ) );
 
         if ( $roci_biz_name ) :
+            $roci_address_parts = array_filter( [
+                'streetAddress'   => $roci_biz_street,
+                'addressLocality' => $roci_biz_locality,
+                'addressRegion'   => $roci_biz_region,
+                'postalCode'      => $roci_biz_postal,
+                'addressCountry'  => $roci_biz_country,
+            ] );
+
             $roci_local_schema = [
                 '@context'  => 'https://schema.org',
                 '@type'     => 'LocalBusiness',
+                '@id'       => home_url( '/#organization' ),
                 'name'      => $roci_biz_name,
                 'url'       => home_url( '/' ),
                 'telephone' => $roci_biz_phone,
                 'email'     => $roci_biz_email,
-                'address'   => [
-                    '@type'         => 'PostalAddress',
-                    'streetAddress' => $roci_biz_address,
-                ],
                 'sameAs'    => $roci_same_as,
             ];
+
+            // Only emit a PostalAddress node when at least one address part is set.
+            if ( $roci_address_parts ) {
+                $roci_local_schema['address'] = [ '@type' => 'PostalAddress' ] + $roci_address_parts;
+            }
         ?>
     <!-- Schema JSON-LD — Site Level (Theme Settings) -->
     <script type="application/ld+json">

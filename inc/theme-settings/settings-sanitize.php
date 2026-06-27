@@ -3,8 +3,8 @@
  * Theme Settings — Sanitize Callbacks
  *
  * File:    inc/theme-settings/settings-sanitize.php
- * Version: 1.1.2
- * Updated: 2026-05-28
+ * Version: 1.2.0
+ * Updated: 2026-06-27
  *
  * @package ElRocinante
  */
@@ -35,12 +35,16 @@ function roci_sanitize_design( $input ) {
 
 function roci_sanitize_business( $input ) {
     return array(
-        'name'     => isset( $input['name'] )     ? sanitize_text_field( $input['name'] )        : '',
-        'phone'    => isset( $input['phone'] )    ? sanitize_text_field( $input['phone'] )       : '',
-        'email'    => isset( $input['email'] )    ? sanitize_email( $input['email'] )            : '',
-        'address'  => isset( $input['address'] )  ? sanitize_textarea_field( $input['address'] ) : '',
-        'whatsapp' => isset( $input['whatsapp'] ) ? sanitize_text_field( $input['whatsapp'] )    : '',
-        'maps_url' => isset( $input['maps_url'] ) ? esc_url_raw( $input['maps_url'] )            : '',
+        'name'     => isset( $input['name'] )     ? sanitize_text_field( $input['name'] )     : '',
+        'phone'    => isset( $input['phone'] )    ? sanitize_text_field( $input['phone'] )    : '',
+        'email'    => isset( $input['email'] )    ? sanitize_email( $input['email'] )         : '',
+        'street'   => sanitize_text_field( $input['street'] ?? '' ),
+        'locality' => sanitize_text_field( $input['locality'] ?? '' ),
+        'region'   => sanitize_text_field( $input['region'] ?? '' ),
+        'postal'   => sanitize_text_field( $input['postal'] ?? '' ),
+        'country'  => sanitize_text_field( $input['country'] ?? '' ),
+        'whatsapp' => isset( $input['whatsapp'] ) ? sanitize_text_field( $input['whatsapp'] ) : '',
+        'maps_url' => isset( $input['maps_url'] ) ? esc_url_raw( $input['maps_url'] )         : '',
     );
 }
 

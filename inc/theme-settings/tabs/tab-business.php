@@ -5,8 +5,8 @@
  * Included by settings-page.php inside roci_settings_page().
  *
  * File:    inc/theme-settings/tabs/tab-business.php
- * Version: 1.1.2
- * Updated: 2026-05-28
+ * Version: 1.2.0
+ * Updated: 2026-06-27
  *
  * @package ElRocinante
  */
@@ -31,8 +31,24 @@ $business = get_option( 'roci_business', array() );
         <td><input type="email" name="roci_business[email]" id="roci_biz_email" class="regular-text" value="<?php echo esc_attr( isset( $business['email'] ) ? $business['email'] : '' ); ?>"></td>
     </tr>
     <tr>
-        <th><label for="roci_biz_address"><?php esc_html_e( 'Business Address', 'rocinante' ); ?></label></th>
-        <td><textarea name="roci_business[address]" id="roci_biz_address" class="large-text" rows="3"><?php echo esc_textarea( isset( $business['address'] ) ? $business['address'] : '' ); ?></textarea></td>
+        <th><label for="roci_biz_street"><?php esc_html_e( 'Street Address', 'rocinante' ); ?></label></th>
+        <td><input type="text" name="roci_business[street]" id="roci_biz_street" class="large-text" value="<?php echo esc_attr( isset( $business['street'] ) ? $business['street'] : '' ); ?>"></td>
+    </tr>
+    <tr>
+        <th><label for="roci_biz_locality"><?php esc_html_e( 'City / Locality', 'rocinante' ); ?></label></th>
+        <td><input type="text" name="roci_business[locality]" id="roci_biz_locality" class="large-text" value="<?php echo esc_attr( isset( $business['locality'] ) ? $business['locality'] : '' ); ?>"></td>
+    </tr>
+    <tr>
+        <th><label for="roci_biz_region"><?php esc_html_e( 'State / Province / Region', 'rocinante' ); ?></label></th>
+        <td><input type="text" name="roci_business[region]" id="roci_biz_region" class="large-text" value="<?php echo esc_attr( isset( $business['region'] ) ? $business['region'] : '' ); ?>"></td>
+    </tr>
+    <tr>
+        <th><label for="roci_biz_postal"><?php esc_html_e( 'Postal Code', 'rocinante' ); ?></label></th>
+        <td><input type="text" name="roci_business[postal]" id="roci_biz_postal" class="large-text" value="<?php echo esc_attr( isset( $business['postal'] ) ? $business['postal'] : '' ); ?>"></td>
+    </tr>
+    <tr>
+        <th><label for="roci_biz_country"><?php esc_html_e( 'Country (2-letter ISO, e.g. CR)', 'rocinante' ); ?></label></th>
+        <td><input type="text" name="roci_business[country]" id="roci_biz_country" class="large-text" value="<?php echo esc_attr( isset( $business['country'] ) ? $business['country'] : '' ); ?>"></td>
     </tr>
     <tr>
         <th><label for="roci_biz_whatsapp"><?php esc_html_e( 'WhatsApp Number', 'rocinante' ); ?></label></th>

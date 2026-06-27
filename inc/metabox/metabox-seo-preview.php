@@ -7,8 +7,8 @@
  * Updates in real time as the editor types — no save required.
  *
  * File:    inc/metabox/metabox-seo-preview.php
- * Version: 1.1.0
- * Updated: 2026-05-07
+ * Version: 1.1.1
+ * Updated: 2026-06-27
  *
  * @package ElRocinante
  */
@@ -213,8 +213,8 @@ function roci_seo_preview_html( $default_og_image ) {
 
                 if (el("roci-title-count") && titleField) {
                     var tlen = titleField.value.length;
-                    el("roci-title-count").textContent = tlen + " / 60 characters";
-                    el("roci-title-count").className   = "roci-char-count " + (tlen > 60 ? "over" : tlen >= 50 ? "good" : "low");
+                    el("roci-title-count").textContent = tlen + " / 80 characters";
+                    el("roci-title-count").className   = "roci-char-count " + (tlen > 80 ? "over" : tlen >= 70 ? "good" : "low");
                 }
                 if (el("roci-desc-count") && descField) {
                     var dlen = descField.value.length;

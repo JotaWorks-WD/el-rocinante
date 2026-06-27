@@ -7,8 +7,8 @@
  * robots, OG image, and conditionally the preview/health panels.
  *
  * File:    metabox-seo-fields.php
- * Version: 1.2.1
- * Updated: 2026-05-27
+ * Version: 1.3.0
+ * Updated: 2026-06-27
  *
  * @package ElRocinante
  */
@@ -44,7 +44,7 @@ add_filter( 'rwmb_meta_boxes', function( $meta_boxes ) {
             'desc'       => __( 'Recommended 50-60 characters. Leave blank to use post title.', 'rocinante' ),
             'size'       => 80,
             'attributes' => array(
-                'maxlength' => 60,
+                'maxlength' => 80,
                 'id'        => 'roci_meta_title',
             ),
         ),
@@ -108,6 +108,18 @@ add_filter( 'rwmb_meta_boxes', function( $meta_boxes ) {
             'desc'             => __( 'Recommended 1200x630px WebP. Leave blank to use featured image or site default.', 'rocinante' ),
             'max_file_uploads' => 1,
             'force_delete'     => false,
+        ),
+
+        // OG Image Alt Text
+        array(
+            'id'         => 'roci_og_image_alt',
+            'name'       => __( 'OG Image Alt Text', 'rocinante' ),
+            'type'       => 'text',
+            'desc'       => __( 'Alt text for the social share image. Auto-fills from the image\'s own alt text when available; set manually here for the site-default image.', 'rocinante' ),
+            'size'       => 80,
+            'attributes' => array(
+                'id' => 'roci_og_image_alt',
+            ),
         ),
 
     );

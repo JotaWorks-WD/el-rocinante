@@ -7,8 +7,8 @@
  * and slug fields — updates in real time as the editor types.
  *
  * File:    inc/metabox/metabox-seo-health.php
- * Version: 1.1.0
- * Updated: 2026-05-07
+ * Version: 1.1.1
+ * Updated: 2026-06-27
  *
  * @package ElRocinante
  */
@@ -182,9 +182,9 @@ function roci_seo_health_html( $default_og_image ) {
                     title ? title.length + " characters" : "Using post title as fallback"
                 );
                 item( "Meta Title length",
-                    title ? ( title.length >= 50 && title.length <= 60 ) : null,
+                    title ? ( title.length >= 70 && title.length <= 80 ) : null,
                     title
-                        ? ( title.length < 50 ? "Too short — aim for 50-60" : title.length > 60 ? "Too long — trim to 60" : "Good length" )
+                        ? ( title.length < 70 ? "Too short — aim for 70-80" : title.length > 80 ? "Too long — trim to 80" : "Good length" )
                         : "Set a meta title to check length",
                     title ? "check" : "skip"
                 );
