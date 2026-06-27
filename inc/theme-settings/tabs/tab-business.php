@@ -5,7 +5,7 @@
  * Included by settings-page.php inside roci_settings_page().
  *
  * File:    inc/theme-settings/tabs/tab-business.php
- * Version: 1.2.0
+ * Version: 1.3.0
  * Updated: 2026-06-27
  *
  * @package ElRocinante
@@ -62,6 +62,28 @@ $business = get_option( 'roci_business', array() );
         <td>
             <input type="url" name="roci_business[maps_url]" id="roci_biz_maps" class="large-text" value="<?php echo esc_attr( isset( $business['maps_url'] ) ? $business['maps_url'] : '' ); ?>">
             <p class="roci-note"><?php esc_html_e( 'Paste the src URL from your Google Maps embed code.', 'rocinante' ); ?></p>
+        </td>
+    </tr>
+    <?php $roci_biz_schema_img = isset( $business['schema_image'] ) ? $business['schema_image'] : ''; ?>
+    <tr>
+        <th><label><?php esc_html_e( 'Schema Image (LocalBusiness)', 'rocinante' ); ?></label></th>
+        <td>
+            <div class="roci-media-wrap">
+                <img src="<?php echo esc_url( $roci_biz_schema_img ); ?>" class="roci-media-preview <?php echo $roci_biz_schema_img ? 'has-image' : ''; ?>" id="roci_biz_schema_image_preview">
+                <input type="hidden" name="roci_business[schema_image]" id="roci_biz_schema_image" value="<?php echo esc_url( $roci_biz_schema_img ); ?>">
+                <button type="button" class="button button-small roci-media-upload" data-target="roci_biz_schema_image" data-preview="roci_biz_schema_image_preview"><?php esc_html_e( 'Select Image', 'rocinante' ); ?></button>
+                <?php if ( $roci_biz_schema_img ) : ?>
+                    <button type="button" class="button button-small roci-media-remove" data-target="roci_biz_schema_image" data-preview="roci_biz_schema_image_preview"><?php esc_html_e( 'Remove', 'rocinante' ); ?></button>
+                <?php endif; ?>
+            </div>
+            <p class="roci-note"><?php esc_html_e( 'Raster image (PNG/JPG/WebP) for the site\'s LocalBusiness structured data. Recommended for rich results.', 'rocinante' ); ?></p>
+        </td>
+    </tr>
+    <tr>
+        <th><label for="roci_biz_price_range"><?php esc_html_e( 'Price Range', 'rocinante' ); ?></label></th>
+        <td>
+            <input type="text" name="roci_business[price_range]" id="roci_biz_price_range" class="large-text" value="<?php echo esc_attr( isset( $business['price_range'] ) ? $business['price_range'] : '' ); ?>">
+            <p class="roci-note"><?php esc_html_e( 'Optional. e.g. $$, $$$, or a range like $150–$400. Leave blank if not applicable.', 'rocinante' ); ?></p>
         </td>
     </tr>
 </table>

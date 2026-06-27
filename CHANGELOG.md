@@ -4,6 +4,12 @@ All notable changes to the El Rocinante parent theme are recorded here. Entries 
 
 ---
 
+## [2.19.0] — 2026-06-27
+LocalBusiness schema: added two global Business-tab Theme Settings fields — Schema Image (a media upload storing a URL, mirroring the SEO Default OG Image pattern and wired by the generic `theme-settings.js`) and Price Range (text). Both are emitted into the site-level LocalBusiness JSON-LD as `image` / `priceRange` via conditional-assign guards, omitted when blank. A blank Schema Image intentionally leaves Google's optional "missing image" warning in place as a reminder.
+
+## [2.18.0] — 2026-06-27
+Head/schema upgrades: replaced the single free-text business address with five discrete PostalAddress fields (street, locality, region, postal code, country), emitted via `array_filter` so empty properties — and the whole `address` node when all are blank — are dropped. Added a per-page `og:image:alt` Meta Box field (auto-fills from the winning image's attachment alt → meta description → meta title). Raised the meta-title admin entry cap from 60 to 80 (preview/health panels renumbered; no front-end truncation). Added `@id` (`#organization`) to the site-level LocalBusiness JSON-LD node.
+
 ## [2.14.1] — 2026-06-14
 Move `CONVENTIONS.md` from theme repo root to workspace root (sibling of `CLAUDE.md`). File is documentation only — no PHP, no CSS, no WP hooks affected. Removal from the theme repo keeps deployed files clean; content is preserved outside the repo.
 

@@ -4,7 +4,7 @@ Theme URI: https://jota.works
 Author: JotaWorks
 Author URI: https://jota.works
 Description: A lean, professional WordPress base theme by JotaWorks. Built for service businesses, tourism, and property management — with a custom SEO layer, schema markup, and no page builder bloat.
-Version: 2.18.0
+Version: 2.19.0
 License: Private
 License URI: https://jota.works
 Text Domain: rocinante
@@ -14,6 +14,7 @@ GitHub Branch: main
 
 /*
 Changelog (newest first, rolling 6):
+v2.19.0 — 2026-06-27 — LocalBusiness schema: added two global Business-tab Theme Settings fields — "Schema Image (LocalBusiness)" (media upload storing a URL, wired by the generic theme-settings.js) and "Price Range" (text) — emitted into the site-level LocalBusiness JSON-LD as image / priceRange via conditional-assign guards (omitted when blank; blank image intentionally leaves Google's optional-field reminder in place).
 v2.18.0 — 2026-06-27 — Head/schema upgrades: new per-page OG Image Alt Text field (auto-fills from attachment alt → meta description → title); meta-title admin entry cap raised 60→80 (preview/health renumbered, no front-end truncation); added @id (#organization) to site LocalBusiness JSON-LD; replaced single free-text business address with five discrete PostalAddress fields (street/locality/region/postal/country), emitted via array_filter so empty properties are dropped.
 v2.17.0 — 2026-06-14 — Added "Used On" media column — lists pages referencing each attachment in the Media list table; fork-safe via roci_page_option_prefix + mb_settings_pages; wp_attachment_is_image() gates prevent false positives from coincidental integers.
 v2.16.0 — 2026-06-14 — Added roci_get_setting_raw() — raw-value sibling to roci_get_setting(), prefix-filter aware via 'roci_page_option_prefix', drop-in for child raw readers expecting bare stored values (bare IDs/scalars, not rwmb_meta-hydrated arrays).

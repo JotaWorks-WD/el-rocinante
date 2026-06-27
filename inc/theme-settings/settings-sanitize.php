@@ -3,7 +3,7 @@
  * Theme Settings — Sanitize Callbacks
  *
  * File:    inc/theme-settings/settings-sanitize.php
- * Version: 1.2.0
+ * Version: 1.3.0
  * Updated: 2026-06-27
  *
  * @package ElRocinante
@@ -45,6 +45,8 @@ function roci_sanitize_business( $input ) {
         'country'  => sanitize_text_field( $input['country'] ?? '' ),
         'whatsapp' => isset( $input['whatsapp'] ) ? sanitize_text_field( $input['whatsapp'] ) : '',
         'maps_url' => isset( $input['maps_url'] ) ? esc_url_raw( $input['maps_url'] )         : '',
+        'schema_image' => isset( $input['schema_image'] ) ? esc_url_raw( $input['schema_image'] )      : '',
+        'price_range'  => isset( $input['price_range'] )  ? sanitize_text_field( $input['price_range'] ) : '',
     );
 }
 

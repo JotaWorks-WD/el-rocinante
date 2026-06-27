@@ -8,7 +8,7 @@
  * Nav output is controlled per child theme via do_action('roci_nav').
  *
  * File:    header.php
- * Version: 1.3.1
+ * Version: 1.4.0
  * Updated: 2026-06-27
  *
  * @package ElRocinante
@@ -154,6 +154,8 @@
         $roci_biz_region   = roci_setting( 'business', 'region' );
         $roci_biz_postal   = roci_setting( 'business', 'postal' );
         $roci_biz_country  = roci_setting( 'business', 'country' );
+        $roci_biz_schema_image = roci_setting( 'business', 'schema_image' );
+        $roci_biz_price_range  = roci_setting( 'business', 'price_range' );
 
         $roci_same_as = array_values( array_filter( [
             roci_setting( 'social', 'facebook' ),
@@ -185,6 +187,16 @@
                 'email'     => $roci_biz_email,
                 'sameAs'    => $roci_same_as,
             ];
+
+            // Only emit image when a Schema Image is set (blank = key omitted by design).
+            if ( $roci_biz_schema_image ) {
+                $roci_local_schema['image'] = $roci_biz_schema_image;
+            }
+
+            // Only emit priceRange when set (blank = key omitted).
+            if ( $roci_biz_price_range ) {
+                $roci_local_schema['priceRange'] = $roci_biz_price_range;
+            }
 
             // Only emit a PostalAddress node when at least one address part is set.
             if ( $roci_address_parts ) {
