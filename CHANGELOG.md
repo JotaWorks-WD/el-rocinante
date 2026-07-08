@@ -4,6 +4,9 @@ All notable changes to the El Rocinante parent theme are recorded here. Entries 
 
 ---
 
+## [2.19.2] — 2026-07-08
+Fix the root cause of the slug-meta corruption: added an `rwmb_roci_slug_value` save-time value filter. DB inspection confirmed MB Pro serializes the `roci_slug` field's config array into the `roci_slug` postmeta on REST/Gutenberg saves where the input is absent — the stored value was the `autocomplete…datalist…` config cruft. The v2.19.1 `is_string()` guard in `roci_save_slug_field()` only protected the `$_POST` read that syncs `post_name`; it could not stop the meta write, which happens inside MB Pro's own save pipeline before our `save_post` handler runs. The new filter fires at MB Pro's write point (`rwmb_{$field_id}_value`, before save) and rejects the non-string config-array fallback — returning the prior value, or empty — so the serialized config can never persist to meta. Filter signature verified against the Meta Box documentation. The display-time filter and the `is_string()` guard remain in place as defense in depth. See CLAUDE.md §13.1.
+
 ## [2.19.1] — 2026-07-08
 Fix `roci_save_slug_field()`: the handler only guarded against `$_POST['roci_slug']` being unset, but on REST/Gutenberg/no-input save paths MB Pro substitutes the field's config array as the value — which passed the `isset()` check, was flattened by `sanitize_title()`, and wrote garbage (`autocompletefalsedatalist…`) into `post_name`. The guard now also requires `is_string()`, rejecting the config-array fallback before it can reach `sanitize_title()`. An empty string submission is treated as "no override intended" and leaves the existing `post_name` untouched. See CLAUDE.md §13.1.
 

@@ -7,7 +7,7 @@
  * robots, OG image, and conditionally the preview/health panels.
  *
  * File:    metabox-seo-fields.php
- * Version: 1.3.1
+ * Version: 1.3.2
  * Updated: 2026-07-08
  *
  * @package ElRocinante
@@ -174,6 +174,38 @@ add_filter( 'rwmb_roci_slug_field_meta', function( $value, $field, $saved ) {
     }
     return $value;
 }, 10, 3 );
+
+
+// ============================================================
+// SLUG FIELD — guard the meta write (save-time value filter)
+// ============================================================
+//
+// The display-time filter above was originally chosen to dodge the
+// save-time filter, because MB Pro passes the $field CONFIG ARRAY as the
+// value on REST/Gutenberg saves where the input is absent — and an
+// UNGUARDED save-time filter would let that serialized config persist to
+// wp_postmeta. But avoiding the hook left the meta write itself
+// unguarded: MB Pro still serializes the config array into the roci_slug
+// meta upstream (confirmed via DB — the stored value was the
+// "autocomplete...datalist..." config cruft). The is_string() guard in
+// roci_save_slug_field() only protects the $_POST read, not the meta.
+//
+// This filter closes that gap at the actual write point. rwmb_{id}_value
+// fires before MB Pro stores the value; is_string() rejects the config
+// array fallback so it can never reach wp_postmeta. Verified against the
+// Meta Box docs: rwmb_{$field_id}_value fires before save with args
+// ( $new, $field, $old, $object_id ) — register 4. See CLAUDE.md 13.1.
+
+add_filter( 'rwmb_roci_slug_value', function( $new, $field, $old, $object_id ) {
+    // MB Pro passes the $field CONFIG ARRAY as the value on REST/Gutenberg
+    // saves where the input is absent. Reject anything that isn't a real
+    // scalar string so the serialized config can never persist to meta.
+    if ( ! is_string( $new ) ) {
+        return is_string( $old ) ? $old : '';
+    }
+    $new = trim( $new );
+    return sanitize_title( $new );
+}, 10, 4 );
 
 
 // ============================================================
