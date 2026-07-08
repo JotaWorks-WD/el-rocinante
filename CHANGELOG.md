@@ -4,6 +4,9 @@ All notable changes to the El Rocinante parent theme are recorded here. Entries 
 
 ---
 
+## [2.19.1] — 2026-07-08
+Fix `roci_save_slug_field()`: the handler only guarded against `$_POST['roci_slug']` being unset, but on REST/Gutenberg/no-input save paths MB Pro substitutes the field's config array as the value — which passed the `isset()` check, was flattened by `sanitize_title()`, and wrote garbage (`autocompletefalsedatalist…`) into `post_name`. The guard now also requires `is_string()`, rejecting the config-array fallback before it can reach `sanitize_title()`. An empty string submission is treated as "no override intended" and leaves the existing `post_name` untouched. See CLAUDE.md §13.1.
+
 ## [2.19.0] — 2026-06-27
 LocalBusiness schema: added two global Business-tab Theme Settings fields — Schema Image (a media upload storing a URL, mirroring the SEO Default OG Image pattern and wired by the generic `theme-settings.js`) and Price Range (text). Both are emitted into the site-level LocalBusiness JSON-LD as `image` / `priceRange` via conditional-assign guards, omitted when blank. A blank Schema Image intentionally leaves Google's optional "missing image" warning in place as a reminder.
 

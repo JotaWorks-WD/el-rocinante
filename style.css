@@ -4,7 +4,7 @@ Theme URI: https://jota.works
 Author: JotaWorks
 Author URI: https://jota.works
 Description: A lean, professional WordPress base theme by JotaWorks. Built for service businesses, tourism, and property management — with a custom SEO layer, schema markup, and no page builder bloat.
-Version: 2.19.0
+Version: 2.19.1
 License: Private
 License URI: https://jota.works
 Text Domain: rocinante
@@ -14,6 +14,7 @@ GitHub Branch: main
 
 /*
 Changelog (newest first, rolling 6):
+v2.19.1 — 2026-07-08 — Fix roci_save_slug_field(): reject non-string $_POST['roci_slug'] before sanitize_title(). On REST/Gutenberg/no-input saves MB Pro substitutes the field config array as the value, which passed the isset() guard and wrote a flattened config string into post_name. Now guarded via is_string(), and an empty submission is treated as no-override (existing slug preserved). See CLAUDE.md §13.1.
 v2.19.0 — 2026-06-27 — LocalBusiness schema: added two global Business-tab Theme Settings fields — "Schema Image (LocalBusiness)" (media upload storing a URL, wired by the generic theme-settings.js) and "Price Range" (text) — emitted into the site-level LocalBusiness JSON-LD as image / priceRange via conditional-assign guards (omitted when blank; blank image intentionally leaves Google's optional-field reminder in place).
 v2.18.0 — 2026-06-27 — Head/schema upgrades: new per-page OG Image Alt Text field (auto-fills from attachment alt → meta description → title); meta-title admin entry cap raised 60→80 (preview/health renumbered, no front-end truncation); added @id (#organization) to site LocalBusiness JSON-LD; replaced single free-text business address with five discrete PostalAddress fields (street/locality/region/postal/country), emitted via array_filter so empty properties are dropped.
 v2.17.0 — 2026-06-14 — Added "Used On" media column — lists pages referencing each attachment in the Media list table; fork-safe via roci_page_option_prefix + mb_settings_pages; wp_attachment_is_image() gates prevent false positives from coincidental integers.

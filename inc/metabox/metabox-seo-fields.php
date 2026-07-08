@@ -7,8 +7,8 @@
  * robots, OG image, and conditionally the preview/health panels.
  *
  * File:    metabox-seo-fields.php
- * Version: 1.3.0
- * Updated: 2026-06-27
+ * Version: 1.3.1
+ * Updated: 2026-07-08
  *
  * @package ElRocinante
  */
@@ -193,11 +193,23 @@ function roci_save_slug_field( $post_id, $post ) {
     if ( ! current_user_can( 'edit_post', $post_id ) ) {
         return;
     }
-    if ( ! isset( $_POST['roci_slug'] ) ) {
+    // Must be present AND a real scalar string. On REST/Gutenberg/no-input
+    // saves MB Pro passes the field config ARRAY as the value; is_string()
+    // rejects that fallback so it can never reach sanitize_title(). (Fixes
+    // the post_name config-array corruption — see CLAUDE.md 13.1.)
+    if ( ! isset( $_POST['roci_slug'] ) || ! is_string( $_POST['roci_slug'] ) ) {
         return;
     }
 
-    $new_slug = sanitize_title( wp_unslash( $_POST['roci_slug'] ) );
+    $raw = trim( wp_unslash( $_POST['roci_slug'] ) );
+
+    // Empty submission means "no override intended" — leave post_name alone
+    // rather than nuking an existing slug.
+    if ( $raw === '' ) {
+        return;
+    }
+
+    $new_slug = sanitize_title( $raw );
 
     if ( ! $new_slug || $new_slug === $post->post_name ) {
         return;
