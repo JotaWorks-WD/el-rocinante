@@ -7,18 +7,20 @@
  * and template parts throughout El Rocinante and child themes.
  *
  * File:    inc/helpers.php
- * Version: 1.2.1
- * Updated: 2026-06-09
+ * Version: 1.3.0
+ * Updated: 2026-07-09
  *
  * @package ElRocinante
  *
  * Functions:
- *   jw_get_webp_url()    — Resolves WebP URL for a given attachment ID + size
- *   jw_picture()         — Standard content image as <picture> tag
- *   jw_hero_picture()    — Art-directed hero <picture> (desktop + mobile crop)
- *   jw_bunny_video()     — Clean Bunny Stream iframe embed
- *   jw_faq_schema()      — FAQPage JSON-LD schema output from jw_faq_items field
- *   jw_link_atts()       — Returns target + rel attribute string for external links
+ *   jw_get_webp_url()              — Resolves WebP URL for a given attachment ID + size
+ *   jw_picture()                   — Standard content image as <picture> tag
+ *   jw_hero_picture()              — Art-directed hero <picture> (desktop + mobile crop)
+ *   jw_bunny_video()               — Clean Bunny Stream iframe embed
+ *   jw_faq_schema()                — FAQPage JSON-LD schema output from jw_faq_items field
+ *   jw_link_atts()                 — Returns target + rel attribute string for external links
+ *   roci_sanitize_object_position() — Whitelists a CSS object-position value (strict)
+ *   roci_get_hero_focus()          — Resolves the sanitized hero focal point for a post
  *
  * Future expansion:
  *   If this file grows significantly, split into:
@@ -417,4 +419,113 @@ function jw_link_atts( $url ) {
     }
 
     return '';
+}
+
+
+// ============================================================
+// HERO FOCUS HELPERS — roci-tour-layout bundle
+// ============================================================
+//
+// Support helpers for the Hero Display meta box registered by the
+// tour-layout bundle (inc/layout-bundles/tour-layout.php). These are
+// pure/read functions with no side effects and register nothing, so they
+// are safe to define unconditionally here — a site that has not opted
+// into 'roci-tour-layout' simply never calls them. The child template
+// calls roci_get_hero_focus() when rendering the hero.
+
+/**
+ * roci_sanitize_object_position()
+ *
+ * Strict whitelist for a CSS object-position value. This value is written
+ * into an inline style attribute downstream, so the sanitizer is
+ * deliberately narrow: it accepts ONLY one or two space-separated tokens,
+ * each of which is a positional keyword (top|center|bottom|left|right) or
+ * a signed number with a % or px unit. Anything else — extra tokens, bare
+ * numbers, function calls, CSS injection attempts, empty input — collapses
+ * to the safe default 'center center'.
+ *
+ * PASS (returned normalized, lowercased):
+ *   "center 15%"   -> "center 15%"
+ *   "center center"-> "center center"
+ *   "center 0%"    -> "center 0%"
+ *   "center 100%"  -> "center 100%"
+ *   "center 25%"   -> "center 25%"
+ *   "top"          -> "top"
+ *   "left top"     -> "left top"
+ *
+ * FAIL (all return 'center center'):
+ *   "red; content:x"   (keyword not in whitelist + stray punctuation)
+ *   ""                 (empty)
+ *   "url(evil)"        (function call)
+ *   "expression(1)"    (function call)
+ *   "100"              (bare number, no unit or keyword)
+ *
+ * @param  mixed  $value Raw value to sanitize.
+ * @return string        A valid object-position, or 'center center'.
+ */
+function roci_sanitize_object_position( $value ) {
+
+    $default = 'center center';
+
+    if ( ! is_string( $value ) ) {
+        return $default;
+    }
+
+    $value = trim( $value );
+
+    if ( $value === '' ) {
+        return $default;
+    }
+
+    // One or two whitespace-separated tokens, nothing more.
+    $tokens = preg_split( '/\s+/', $value );
+
+    if ( ! $tokens || count( $tokens ) < 1 || count( $tokens ) > 2 ) {
+        return $default;
+    }
+
+    // Each token: a positional keyword, or a signed number with %/px unit.
+    $token_pattern = '/^(?:top|center|bottom|left|right|-?\d+(?:\.\d+)?(?:%|px))$/i';
+
+    foreach ( $tokens as $token ) {
+        if ( ! preg_match( $token_pattern, $token ) ) {
+            return $default;
+        }
+    }
+
+    return strtolower( implode( ' ', $tokens ) );
+}
+
+
+/**
+ * roci_get_hero_focus()
+ *
+ * Resolves the hero focal point for a post into a sanitized CSS
+ * object-position string, ready to drop into an inline style. Reads the
+ * roci_hero_focus select; if it is the '__custom__' sentinel, substitutes
+ * the roci_hero_focus_custom text field instead. The result always passes
+ * through roci_sanitize_object_position(), so callers can output it
+ * directly (still esc_attr() at the point of output) and are guaranteed a
+ * valid value — unset or invalid data resolves to 'center center'.
+ *
+ * This is the API the tour-layout child template calls. It is safe to call
+ * even when Meta Box is inactive: roci_get_field() returns '' in that case,
+ * which the sanitizer maps to the default.
+ *
+ * Usage (child hero template):
+ *   $focus = roci_get_hero_focus( $post_id );
+ *   printf( ' style="object-position:%s;"', esc_attr( $focus ) );
+ *
+ * @param  int|null $post_id Post ID. Defaults to the current post.
+ * @return string           Sanitized object-position value.
+ */
+function roci_get_hero_focus( $post_id = null ) {
+
+    $focus = roci_get_field( 'roci_hero_focus', $post_id );
+
+    if ( $focus === '__custom__' ) {
+        $focus = roci_get_field( 'roci_hero_focus_custom', $post_id );
+    }
+
+    return roci_sanitize_object_position( $focus );
 }

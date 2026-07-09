@@ -6,8 +6,8 @@
  * loads includes, and outputs analytics/integration scripts.
  *
  * File:    functions.php
- * Version: 1.2.12
- * Updated: 2026-06-14
+ * Version: 1.3.0
+ * Updated: 2026-07-09
  *
  * @package ElRocinante
  */
@@ -163,6 +163,13 @@ require_once get_template_directory() . '/inc/pages/pages-register.php';
 // ============================================================
 
 require_once get_template_directory() . '/inc/metabox/metabox-loader.php';
+
+
+// ============================================================
+// LAYOUT BUNDLES — per-vertical feature bundles (theme-support gated)
+// ============================================================
+
+require_once get_template_directory() . '/inc/layout-bundles/layout-bundles.php';
 
 
 // ============================================================
