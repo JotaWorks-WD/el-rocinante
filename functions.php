@@ -6,8 +6,8 @@
  * loads includes, and outputs analytics/integration scripts.
  *
  * File:    functions.php
- * Version: 1.3.0
- * Updated: 2026-07-09
+ * Version: 1.4.0
+ * Updated: 2026-07-13
  *
  * @package ElRocinante
  */
@@ -212,6 +212,7 @@ require_once get_template_directory() . '/inc/folders/folders.php';
 // ============================================================
 
 require_once get_template_directory() . '/inc/media/media-used-on.php';
+require_once get_template_directory() . '/inc/media/svg-support.php';
 
 
 // ============================================================
