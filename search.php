@@ -1,7 +1,20 @@
-<?php get_header(); ?>
+<?php
+/**
+ * Search — Search Results Template
+ *
+ * Displays results for the site search query. Children inherit this unless they
+ * define their own search.php.
+ *
+ * File:    search.php
+ * Version: 1.0.0
+ * Updated: 2026-07-22
+ *
+ * @package ElRocinante
+ */
+get_header(); ?>
 
 <main id="main-content" class="site-main">
-    <div class="container">
+    <div class="u-container">
 
         <header class="search-header">
             <h1>

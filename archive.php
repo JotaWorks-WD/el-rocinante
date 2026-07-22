@@ -5,15 +5,15 @@
  * Displays posts for category, tag, author, date, and post-type archives.
  *
  * File:    archive.php
- * Version: 1.0.0
- * Updated: 2026-05-28
+ * Version: 1.0.1
+ * Updated: 2026-07-22
  *
  * @package ElRocinante
  */
 get_header(); ?>
 
 <main id="main-content" class="site-main">
-    <div class="container">
+    <div class="u-container">
 
         <header class="archive-header">
             <h1>
