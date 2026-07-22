@@ -6,8 +6,8 @@
  * loads includes, and outputs analytics/integration scripts.
  *
  * File:    functions.php
- * Version: 1.4.0
- * Updated: 2026-07-13
+ * Version: 1.5.0
+ * Updated: 2026-07-22
  *
  * @package ElRocinante
  */
@@ -65,14 +65,6 @@ function el_rocinante_enqueue_assets() {
         get_template_directory_uri() . '/dist/css/style.css',
         array(),
         filemtime( get_template_directory() . '/dist/css/style.css' )
-    );
-
-    wp_enqueue_script(
-        'bootstrap-js',
-        get_template_directory_uri() . '/dist/js/bootstrap.bundle.min.js',
-        array(),
-        '5.2.3',
-        true
     );
 
 }
