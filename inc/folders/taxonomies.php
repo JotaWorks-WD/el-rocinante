@@ -12,8 +12,8 @@
  * WordPress's built-in term management UI — no custom tree needed.
  *
  * File:    inc/folders/taxonomies.php
- * Version: 1.6.0
- * Updated: 2026-05-21
+ * Version: 1.6.1
+ * Updated: 2026-07-23
  *
  * @package ElRocinante
  */
@@ -49,6 +49,7 @@ function roci_register_media_folder_taxonomy() {
 	register_taxonomy( 'roci_media_folder', 'attachment', array(
 		'labels'                => $labels,
 		'hierarchical'          => true,
+		'public'                => false,
 		'show_ui'               => true,
 		'show_admin_column'     => true,
 		'show_in_rest'          => true,
@@ -86,6 +87,7 @@ function roci_register_page_folder_taxonomy() {
 	register_taxonomy( 'roci_page_folder', 'page', array(
 		'labels'            => $labels,
 		'hierarchical'      => true,
+		'public'            => false,
 		'show_ui'           => true,
 		'show_admin_column' => true,
 		'show_in_rest'      => true,
@@ -118,6 +120,7 @@ function roci_register_post_folder_taxonomy() {
 	register_taxonomy( 'roci_post_folder', 'post', array(
 		'labels'            => $labels,
 		'hierarchical'      => true,
+		'public'            => false,
 		'show_ui'           => true,
 		'show_admin_column' => true,
 		'show_in_rest'      => true,
