@@ -6,8 +6,8 @@
  * loads includes, and outputs analytics/integration scripts.
  *
  * File:    functions.php
- * Version: 1.5.0
- * Updated: 2026-07-22
+ * Version: 1.5.1
+ * Updated: 2026-07-23
  *
  * @package ElRocinante
  */
@@ -43,11 +43,7 @@ function el_rocinante_setup() {
     ) );
 
     register_nav_menus( array(
-        'primary'   => __( 'Primary Navigation', 'rocinante' ),
-        'secondary' => __( 'Secondary Navigation', 'rocinante' ),
-        'footer'    => __( 'Footer Navigation', 'rocinante' ),
-        'mobile'    => __( 'Mobile Navigation', 'rocinante' ),
-        'offcanvas' => __( 'Offcanvas Navigation', 'rocinante' ),
+        'footer' => __( 'Footer Navigation', 'rocinante' ),
     ) );
 
 }
@@ -127,13 +123,6 @@ add_filter( 'pre_get_document_title', function( $title ) {
     $meta_title = roci_get_field( 'roci_meta_title', $post_id );
     return $meta_title ? $meta_title : $title;
 } );
-
-
-// ============================================================
-// BOOTSTRAP NAVWALKER
-// ============================================================
-
-require_once get_template_directory() . '/inc/class-wp-bootstrap-navwalker.php';
 
 
 // ============================================================
