@@ -5,7 +5,7 @@
  * Included by settings-page.php inside roci_settings_page().
  *
  * File:    inc/theme-settings/tabs/tab-design.php
- * Version: 1.3.0
+ * Version: 1.4.0
  * Updated: 2026-07-26
  *
  * @package ElRocinante
@@ -108,13 +108,35 @@ $color_groups = array(
             $roci_mirrored = isset( $mirror[ $key ] ) ? $mirror[ $key ] : '';
 
             /*
-             * A field is "mirrored" when nothing is stored but the palette has a
-             * value — i.e. the colour is supplied in code. Such a field displays
-             * the inherited colour and is not editable here, because the
-             * dashboard is not its owner. A field with a real stored value stays
-             * a normal, editable picker.
+             * CODE-OWNS POLICY. A field is "mirrored" — displayed but locked —
+             * whenever the palette supplies a value, whatever is stored.
+             *
+             * The narrower test this replaces asked only "is stored empty?",
+             * which left a field EDITABLE when both a stored value and a filter
+             * value existed. That was a lie: roci_brand_palette() applies the
+             * child filter last, so the filter value is what every consumer
+             * reads — the Fauxlders highlight, the Brand Colors scheme, both
+             * brand readers. The dashboard would show an editable value that
+             * nothing in the system uses, an admin could edit and save it, and
+             * nothing would change anywhere. Silent, and it looks like it
+             * worked.
+             *
+             * Locking on "the palette DISAGREES with what is stored" makes the
+             * display honest: if the colour is supplied in code, the dashboard
+             * does not own it and does not pretend to.
+             *
+             * The test is "differs from, or fills" — not the simpler "palette is
+             * non-empty". roci_brand_palette() SEEDS from this same option before
+             * applying the child filter, so on a site with no filter the palette
+             * always equals the stored value. Locking on non-empty alone would
+             * therefore make every saved field readonly on an ordinary
+             * dashboard-managed site — write once, then never editable again
+             * without database surgery. Requiring disagreement keeps those sites
+             * fully editable while still catching every code-supplied value,
+             * because a filter that supplies a colour necessarily makes the
+             * palette differ from what is stored (or fills an empty slot).
              */
-            $roci_is_mirrored = ( '' === $roci_stored && '' !== $roci_mirrored );
+            $roci_is_mirrored = ( '' !== $roci_mirrored && $roci_mirrored !== $roci_stored );
             ?>
             <div class="roci-color-field">
                 <label for="roci_color_<?php echo esc_attr( $key ); ?>"><?php echo esc_html( $label ); ?></label>

@@ -8,7 +8,7 @@
  * ("is one configured at all").
  *
  * File:    inc/theme-settings/settings-register.php
- * Version: 1.5.0
+ * Version: 1.5.1
  * Updated: 2026-07-26
  *
  * @package ElRocinante
@@ -213,7 +213,7 @@ add_filter( 'option_roci_design', 'roci_migrate_design_keys' );
  * scheme never registers. Nothing renders a wrong colour; features are absent
  * rather than broken.
  *
- * @return array  Eleven-key map of design colour key => hex string (or '').
+ * @return array  Fifteen-key map of canonical colour key => hex string (or '').
  */
 function roci_brand_palette() {
 
