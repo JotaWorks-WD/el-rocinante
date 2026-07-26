@@ -2,11 +2,12 @@
 /**
  * Theme Settings — Register Settings, Menu & Scripts
  *
- * Also contains the roci_setting() front-end helper and the
- * roci_admin_brand_accent() brand-accent reader built on top of it.
+ * Also contains the roci_setting() front-end helper and the two brand-accent
+ * readers built on top of it — roci_admin_brand_accent() ("what colour") and
+ * roci_has_brand_accent() ("is one configured at all").
  *
  * File:    inc/theme-settings/settings-register.php
- * Version: 1.2.0
+ * Version: 1.3.0
  * Updated: 2026-07-26
  *
  * @package ElRocinante
@@ -122,4 +123,41 @@ function roci_admin_brand_accent() {
     }
 
     return apply_filters( 'roci_admin_brand_accent', $accent );
+}
+
+
+// ============================================================
+// HELPER — IS A BRAND ACCENT CONFIGURED?
+// Usage: roci_has_brand_accent()
+// Filter: 'roci_has_brand_accent'
+// ============================================================
+
+/**
+ * Whether a brand accent has been DELIBERATELY configured for this site.
+ *
+ * This answers "should brand-dependent admin features activate at all?" —
+ * a different question from roci_admin_brand_accent()'s "what colour is it?".
+ *
+ * roci_admin_brand_accent() cannot answer it. That helper defaults an unset
+ * option to '#000', so an untouched install and a site whose brand really is
+ * black are indistinguishable through it. That collapse is correct for its own
+ * job — the Fauxlders bridge wants a usable colour either way — but a feature
+ * that must stay invisible until a brand exists needs this predicate instead.
+ *
+ * Reads the option raw: empty or missing is false, and any non-empty value is
+ * true, INCLUDING a deliberate '#000'.
+ *
+ * THE FILTER IS LOAD-BEARING, not decoration. A child that supplies its brand
+ * through 'roci_admin_brand_accent' rather than through the Design tab has a
+ * real brand and an empty option row, and would be read as unconfigured here.
+ * Such a child must also return true from 'roci_has_brand_accent' for its
+ * brand-dependent admin features to switch on. Register the pair together.
+ *
+ * @return bool  True when a brand accent is configured.
+ */
+function roci_has_brand_accent() {
+
+    $has = '' !== roci_setting( 'design', 'primary' );
+
+    return apply_filters( 'roci_has_brand_accent', $has );
 }

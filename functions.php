@@ -6,8 +6,8 @@
  * loads includes, and outputs analytics/integration scripts.
  *
  * File:    functions.php
- * Version: 1.5.1
- * Updated: 2026-07-23
+ * Version: 1.6.0
+ * Updated: 2026-07-26
  *
  * @package ElRocinante
  */
@@ -194,6 +194,13 @@ require_once get_template_directory() . '/inc/folders/folders.php';
 
 require_once get_template_directory() . '/inc/media/media-used-on.php';
 require_once get_template_directory() . '/inc/media/svg-support.php';
+
+
+// ============================================================
+// ADMIN CHROME
+// ============================================================
+
+require_once get_template_directory() . '/inc/admin/brand-scheme.php';
 
 
 // ============================================================
