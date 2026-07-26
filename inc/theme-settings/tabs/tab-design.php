@@ -5,7 +5,7 @@
  * Included by settings-page.php inside roci_settings_page().
  *
  * File:    inc/theme-settings/tabs/tab-design.php
- * Version: 1.2.0
+ * Version: 1.3.0
  * Updated: 2026-07-26
  *
  * @package ElRocinante
@@ -32,41 +32,66 @@ settings_fields( 'roci_design_group' );
 $design = get_option( 'roci_design', array() );
 $mirror = roci_brand_palette();
 
+/*
+ * Keys are the CANONICAL $color-* names with the $ dropped, hyphens intact, so
+ * the option vocabulary and the SCSS interface are spelled identically — no
+ * translation layer, no drift. Fifteen canonical slots plus two parent-only
+ * background extras the canonical set does not cover.
+ *
+ * THIS LIST AND $color_fields IN settings-sanitize.php MUST STAY IN SYNC. The
+ * sanitiser rebuilds the option from scratch on every save and writes '' for
+ * any key it does not list, so a key present here and missing there is silently
+ * wiped the first time anyone saves this tab.
+ */
 $color_groups = array(
     array(
         'title'  => __( 'Primary', 'rocinante' ),
         'fields' => array(
-            'primary'        => __( 'Primary', 'rocinante' ),
-            'primary_accent' => __( 'Primary Accent', 'rocinante' ),
+            'color-primary'        => __( 'Primary', 'rocinante' ),
+            'color-primary-light'  => __( 'Primary Light', 'rocinante' ),
+            'color-primary-dark'   => __( 'Primary Dark', 'rocinante' ),
+            'color-primary-darker' => __( 'Primary Darker', 'rocinante' ),
+            'color-primary-pale'   => __( 'Primary Pale', 'rocinante' ),
         ),
     ),
     array(
         'title'  => __( 'Secondary', 'rocinante' ),
         'fields' => array(
-            'secondary'        => __( 'Secondary', 'rocinante' ),
-            'secondary_accent' => __( 'Secondary Accent', 'rocinante' ),
+            'color-secondary'       => __( 'Secondary', 'rocinante' ),
+            'color-secondary-light' => __( 'Secondary Light', 'rocinante' ),
+            'color-secondary-dark'  => __( 'Secondary Dark', 'rocinante' ),
         ),
     ),
     array(
         'title'  => __( 'Tertiary', 'rocinante' ),
         'fields' => array(
-            'tertiary'        => __( 'Tertiary', 'rocinante' ),
-            'tertiary_accent' => __( 'Tertiary Accent', 'rocinante' ),
+            'color-tertiary'        => __( 'Tertiary', 'rocinante' ),
+            'color-tertiary-accent' => __( 'Tertiary Accent', 'rocinante' ),
+        ),
+    ),
+    array(
+        'title'  => __( 'Accent & Eyebrow', 'rocinante' ),
+        'fields' => array(
+            'color-accent'  => __( 'Accent', 'rocinante' ),
+            'color-eyebrow' => __( 'Eyebrow', 'rocinante' ),
         ),
     ),
     array(
         'title'  => __( 'Neutrals', 'rocinante' ),
         'fields' => array(
-            'black' => __( 'Black', 'rocinante' ),
-            'grey'  => __( 'Grey', 'rocinante' ),
-            'white' => __( 'White', 'rocinante' ),
+            'color-black' => __( 'Black', 'rocinante' ),
+            'color-grey'  => __( 'Grey', 'rocinante' ),
+            'color-white' => __( 'White', 'rocinante' ),
         ),
     ),
     array(
+        // Parent-only extras. Not part of the canonical fifteen — the canonical
+        // vocabulary has no surface/background concept — but kept because they
+        // describe something real the standard does not cover.
         'title'  => __( 'Backgrounds', 'rocinante' ),
         'fields' => array(
             'background'     => __( 'Background', 'rocinante' ),
-            'background_alt' => __( 'Alternate Background', 'rocinante' ),
+            'background-alt' => __( 'Alternate Background', 'rocinante' ),
         ),
     ),
 );

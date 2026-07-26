@@ -32,7 +32,7 @@
  * roci_brand_palette(), the canonical store in inc/theme-settings/settings-register.php.
  *
  * File:    inc/admin/brand-scheme.php
- * Version: 1.1.0
+ * Version: 1.2.0
  * Updated: 2026-07-26
  *
  * @package ElRocinante
@@ -111,7 +111,7 @@ function roci_offer_brand_scheme() {
 function roci_admin_brand_secondary() {
 
 	$palette   = roci_brand_palette();
-	$secondary = isset( $palette['secondary'] ) ? $palette['secondary'] : '';
+	$secondary = isset( $palette['color-secondary'] ) ? $palette['color-secondary'] : '';
 
 	if ( ! $secondary ) {
 		$secondary = '#2271b1';

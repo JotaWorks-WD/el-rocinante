@@ -3,8 +3,8 @@
  * Theme Settings — Sanitize Callbacks
  *
  * File:    inc/theme-settings/settings-sanitize.php
- * Version: 1.3.0
- * Updated: 2026-06-27
+ * Version: 1.4.0
+ * Updated: 2026-07-26
  *
  * @package ElRocinante
  */
@@ -13,12 +13,24 @@ if ( ! defined( 'ABSPATH' ) ) exit;
 
 
 function roci_sanitize_design( $input ) {
+    /*
+     * MUST STAY IN SYNC with $color_groups in tabs/tab-design.php. This loop
+     * rebuilds the option from scratch and writes '' for every key it lists,
+     * and the return replaces the stored row wholesale — so a key rendered by
+     * the tab but missing here is wiped on the first save, and a key listed
+     * here but not rendered is blanked on every save.
+     *
+     * Canonical fifteen, hyphenated to match the $color-* SCSS interface,
+     * plus the two parent-only background extras.
+     */
     $color_fields = array(
-        'primary', 'primary_accent',
-        'secondary', 'secondary_accent',
-        'tertiary', 'tertiary_accent',
-        'black', 'grey', 'white',
-        'background', 'background_alt',
+        'color-primary', 'color-primary-light', 'color-primary-dark',
+        'color-primary-darker', 'color-primary-pale',
+        'color-secondary', 'color-secondary-light', 'color-secondary-dark',
+        'color-tertiary', 'color-tertiary-accent',
+        'color-accent', 'color-eyebrow',
+        'color-white', 'color-black', 'color-grey',
+        'background', 'background-alt',
     );
     $sanitized = array();
     foreach ( $color_fields as $field ) {
