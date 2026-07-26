@@ -5,8 +5,8 @@
  * for the El Rocinante Theme Settings admin page.
  *
  * File:    theme-settings.js
- * Version: 1.0.0
- * Updated: 2026-05-03
+ * Version: 1.1.0
+ * Updated: 2026-07-26
  *
  * @package ElRocinante
  */
@@ -14,10 +14,18 @@
 jQuery(document).ready(function ($) {
   // --------------------------------------------------------
   // COLOR PICKER
-  // Initialize wp-color-picker on all color fields
+  // Initialize wp-color-picker on all EDITABLE color fields.
+  //
+  // Fields carrying data-roci-mirrored are excluded deliberately. Their colour
+  // is supplied in code (roci_brand_palette), so the dashboard displays it but
+  // does not own it. The readonly attribute alone would not be enough here:
+  // wpColorPicker replaces the input with its own swatch and Clear controls and
+  // writes back into it, so an initialised field stays editable through the
+  // picker no matter what the attribute says. Skipping the init is what makes
+  // readonly actually hold.
   // --------------------------------------------------------
 
-  $(".roci-color-picker").wpColorPicker();
+  $(".roci-color-picker:not([data-roci-mirrored])").wpColorPicker();
 
   // --------------------------------------------------------
   // MEDIA UPLOAD

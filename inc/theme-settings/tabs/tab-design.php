@@ -5,8 +5,8 @@
  * Included by settings-page.php inside roci_settings_page().
  *
  * File:    inc/theme-settings/tabs/tab-design.php
- * Version: 1.1.2
- * Updated: 2026-05-28
+ * Version: 1.2.0
+ * Updated: 2026-07-26
  *
  * @package ElRocinante
  */
@@ -14,7 +14,23 @@
 if ( ! defined( 'ABSPATH' ) ) exit;
 
 settings_fields( 'roci_design_group' );
+
+/*
+ * TWO SOURCES, AND THEY MUST NOT BE MERGED.
+ *
+ * $design is the STORED option and is the only thing that feeds the `value`
+ * attribute below. $mirror is the canonical palette, which equals the stored
+ * option on a dashboard-configured site but carries a code-supplied brand on a
+ * child that fills roci_brand_palette in PHP. It feeds `data-default-color`
+ * only.
+ *
+ * The mirrored value must NEVER reach `value`. If it did, the next save of this
+ * tab would persist an inherited colour into roci_design as if a human had typed
+ * it — freezing a copy that then drifts as the child's filter moves on, which is
+ * precisely the two-sources problem the palette resolver exists to prevent.
+ */
 $design = get_option( 'roci_design', array() );
+$mirror = roci_brand_palette();
 
 $color_groups = array(
     array(
@@ -60,15 +76,48 @@ $color_groups = array(
 <?php foreach ( $color_groups as $group ) : ?>
     <p style="font-weight:600;margin-bottom:8px;"><?php echo esc_html( $group['title'] ); ?></p>
     <div class="roci-color-row" style="margin-bottom:24px;">
-        <?php foreach ( $group['fields'] as $key => $label ) : ?>
+        <?php
+        foreach ( $group['fields'] as $key => $label ) :
+
+            $roci_stored   = isset( $design[ $key ] ) ? $design[ $key ] : '';
+            $roci_mirrored = isset( $mirror[ $key ] ) ? $mirror[ $key ] : '';
+
+            /*
+             * A field is "mirrored" when nothing is stored but the palette has a
+             * value — i.e. the colour is supplied in code. Such a field displays
+             * the inherited colour and is not editable here, because the
+             * dashboard is not its owner. A field with a real stored value stays
+             * a normal, editable picker.
+             */
+            $roci_is_mirrored = ( '' === $roci_stored && '' !== $roci_mirrored );
+            ?>
             <div class="roci-color-field">
                 <label for="roci_color_<?php echo esc_attr( $key ); ?>"><?php echo esc_html( $label ); ?></label>
+                <?php
+                /*
+                 * value= READS THE STORED OPTION ONLY — never $roci_mirrored.
+                 *
+                 * readonly, NEVER disabled, and the field is never omitted. A
+                 * disabled or absent field is not submitted, and
+                 * roci_sanitize_design() rebuilds the option from scratch on
+                 * every save, writing '' for any key missing from $_POST — so
+                 * dropping these fields would wipe all eleven stored colours the
+                 * next time anyone saved this tab, including a save that touched
+                 * only the font settings. readonly still submits, so the stored
+                 * value round-trips untouched and a future dashboard write flows
+                 * through the same name attribute.
+                 */
+                ?>
                 <input type="text"
                        name="roci_design[<?php echo esc_attr( $key ); ?>]"
                        id="roci_color_<?php echo esc_attr( $key ); ?>"
                        class="roci-color-picker"
-                       value="<?php echo esc_attr( isset( $design[ $key ] ) ? $design[ $key ] : '' ); ?>"
-                       data-default-color="">
+                       value="<?php echo esc_attr( $roci_stored ); ?>"
+                       data-default-color="<?php echo esc_attr( $roci_mirrored ); ?>"
+                       <?php echo $roci_is_mirrored ? 'data-roci-mirrored="1" readonly' : ''; ?>>
+                <?php if ( $roci_is_mirrored ) : ?>
+                    <p class="roci-note"><?php esc_html_e( 'Set in code', 'rocinante' ); ?></p>
+                <?php endif; ?>
             </div>
         <?php endforeach; ?>
     </div>

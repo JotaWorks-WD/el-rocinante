@@ -26,8 +26,13 @@
  * not layer on top of it. The compiled sheet is written against the unaided
  * wp-admin.css baseline for that reason; see Build/scss/admin/_brand-scheme.scss.
  *
+ * TWO BRAND COLOURS. Primary drives structural chrome (admin menu, admin bar)
+ * via --roci-brand-structural; Secondary drives highlight surfaces (links,
+ * primary buttons, form focus) via --roci-brand-accent. Both resolve from
+ * roci_brand_palette(), the canonical store in inc/theme-settings/settings-register.php.
+ *
  * File:    inc/admin/brand-scheme.php
- * Version: 1.0.0
+ * Version: 1.1.0
  * Updated: 2026-07-26
  *
  * @package ElRocinante
@@ -50,17 +55,86 @@ if ( ! defined( 'ROCI_BRAND_SCHEME_KEY' ) ) {
 
 
 // ============================================================
+// AVAILABILITY SEAM + SECOND BRAND COLOUR
+// ============================================================
+
+/**
+ * Whether to offer the Brand Colors scheme on this site.
+ *
+ * Separates two questions that roci_has_brand_accent() alone would conflate:
+ * "does a brand exist?" (colour truth) and "should this particular feature be
+ * offered?" (availability).
+ *
+ * Since roci_has_brand_accent() now reads the filtered palette, a child that
+ * supplies its brand purely in code — typically because it wants the Fauxlders
+ * folder highlight branded — would ALSO cause a new option to appear in every
+ * administrator's profile screen, as a side effect of a filter it registered
+ * for an unrelated reason. That is surprising from the child's side even though
+ * it is correct from the gate's side.
+ *
+ * This seam is the cheap fix. A child keeps its branded folders and declines
+ * the scheme with one line:
+ *
+ *     add_filter( 'roci_offer_brand_scheme', '__return_false' );
+ *
+ * Defaults to roci_has_brand_accent(), so the common case stays zero-config and
+ * nothing changes for a site that never touches this filter.
+ *
+ * @return bool  True when the scheme should be registered and injected.
+ */
+function roci_offer_brand_scheme() {
+
+	return apply_filters( 'roci_offer_brand_scheme', roci_has_brand_accent() );
+}
+
+/**
+ * Return the site's SECONDARY brand colour, for the scheme's highlight surfaces.
+ *
+ * Reads the 'secondary' slot of roci_brand_palette(). Primary drives structural
+ * chrome (admin menu, admin bar); this drives the highlight surfaces (links,
+ * primary buttons, form focus).
+ *
+ * THE FALLBACK IS #2271b1, NOT PRIMARY AND NOT #000, and the choice is
+ * deliberate. #2271b1 is WordPress's own stock accent for exactly the surfaces
+ * Secondary owns — links and .button-primary in the unaided wp-admin.css
+ * baseline this scheme builds on. So a site that sets Primary and leaves
+ * Secondary blank gets branded chrome with stock-WordPress links and buttons,
+ * which reads as an intentional one-colour scheme. Falling back to Primary
+ * instead would paint every surface one colour and look like the second colour
+ * had failed to apply; falling back to #000 would look broken outright.
+ *
+ * It is also the same value the stylesheet carries as its own var() fallback,
+ * so the PHP-supplied and CSS-fallback paths agree rather than diverging.
+ *
+ * @return string  Hex colour string.
+ */
+function roci_admin_brand_secondary() {
+
+	$palette   = roci_brand_palette();
+	$secondary = isset( $palette['secondary'] ) ? $palette['secondary'] : '';
+
+	if ( ! $secondary ) {
+		$secondary = '#2271b1';
+	}
+
+	return apply_filters( 'roci_admin_brand_secondary', $secondary );
+}
+
+
+// ============================================================
 // REGISTER THE SCHEME
 // ============================================================
 
 /**
  * Register "Brand Colors" in Users → Profile → Admin Color Scheme.
  *
- * GATED ON roci_has_brand_accent(), NOT on roci_admin_brand_accent(). The
- * latter defaults to '#000' and so is never falsy, which would register the
- * scheme on every site including ones with no brand at all — offering the user
- * a choice that paints their admin black. The predicate distinguishes "unset"
- * from "deliberately black"; only the second should ship a scheme.
+ * GATED ON roci_offer_brand_scheme(), which defaults to roci_has_brand_accent()
+ * and lets a child decline the scheme while keeping its brand. It is NOT gated
+ * on roci_admin_brand_accent(): that defaults to '#000' and so is never falsy,
+ * which would register the scheme on every site including ones with no brand at
+ * all — offering the user a choice that paints their admin black. The predicate
+ * behind the gate distinguishes "unset" from "deliberately black"; only the
+ * second should ship a scheme.
  *
  * Suppression is total: on an unconfigured site wp_admin_css_color() is never
  * called, so "Brand Colors" does not appear in the profile picker at all. If a
@@ -74,11 +148,12 @@ if ( ! defined( 'ROCI_BRAND_SCHEME_KEY' ) ) {
  */
 function roci_register_brand_color_scheme() {
 
-	if ( ! roci_has_brand_accent() ) {
+	if ( ! roci_offer_brand_scheme() ) {
 		return;
 	}
 
-	$accent = roci_admin_brand_accent();
+	$primary   = roci_admin_brand_accent();
+	$secondary = roci_admin_brand_secondary();
 
 	wp_admin_css_color(
 		ROCI_BRAND_SCHEME_KEY,
@@ -98,22 +173,26 @@ function roci_register_brand_color_scheme() {
 		// debugging the cascade — it is almost always just the cache.
 		get_template_directory_uri() . '/dist/css/admin-brand-scheme.css',
 
-		// Profile-page preview swatches. Two neutral chrome darks, the brand,
-		// and a light neutral — so the swatch strip reads as "brand accent on
-		// neutral chrome", which is what the scheme actually does. Literal hex:
-		// the picker is PHP-rendered markup and cannot read a custom property.
-		array( '#1d2327', '#2c3338', $accent, '#f0f0f1' ),
+		// Profile-page preview swatches: two neutral chrome darks followed by
+		// BOTH brand colours, the shape core's own Ectoplasm scheme uses
+		// (two chrome, two accents). Literal hex — the picker is PHP-rendered
+		// markup and cannot read a custom property.
+		array( '#1d2327', '#2c3338', $primary, $secondary ),
 
 		// Menu icon colours, consumed by wp_color_scheme_settings() and printed
 		// as the _wpColorScheme JS object. Also literal hex, same reason.
 		//
-		// 'current' stays white rather than taking the brand: the stylesheet
-		// gives the current menu item a brand-coloured BACKGROUND, so a white
-		// icon sits on top of the accent. Painting the icon the accent too would
-		// make it vanish into its own background.
+		// 'focus' takes Secondary — it is the highlight slot, and Secondary owns
+		// the highlight surfaces everywhere else in this scheme.
+		//
+		// 'current' STAYS WHITE and deliberately does not take Primary. The
+		// stylesheet paints the current menu item's BACKGROUND with Primary, so
+		// a Primary-coloured icon would sit on a Primary-coloured background and
+		// disappear. White is the legible pairing and matches what core's own
+		// dark-menu schemes do.
 		array(
 			'base'    => '#a7aaad',
-			'focus'   => $accent,
+			'focus'   => $secondary,
 			'current' => '#fff',
 		)
 	);
@@ -165,7 +244,7 @@ add_action( 'admin_init', 'roci_register_brand_color_scheme' );
  */
 function roci_print_brand_scheme_inline_css() {
 
-	if ( ! roci_has_brand_accent() ) {
+	if ( ! roci_offer_brand_scheme() ) {
 		return;
 	}
 
@@ -173,14 +252,25 @@ function roci_print_brand_scheme_inline_css() {
 		return;
 	}
 
-	$accent = roci_admin_brand_accent();
+	$structural = roci_admin_brand_accent();     // Primary — admin menu, admin bar
+	$accent     = roci_admin_brand_secondary();  // Secondary — links, buttons, focus
 
-	if ( ! $accent ) {
+	if ( ! $structural || ! $accent ) {
 		return;
 	}
 
+	// TWO properties now, and the naming is load-bearing.
+	//
+	// --roci-brand-accent KEEPS its name and its meaning — the highlight colour —
+	// and is now fed by Secondary rather than Primary. Every highlight consumer
+	// in the stylesheet goes on resolving unchanged; renaming it would have meant
+	// rewriting all of them for no behavioural gain.
+	//
+	// --roci-brand-structural is new and carries Primary. Only the admin menu and
+	// admin bar read it.
 	printf(
-		'<style id="roci-brand-scheme-inline">:root{--roci-brand-accent:%s;}</style>' . "\n",
+		'<style id="roci-brand-scheme-inline">:root{--roci-brand-structural:%s;--roci-brand-accent:%s;}</style>' . "\n",
+		esc_attr( $structural ),
 		esc_attr( $accent )
 	);
 }
