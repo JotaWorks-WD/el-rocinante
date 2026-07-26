@@ -5,7 +5,7 @@
  * Included by settings-page.php inside roci_settings_page().
  *
  * File:    inc/theme-settings/tabs/tab-design.php
- * Version: 1.4.0
+ * Version: 2.0.0
  * Updated: 2026-07-26
  *
  * @package ElRocinante
@@ -18,16 +18,17 @@ settings_fields( 'roci_design_group' );
 /*
  * TWO SOURCES, AND THEY MUST NOT BE MERGED.
  *
- * $design is the STORED option and is the only thing that feeds the `value`
- * attribute below. $mirror is the canonical palette, which equals the stored
- * option on a dashboard-configured site but carries a code-supplied brand on a
- * child that fills roci_brand_palette in PHP. It feeds `data-default-color`
- * only.
+ * $mirror is the canonical palette and drives everything VISIBLE — it is what
+ * every consumer actually resolves, so it is the only honest thing to display.
  *
- * The mirrored value must NEVER reach `value`. If it did, the next save of this
- * tab would persist an inherited colour into roci_design as if a human had typed
- * it — freezing a copy that then drifts as the child's filter moves on, which is
- * precisely the two-sources problem the palette resolver exists to prevent.
+ * $design is the raw stored option and drives only the hidden inputs that carry
+ * values back through a save. It is never displayed.
+ *
+ * The palette value must NEVER reach a submitting input. If it did, the next
+ * save of this tab would persist a code-supplied colour into roci_design as if a
+ * human had typed it — freezing a copy that then drifts as the child's filter
+ * moves on, which is precisely the two-sources problem the palette resolver
+ * exists to prevent.
  */
 $design = get_option( 'roci_design', array() );
 $mirror = roci_brand_palette();
@@ -108,63 +109,78 @@ $color_groups = array(
             $roci_mirrored = isset( $mirror[ $key ] ) ? $mirror[ $key ] : '';
 
             /*
-             * CODE-OWNS POLICY. A field is "mirrored" — displayed but locked —
-             * whenever the palette supplies a value, whatever is stored.
+             * ALL FIELDS ARE LOCKED. Brand is code-owned across the network, so
+             * every colour here is a static display — no picker, no editing, no
+             * per-field detection. The dashboard reports what the brand IS; it
+             * does not own it. An editable mode is a deliberate future
+             * per-client build, not a toggle hiding in this loop.
              *
-             * The narrower test this replaces asked only "is stored empty?",
-             * which left a field EDITABLE when both a stored value and a filter
-             * value existed. That was a lie: roci_brand_palette() applies the
-             * child filter last, so the filter value is what every consumer
-             * reads — the Fauxlders highlight, the Brand Colors scheme, both
-             * brand readers. The dashboard would show an editable value that
-             * nothing in the system uses, an admin could edit and save it, and
-             * nothing would change anywhere. Silent, and it looks like it
-             * worked.
+             * DISPLAY reads the palette. roci_brand_palette() seeds from this
+             * same option and then applies the child filter, so $roci_mirrored
+             * is the value every consumer actually resolves — the Fauxlders
+             * highlight, the Brand Colors scheme, both brand readers. Showing
+             * anything else would put a number on screen that nothing uses.
              *
-             * Locking on "the palette DISAGREES with what is stored" makes the
-             * display honest: if the colour is supplied in code, the dashboard
-             * does not own it and does not pretend to.
-             *
-             * The test is "differs from, or fills" — not the simpler "palette is
-             * non-empty". roci_brand_palette() SEEDS from this same option before
-             * applying the child filter, so on a site with no filter the palette
-             * always equals the stored value. Locking on non-empty alone would
-             * therefore make every saved field readonly on an ordinary
-             * dashboard-managed site — write once, then never editable again
-             * without database surgery. Requiring disagreement keeps those sites
-             * fully editable while still catching every code-supplied value,
-             * because a filter that supplies a colour necessarily makes the
-             * palette differ from what is stored (or fills an empty slot).
+             * The two background keys are not in the palette at all (they are
+             * parent-only extras outside the canonical fifteen), so they fall
+             * back to the stored value rather than rendering permanently empty.
              */
-            $roci_is_mirrored = ( '' !== $roci_mirrored && $roci_mirrored !== $roci_stored );
+            $roci_display = '' !== $roci_mirrored ? $roci_mirrored : $roci_stored;
+
+            /*
+             * DISPLAY-ONLY HEX GATE. sanitize_hex_color() returns null for
+             * anything that is not a bare hex, which is exactly what we want
+             * before interpolating into a style attribute: esc_attr() stops the
+             * value escaping the attribute but happily passes ';' and ':'
+             * through, so an unvalidated value could inject further CSS
+             * declarations. A non-hex value (a filter returning rgb(), a named
+             * colour, a var()) renders as "not set" here while continuing to
+             * work everywhere else — a display limitation, deliberately, and
+             * never applied to the stored value below.
+             */
+            $roci_swatch = $roci_display ? sanitize_hex_color( $roci_display ) : null;
             ?>
             <div class="roci-color-field">
-                <label for="roci_color_<?php echo esc_attr( $key ); ?>"><?php echo esc_html( $label ); ?></label>
+                <span class="roci-color-label"><?php echo esc_html( $label ); ?></span>
+
+                <?php if ( $roci_swatch ) : ?>
+                    <span class="roci-swatch" style="background-color:<?php echo esc_attr( $roci_swatch ); ?>"></span>
+                    <code class="roci-hex"><?php echo esc_html( $roci_swatch ); ?></code>
+                    <p class="roci-note"><?php esc_html_e( 'Set in code', 'rocinante' ); ?></p>
+                <?php else : ?>
+                    <span class="roci-swatch roci-swatch--empty"></span>
+                    <code class="roci-hex roci-hex--empty"><?php esc_html_e( 'Not set', 'rocinante' ); ?></code>
+                    <p class="roci-note"><?php esc_html_e( 'Not set in code', 'rocinante' ); ?></p>
+                <?php endif; ?>
+
                 <?php
                 /*
-                 * value= READS THE STORED OPTION ONLY — never $roci_mirrored.
+                 * LOAD-BEARING, NOT VESTIGIAL. DO NOT REMOVE.
                  *
-                 * readonly, NEVER disabled, and the field is never omitted. A
-                 * disabled or absent field is not submitted, and
-                 * roci_sanitize_design() rebuilds the option from scratch on
-                 * every save, writing '' for any key missing from $_POST — so
-                 * dropping these fields would wipe all eleven stored colours the
-                 * next time anyone saved this tab, including a save that touched
-                 * only the font settings. readonly still submits, so the stored
-                 * value round-trips untouched and a future dashboard write flows
-                 * through the same name attribute.
+                 * roci_sanitize_design() rebuilds roci_design from scratch on
+                 * every save and writes '' for any key absent from $_POST, and
+                 * its return replaces the stored row wholesale. This tab also
+                 * carries six editable NON-colour fields — the two fonts, base
+                 * font size, header style, sticky header, button style — sharing
+                 * one form and one Save button. So an admin who edits a font and
+                 * saves triggers a full roci_design write while every colour
+                 * field is static. Without this input the colour keys would be
+                 * absent from that POST and all seventeen stored colours would be
+                 * wiped, silently, with the swatches still showing the filter's
+                 * colours so nothing on screen would look wrong.
+                 *
+                 * hidden rather than readonly: a readonly text input still
+                 * renders the empty box this presentation exists to remove.
+                 *
+                 * It carries $roci_stored, NOT $roci_display. Persisting the
+                 * palette value would freeze a copy into the option that then
+                 * drifts as the child's filter moves on — the two-sources bug the
+                 * palette resolver exists to prevent.
                  */
                 ?>
-                <input type="text"
+                <input type="hidden"
                        name="roci_design[<?php echo esc_attr( $key ); ?>]"
-                       id="roci_color_<?php echo esc_attr( $key ); ?>"
-                       class="roci-color-picker"
-                       value="<?php echo esc_attr( $roci_stored ); ?>"
-                       data-default-color="<?php echo esc_attr( $roci_mirrored ); ?>"
-                       <?php echo $roci_is_mirrored ? 'data-roci-mirrored="1" readonly' : ''; ?>>
-                <?php if ( $roci_is_mirrored ) : ?>
-                    <p class="roci-note"><?php esc_html_e( 'Set in code', 'rocinante' ); ?></p>
-                <?php endif; ?>
+                       value="<?php echo esc_attr( $roci_stored ); ?>">
             </div>
         <?php endforeach; ?>
     </div>

@@ -7,8 +7,8 @@
  * to the individual files in tabs/.
  *
  * File:    inc/theme-settings/settings-page.php
- * Version: 1.1.6
- * Updated: 2026-05-31
+ * Version: 1.2.0
+ * Updated: 2026-07-26
  *
  * @package ElRocinante
  */
@@ -57,8 +57,16 @@ function roci_settings_page() {
             .roci-settings-wrap .form-table th { width: 220px; }
             .roci-settings-wrap .roci-color-row { display: flex; gap: 24px; flex-wrap: wrap; }
             .roci-settings-wrap .roci-color-field { display: flex; flex-direction: column; gap: 6px; }
-            .roci-settings-wrap .roci-color-field label { font-size: 12px; color: #555; font-weight: 600; }
-            .roci-settings-wrap .wp-color-result { border-radius: 4px; }
+            .roci-settings-wrap .roci-color-field label,
+            .roci-settings-wrap .roci-color-label { font-size: 12px; color: #555; font-weight: 600; }
+            /* Locked colour display — the Design tab's fields are static swatches,
+               not pickers. The border is unconditional on purpose: color-white is
+               #ffffff on a white admin background and would otherwise render as
+               nothing at all. */
+            .roci-settings-wrap .roci-swatch { display: block; width: 56px; height: 28px; border-radius: 4px; border: 1px solid #c3c4c7; }
+            .roci-settings-wrap .roci-swatch--empty { background: repeating-linear-gradient(45deg, #f6f7f7, #f6f7f7 4px, #e6e7e8 4px, #e6e7e8 8px); border-style: dashed; }
+            .roci-settings-wrap .roci-hex { font-family: Consolas, Monaco, monospace; font-size: 12px; color: #50575e; background: none; padding: 0; }
+            .roci-settings-wrap .roci-hex--empty { color: #a7aaad; font-style: italic; }
             .roci-settings-wrap .roci-media-wrap { display: flex; align-items: center; gap: 12px; margin-top: 4px; }
             .roci-settings-wrap .roci-media-preview { max-height: 60px; width: auto; border-radius: 4px; border: 1px solid #ddd; display: none; }
             .roci-settings-wrap .roci-media-preview.has-image { display: block; }
