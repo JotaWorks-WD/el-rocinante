@@ -15,15 +15,21 @@
  * adding a new phase means adding one more require_once here
  * rather than touching functions.php.
  *
+ * Listed below in require order:
+ *
  *   taxonomies.php — register roci_media_folder, roci_page_folder, roci_post_folder
  *   counts.php     — roci_get_folder_count, roci_get_unassigned_count, roci_get_all_count
  *   filters.php    — list-view dropdowns, pre_get_posts, media modal filter, JS
  *   create.php     — "+ New Folder" modal, AJAX endpoint, JS
+ *   upload.php     — assign attachments to a folder term from the upload POST payload
+ *   move.php       — move/bulk-move/bulk-delete AJAX, generic CPT drag-handle column
+ *   order.php      — sibling sort order in term meta, reorder AJAX, reorder JS
  *   sidebar.php    — folder-tree sidebar, unassigned filter, JS enqueue
+ *   branding.php   — brand accent -> --folders-highlight inline admin override
  *
  * File:    inc/folders/folders.php
- * Version: 2.11.0
- * Updated: 2026-05-21
+ * Version: 2.12.0
+ * Updated: 2026-07-26
  *
  * @package ElRocinante
  */
@@ -204,6 +210,7 @@ require_once get_template_directory() . '/inc/folders/upload.php';
 require_once get_template_directory() . '/inc/folders/move.php';
 require_once get_template_directory() . '/inc/folders/order.php';
 require_once get_template_directory() . '/inc/folders/sidebar.php';
+require_once get_template_directory() . '/inc/folders/branding.php';
 
 
 // ============================================================

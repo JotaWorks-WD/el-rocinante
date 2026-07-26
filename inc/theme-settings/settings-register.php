@@ -2,11 +2,12 @@
 /**
  * Theme Settings — Register Settings, Menu & Scripts
  *
- * Also contains the roci_setting() front-end helper.
+ * Also contains the roci_setting() front-end helper and the
+ * roci_admin_brand_accent() brand-accent reader built on top of it.
  *
  * File:    inc/theme-settings/settings-register.php
- * Version: 1.1.2
- * Updated: 2026-05-10
+ * Version: 1.2.0
+ * Updated: 2026-07-26
  *
  * @package ElRocinante
  */
@@ -83,4 +84,42 @@ add_action( 'admin_enqueue_scripts', 'roci_settings_enqueue' );
 function roci_setting( $group, $key, $default = '' ) {
     $options = get_option( 'roci_' . $group, array() );
     return isset( $options[ $key ] ) && $options[ $key ] !== '' ? $options[ $key ] : $default;
+}
+
+
+// ============================================================
+// HELPER — ADMIN BRAND ACCENT
+// Usage: roci_admin_brand_accent()
+// Filter: 'roci_admin_brand_accent'
+// ============================================================
+
+/**
+ * Return the site's brand accent colour as a CSS-ready hex string.
+ *
+ * Reads Theme Settings → Design → Primary. That option row does not exist
+ * until a human saves the Design tab, so on an untouched install this falls
+ * back to '#000' — the exact value abstracts/_variables.scss:65 compiles into
+ * both --folders-highlight (admin) and --color-action (front end). An unfilled
+ * roci_design therefore renders identically to today.
+ *
+ * The stored value is passed through unmodified. roci_setting() may return a
+ * three-digit '#000' or a six-digit picker value and CSS accepts either, so
+ * there is deliberately no length check, normalisation or padding here.
+ * Callers must escape at their own output site.
+ *
+ * This helper is NOT Fauxlders-specific. Any admin-side surface that needs the
+ * brand accent — the folder token bridge in inc/folders/branding.php today,
+ * a dashboard colour scheme later — reads it from here.
+ *
+ * @return string  Hex colour string, e.g. '#000' or '#4894a2'.
+ */
+function roci_admin_brand_accent() {
+
+    $accent = roci_setting( 'design', 'primary' );
+
+    if ( ! $accent ) {
+        $accent = '#000';
+    }
+
+    return apply_filters( 'roci_admin_brand_accent', $accent );
 }
