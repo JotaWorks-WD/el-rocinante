@@ -13,7 +13,7 @@
  *   roci_enqueue_admin_folders_js()        — enqueues dist/js/folders/admin-folders.js
  *
  * File:    inc/folders/create.php
- * Version: 1.9.1
+ * Version: 1.9.2
  * Updated: 2026-07-27
  *
  * @package ElRocinante
@@ -37,15 +37,28 @@ if ( ! defined( 'ABSPATH' ) ) {
  * depth. Does NOT include a leading "All Folders" or "No Parent" option
  * — callers prepend those contextually.
  *
+ * SIBLINGS SORT A-Z via roci_sort_folder_children_alphabetically(), matching
+ * roci_render_folder_select_dropdown() — this helper feeds the AJAX refresh
+ * of the very selects that function renders on page load (the list-view
+ * filter, the media-modal filter, the modal parent picker), so the two must
+ * agree or a dropdown would visibly resort itself after a folder is created
+ * or reordered. It does NOT feed the sidebar: that travels on the separate
+ * tree_html key from roci_get_folder_tree_html() and keeps drag order.
+ *
+ * No sort args on get_terms() — ordering happens in PHP so it follows the
+ * decoded names users see, and skipping roci_get_folder_order_query_args()
+ * drops its meta_key INNER JOIN, which had hidden any folder missing
+ * roci_folder_order.
+ *
  * @param  string $taxonomy  'roci_media_folder' or 'roci_page_folder'.
  * @return array             [ [ 'value' => int, 'label' => string ], ... ]
  */
 function roci_build_folder_options_for_select( $taxonomy ) {
 
-	$terms = get_terms( array_merge( array(
+	$terms = get_terms( array(
 		'taxonomy'   => $taxonomy,
 		'hide_empty' => false,
-	), roci_get_folder_order_query_args() ) );
+	) );
 
 	if ( is_wp_error( $terms ) || empty( $terms ) ) {
 		return array();
@@ -56,6 +69,8 @@ function roci_build_folder_options_for_select( $taxonomy ) {
 	foreach ( $terms as $term ) {
 		$children[ $term->parent ][] = $term;
 	}
+
+	roci_sort_folder_children_alphabetically( $children );
 
 	$options = array();
 

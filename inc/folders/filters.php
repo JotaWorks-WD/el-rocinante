@@ -12,7 +12,7 @@
  *     folder filter into the AttachmentsBrowser toolbar (after the type + date filters)
  *
  * File:    inc/folders/filters.php
- * Version: 2.6.3
+ * Version: 2.6.4
  * Updated: 2026-07-27
  *
  * @package ElRocinante
@@ -35,6 +35,18 @@ if ( ! defined( 'ABSPATH' ) ) {
  * term tree depth-first to match Walker_CategoryDropdown's output order
  * and applies the same em-dash indentation used elsewhere in the system.
  *
+ * SIBLINGS SORT A-Z, not by drag order. A chooser is used to find a folder
+ * by name, so alphabetical beats the curated roci_folder_order the sidebar
+ * uses for navigation. The sort runs in PHP via
+ * roci_sort_folder_children_alphabetically() so it orders the DECODED names
+ * users see; get_terms( orderby => 'name' ) would sort the encoded column.
+ *
+ * The get_terms() call therefore carries no sort args at all — order is
+ * decided in PHP. Dropping roci_get_folder_order_query_args() here also
+ * drops its meta_key INNER JOIN on termmeta, which had been hiding any
+ * folder missing roci_folder_order from every chooser. The sidebar still
+ * uses that helper; it is unchanged.
+ *
  * @param string $taxonomy         Folder taxonomy slug.
  * @param string $name             <select> name attribute.
  * @param string $id               <select> id attribute.
@@ -43,10 +55,10 @@ if ( ! defined( 'ABSPATH' ) ) {
  */
 function roci_render_folder_select_dropdown( $taxonomy, $name, $id, $show_option_all, $selected ) {
 
-	$terms = get_terms( array_merge( array(
+	$terms = get_terms( array(
 		'taxonomy'   => $taxonomy,
 		'hide_empty' => false,
-	), roci_get_folder_order_query_args() ) );
+	) );
 
 	if ( is_wp_error( $terms ) ) {
 		$terms = array();
@@ -56,6 +68,8 @@ function roci_render_folder_select_dropdown( $taxonomy, $name, $id, $show_option
 	foreach ( $terms as $term ) {
 		$children[ $term->parent ][] = $term;
 	}
+
+	roci_sort_folder_children_alphabetically( $children );
 
 	echo '<select name="' . esc_attr( $name ) . '" id="' . esc_attr( $id ) . '" class="postform">';
 	echo '<option value="0">' . esc_html( $show_option_all ) . '</option>';
@@ -307,7 +321,10 @@ add_filter( 'ajax_query_attachments_args', 'roci_media_folder_modal_ajax_filter'
  * Depth-first walk of the roci_media_folder term tree.
  *
  * Emits each term into $ordered before recursing into its children,
- * preserving the sibling sort already applied by get_terms (meta_value_num).
+ * preserving whatever sibling order the caller established in the children
+ * map — alphabetical for roci_get_folder_terms_for_js() (via
+ * roci_sort_folder_children_alphabetically), roci_folder_order meta for
+ * roci_get_folder_terms_with_depth(). This walk never sorts.
  * Mirrors roci_render_sidebar_tree_level() in sidebar.php — same children-map
  * pattern, same silent-drop behaviour for orphaned terms.
  *
@@ -356,19 +373,28 @@ function _roci_folder_depth_from_map( $term_id, $parent_of ) {
  * Build the roci_media_folder term list for JS consumption.
  *
  * Returns a flat array in depth-first tree order so children always follow
- * their parent. Siblings within each level are sorted by roci_folder_order
- * meta (via roci_get_folder_order_query_args()). Depth is computed via
- * get_ancestors() and converted to em-dash indentation so the JS can render
- * a visually hierarchical <select> without a tree-walk.
+ * their parent. Siblings within each level are sorted A-Z by decoded display
+ * name via roci_sort_folder_children_alphabetically() — this is a chooser, so
+ * it sorts for findability rather than inheriting the sidebar's hand-sorted
+ * roci_folder_order. Depth is computed from the parent map and converted to
+ * em-dash indentation so the JS can render a visually hierarchical <select>
+ * without a tree-walk.
+ *
+ * The sort is applied to the children map rather than by get_terms(), for two
+ * reasons: orderby => 'name' sorts the raw encoded column instead of what
+ * roci_folder_display_name() renders, and the sort must land after bucketing
+ * because the depth-first walk preserves whatever order each bucket is in.
+ * Carrying no sort args also means no meta_key INNER JOIN, so folders missing
+ * roci_folder_order are no longer silently absent from this dropdown.
  *
  * @return array  [ [ 'term_id' => int, 'name' => string ], ... ]
  */
 function roci_get_folder_terms_for_js() {
 
-	$terms = get_terms( array_merge( array(
+	$terms = get_terms( array(
 		'taxonomy'   => 'roci_media_folder',
 		'hide_empty' => false,
-	), roci_get_folder_order_query_args() ) );
+	) );
 
 	if ( is_wp_error( $terms ) || empty( $terms ) ) {
 		return array();
@@ -380,6 +406,8 @@ function roci_get_folder_terms_for_js() {
 		$children[ $term->parent ][] = $term;
 		$parent_of[ $term->term_id ] = (int) $term->parent;
 	}
+
+	roci_sort_folder_children_alphabetically( $children );
 
 	$ordered = array();
 	roci_walk_folder_terms_depth_first( $children, 0, $ordered );

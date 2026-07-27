@@ -8,6 +8,7 @@
  * Display helpers:
  *   roci_folder_display_name( $term_or_name )   — the ONLY term-name decode point
  *   roci_format_folder_option_label( $term, $taxonomy )
+ *   roci_sort_folder_children_alphabetically( &$children ) — chooser sibling sort
  *
  * Registry helpers:
  *   roci_get_folder_registry()
@@ -32,7 +33,7 @@
  *   branding.php   — brand accent -> --folders-highlight inline admin override
  *
  * File:    inc/folders/folders.php
- * Version: 2.13.0
+ * Version: 2.14.0
  * Updated: 2026-07-27
  *
  * @package ElRocinante
@@ -89,6 +90,40 @@ function roci_asset_version( $relative_path ) {
 function roci_folder_display_name( $term_or_name ) {
 	$name = is_object( $term_or_name ) ? $term_or_name->name : $term_or_name;
 	return html_entity_decode( (string) $name, ENT_QUOTES, 'UTF-8' );
+}
+
+/**
+ * Sort every sibling bucket of a parent_id => WP_Term[] map alphabetically.
+ *
+ * FOR CHOOSER DROPDOWNS ONLY. The sidebar tree (sidebar.php) is deliberately
+ * NOT a caller: it stays on the hand-sortable roci_folder_order drag order
+ * from roci_get_folder_order_query_args(). Only the <select>-style choosers —
+ * where a user is hunting for a known folder name rather than navigating a
+ * curated structure — sort A-Z.
+ *
+ * Sorts by the DECODED name from roci_folder_display_name(), not the raw
+ * column. A get_terms( orderby => 'name' ) would sort what the DB stores, so
+ * "Logo &amp; Branding" would sort under "&amp;" rather than under the "&"
+ * the user actually sees. Sorting in PHP is the only way to order by what is
+ * rendered.
+ *
+ * Hierarchy is untouched: this reorders the CONTENTS of each bucket, never
+ * moves a term between buckets. Callers walk the map depth-first afterwards
+ * and compute depth/indent as before, so parents still nest their children —
+ * only sibling order within each level changes.
+ *
+ * @param array &$children  Map of parent_id => WP_Term[], sorted in place.
+ */
+function roci_sort_folder_children_alphabetically( &$children ) {
+	foreach ( $children as &$bucket ) {
+		usort( $bucket, function ( $a, $b ) {
+			return strnatcasecmp(
+				roci_folder_display_name( $a ),
+				roci_folder_display_name( $b )
+			);
+		} );
+	}
+	unset( $bucket );
 }
 
 /**
