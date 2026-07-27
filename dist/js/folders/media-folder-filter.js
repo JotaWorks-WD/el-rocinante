@@ -21,8 +21,18 @@
  * roci_no_folder follows the same propmap bypass: setting it to 1 in the model
  * causes the PHP filter to apply a NOT EXISTS tax_query for unassigned files.
  *
- * Version: 1.7.5
- * Updated: 2026-05-21
+ * Why each filter entry carries a `priority`:
+ *   Core builds the <option> list by mapping over this.filters — an OBJECT —
+ *   and JS enumerates integer-like keys in ascending numeric order before any
+ *   string key. Because the entries are keyed by term_id, the order PHP sends
+ *   was being discarded and the dropdown rendered in ascending-term_id
+ *   (creation) order, with the '' sentinel last. Core sorts the mapped
+ *   entries on `priority`, and Underscore's sortBy is stable, so stamping an
+ *   incrementing priority as the PHP-sorted array is walked is what carries
+ *   that order through the object. See buildFolderFilters().
+ *
+ * Version: 1.8.0
+ * Updated: 2026-07-27
  */
 
 ( function ( media ) {
@@ -78,19 +88,37 @@
 
 
 	// ── Shared folder filter builder ───────────────────────────────────────
+	//
+	// rociMediaFolders.terms arrives already sorted by PHP — alphabetically by
+	// decoded display name, depth-first so children follow their parent, with
+	// the em-dash indent baked into term.name. The `priority` counter is what
+	// preserves that order through core's option build; without it the object
+	// keys decide the order and the sort is lost (see the file docblock).
+	//
+	// The counter STARTS AT 1, NEVER 0. Core reads `filter.priority || 50`, so
+	// a 0 is falsy and silently becomes 50 — which would drop the sentinel
+	// into the middle of the folder list rather than pinning it first.
+	//
+	// Keys and props are deliberately untouched. change() looks up
+	// this.filters[ this.el.value ] by key, and select() compares filter.props
+	// against the model with strict ===, so both must stay exactly as they
+	// were — term_id numeric, sentinel keyed ''.
 
 	function buildFolderFilters() {
 		var filters = {};
+		var order   = 1;
 
 		filters[ '' ] = {
-			text:  rociMediaFolders.allLabel,
-			props: { roci_media_folder: '', roci_no_folder: '' }
+			text:     rociMediaFolders.allLabel,
+			priority: order++,
+			props:    { roci_media_folder: '', roci_no_folder: '' }
 		};
 
 		_.each( rociMediaFolders.terms, function ( term ) {
 			filters[ term.term_id ] = {
-				text:  term.name,
-				props: { roci_media_folder: term.term_id, roci_no_folder: '' }
+				text:     term.name,
+				priority: order++,
+				props:    { roci_media_folder: term.term_id, roci_no_folder: '' }
 			};
 		} );
 
@@ -138,6 +166,47 @@
 
 		createFilters: function () {
 			this.filters = buildFolderFilters();
+		},
+
+		// Core's AttachmentFilters builds its <option> elements ONLY inside
+		// initialize() and defines no render() of its own, so the inherited
+		// wp.Backbone.View.render() ran as a no-op here: no template, and the
+		// options were never registered as subviews for views.detach() to see.
+		// rebuildFolderFilterSelect() therefore refreshed this.filters after a
+		// create or reorder and repainted nothing. This is that missing repaint.
+		//
+		// Mirrors core's option-build block (media-views.js:2593-2598) so the
+		// two paths cannot drift, but uses document.createElement rather than
+		// $( '<option>' ): this IIFE receives only wp.media, there is no $ in
+		// scope, and WP admin runs jQuery.noConflict(). this.$el is still
+		// available — Backbone builds it internally.
+		//
+		// textContent rather than core's .html(): folder names arrive decoded
+		// from PHP (roci_folder_display_name), so this is the correct encoder,
+		// matching folders-bulk.js and the upload picker.
+		//
+		// No listenTo() here. The model binding is made once in core's
+		// initialize() and re-running it would fire select() twice per change.
+
+		render: function () {
+			this.$el.html(
+				_.chain( this.filters ).map( function ( filter, value ) {
+					var option = document.createElement( 'option' );
+					option.value       = value;
+					option.textContent = filter.text;
+					return { el: option, priority: filter.priority || 50 };
+				} ).sortBy( 'priority' ).pluck( 'el' ).value()
+			);
+
+			// Replacing the options resets the <select> to its first entry, so
+			// without this the control would snap to "All Fauxlders" while the
+			// model still held a folder filter — dropdown and grid disagreeing.
+			// select() re-derives the selection from the model, which is the
+			// source of truth; it is a one-shot method call, not a binding, and
+			// setting .val() programmatically fires no change event.
+			this.select();
+
+			return this;
 		}
 	} );
 
