@@ -17,8 +17,8 @@
  *   roci_enqueue_dragdrop_assets()         — enqueues drag JS for Media + CPT list screens
  *
  * File:    inc/folders/move.php
- * Version: 1.4.0
- * Updated: 2026-05-21
+ * Version: 1.4.1
+ * Updated: 2026-07-27
  *
  * @package ElRocinante
  */
@@ -149,7 +149,9 @@ function roci_ajax_bulk_move_attachments() {
 		$terms_to_set = array( $target_id );
 		$term = get_term( $target_id, 'roci_media_folder' );
 		if ( $term && ! is_wp_error( $term ) ) {
-			$target_name = $term->name;
+			// Decoded for display — folders-bulk.js drops this straight into a
+			// toast via textContent, which escapes once on its own.
+			$target_name = roci_folder_display_name( $term );
 		}
 	}
 
@@ -405,7 +407,9 @@ function roci_ajax_move_item_to_folder() {
 	if ( $term_id ) {
 		$term = get_term( $term_id, $taxonomy );
 		if ( $term && ! is_wp_error( $term ) ) {
-			$target_folder_name = $term->name;
+			// Decoded for display — folders-list-dragdrop.js writes this into
+			// the folder cell and the toast via textContent.
+			$target_folder_name = roci_folder_display_name( $term );
 		}
 	}
 

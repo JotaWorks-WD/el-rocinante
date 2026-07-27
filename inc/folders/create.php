@@ -13,8 +13,8 @@
  *   roci_enqueue_admin_folders_js()        — enqueues dist/js/folders/admin-folders.js
  *
  * File:    inc/folders/create.php
- * Version: 1.9.0
- * Updated: 2026-05-21
+ * Version: 1.9.1
+ * Updated: 2026-07-27
  *
  * @package ElRocinante
  */
@@ -158,20 +158,28 @@ function roci_render_new_folder_modal() {
 					<?php esc_html_e( 'Parent Fauxlder', 'rocinante' ); ?>
 				</label>
 				<?php
-				wp_dropdown_categories( array(
-					'show_option_none'  => __( '— No Parent —', 'rocinante' ),
-					'option_none_value' => '0',
-					'taxonomy'          => $taxonomy,
-					'name'              => 'roci_folder_parent',
-					'id'                => 'roci-folder-parent',
-					'orderby'           => 'meta_value_num',
-					'meta_key'          => 'roci_folder_order',
-					'selected'          => 0,
-					'show_count'        => false,
-					'hide_empty'        => false,
-					'hierarchical'      => true,
-					'value_field'       => 'term_id',
-				) );
+				// Was wp_dropdown_categories(). Core's Walker_CategoryDropdown
+				// re-escapes $category->name, which double-encodes the entities
+				// WordPress already stored (see roci_folder_display_name() in
+				// folders.php), and a walker can only be corrected through a
+				// global list_cats filter that would have to be added and
+				// removed around this one call. roci_render_folder_select_dropdown()
+				// already produces the same control for every other folder
+				// <select> in the system and decodes correctly, so this call
+				// joins that pipeline instead.
+				//
+				// Side effect, deliberate: the parent dropdown now shows item
+				// counts and em-dash depth indentation from page load. It
+				// already did both the moment a folder was created — admin-folders.js
+				// rebuilds this select from roci_build_folder_options_for_select(),
+				// which has always included counts. This removes that inconsistency.
+				roci_render_folder_select_dropdown(
+					$taxonomy,
+					'roci_folder_parent',
+					'roci-folder-parent',
+					__( '— No Parent —', 'rocinante' ),
+					0
+				);
 				?>
 			</p>
 

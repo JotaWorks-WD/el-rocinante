@@ -5,6 +5,10 @@
  * Public API:
  *   roci_register_folder_type( $post_type, $taxonomy_slug, $taxonomy_args )
  *
+ * Display helpers:
+ *   roci_folder_display_name( $term_or_name )   — the ONLY term-name decode point
+ *   roci_format_folder_option_label( $term, $taxonomy )
+ *
  * Registry helpers:
  *   roci_get_folder_registry()
  *   roci_get_folder_taxonomy_for_post_type( $post_type )
@@ -28,8 +32,8 @@
  *   branding.php   — brand accent -> --folders-highlight inline admin override
  *
  * File:    inc/folders/folders.php
- * Version: 2.12.0
- * Updated: 2026-07-26
+ * Version: 2.13.0
+ * Updated: 2026-07-27
  *
  * @package ElRocinante
  */
@@ -59,18 +63,54 @@ function roci_asset_version( $relative_path ) {
 }
 
 /**
+ * Convert a stored folder term name into its display form.
+ *
+ * THIS IS THE ONE PLACE FOLDER NAMES ARE DECODED. Do not call
+ * html_entity_decode() on a term name anywhere else, and do not pass a value
+ * through this function twice.
+ *
+ * WordPress stores term names HTML-encoded. wp_insert_term() runs the name
+ * through sanitize_term( …, 'db' ), which fires the pre_term_name filters
+ * core registers in wp-includes/default-filters.php — sanitize_text_field,
+ * wp_filter_kses, and _wp_specialchars at priority 30. So a folder the user
+ * names "Rods & Reels" is written to wp_terms.name as "Rods &amp; Reels",
+ * and get_term()/get_terms() return that encoded string verbatim because
+ * their default filter context is 'raw'.
+ *
+ * Escaping that value again at the render site produced "&amp;amp;" — the
+ * bug this function exists to prevent. Every read site must decode here and
+ * escape exactly once at output (esc_html/esc_attr in PHP, textContent or an
+ * equivalent encoder in JS). Decode-then-escape is the correct pair; dropping
+ * the escape would turn a cosmetic defect into an XSS hole.
+ *
+ * @param  WP_Term|string $term_or_name  Folder term, or a raw stored name.
+ * @return string                        Decoded, still-unescaped display name.
+ */
+function roci_folder_display_name( $term_or_name ) {
+	$name = is_object( $term_or_name ) ? $term_or_name->name : $term_or_name;
+	return html_entity_decode( (string) $name, ENT_QUOTES, 'UTF-8' );
+}
+
+/**
  * Format a folder term name with its item count for display in <select> options.
  *
  * Single source of truth used by the list-view filter dropdowns, the grid-view
  * JS localisation, and the AJAX-refreshed option list after folder creation.
  * All three render paths call this so counts can never drift out of sync.
  *
+ * The name is decoded via roci_folder_display_name(); the returned string is
+ * unescaped and every caller is responsible for escaping it once at output.
+ *
  * @param  WP_Term $term      The folder term.
  * @param  string  $taxonomy  Folder taxonomy slug.
  * @return string             e.g. "My Folder (5)"
  */
 function roci_format_folder_option_label( $term, $taxonomy ) {
-	return sprintf( '%s (%d)', $term->name, (int) roci_get_folder_count( $term, $taxonomy ) );
+	return sprintf(
+		'%s (%d)',
+		roci_folder_display_name( $term ),
+		(int) roci_get_folder_count( $term, $taxonomy )
+	);
 }
 
 

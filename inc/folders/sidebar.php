@@ -15,8 +15,8 @@
  * ajax_query_attachments_args filter.
  *
  * File:    inc/folders/sidebar.php
- * Version: 1.14.0
- * Updated: 2026-05-21
+ * Version: 1.14.1
+ * Updated: 2026-07-27
  *
  * @package ElRocinante
  */
@@ -177,7 +177,7 @@ function roci_render_sidebar_tree_level( $children, $active_term_id, $parent_id,
 				<span class="dashicons dashicons-menu roci-folder-drag-handle" aria-hidden="true"></span>
 				<span class="dashicons dashicons-category roci-folder-icon" aria-hidden="true"></span>
 				<a class="roci-folder-link" href="<?php echo esc_url( $link ); ?>">
-					<?php echo esc_html( $term->name ); ?>
+					<?php echo esc_html( roci_folder_display_name( $term ) ); ?>
 					<span class="roci-folder-count">(<?php echo roci_get_folder_count( $term, $taxonomy ); ?>)</span>
 				</a>
 			</div>

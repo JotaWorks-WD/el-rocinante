@@ -6,8 +6,8 @@
  * is provided via the upload POST payload (wired via Plupload multipart_params).
  *
  * File:    inc/folders/upload.php
- * Version: 2.8.15
- * Updated: 2026-05-28
+ * Version: 2.8.16
+ * Updated: 2026-07-27
  *
  * @package ElRocinante
  */
@@ -91,9 +91,14 @@ function roci_upload_picker_enqueue( $hook ) {
 	$folders = array();
 	if ( ! is_wp_error( $terms ) ) {
 		foreach ( $terms as $term ) {
+			// Decoded here, not in JS: upload-picker.js runs the name through
+			// its own escapeHtml() before injecting it as innerHTML, so it must
+			// receive a decoded value or the escape lands on top of the DB's
+			// stored encoding. wp_localize_script() won't decode it for us —
+			// it only touches top-level scalars, and $folders is nested.
 			$folders[] = array(
 				'id'   => (int) $term->term_id,
-				'name' => $term->name,
+				'name' => roci_folder_display_name( $term ),
 			);
 		}
 	}

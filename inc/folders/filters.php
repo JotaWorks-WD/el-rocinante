@@ -12,8 +12,8 @@
  *     folder filter into the AttachmentsBrowser toolbar (after the type + date filters)
  *
  * File:    inc/folders/filters.php
- * Version: 2.6.1
- * Updated: 2026-05-27
+ * Version: 2.6.2
+ * Updated: 2026-07-27
  *
  * @package ElRocinante
  */
@@ -456,6 +456,12 @@ add_action( 'admin_enqueue_scripts', 'roci_enqueue_media_folder_js' );
  * Move dropdown. Returns terms in depth-first order with plain names (no
  * em-dash prefix) so the JS can render pixel-based indentation.
  *
+ * Names are decoded via roci_folder_display_name() before being handed to
+ * wp_localize_script(). They must arrive at the JS decoded: folders-bulk.js
+ * assigns them with textContent, which escapes once on its own. Note that
+ * wp_localize_script() only html_entity_decode()s top-level scalars and skips
+ * nested arrays, so it will not do this for us.
+ *
  * @return array  [ [ 'term_id' => int, 'name' => string, 'depth' => int ], … ]
  */
 function roci_get_folder_terms_with_depth() {
@@ -484,7 +490,7 @@ function roci_get_folder_terms_with_depth() {
 		$depth  = _roci_folder_depth_from_map( $term->term_id, $parent_of );
 		$data[] = array(
 			'term_id' => $term->term_id,
-			'name'    => $term->name,
+			'name'    => roci_folder_display_name( $term ),
 			'depth'   => $depth,
 		);
 	}
