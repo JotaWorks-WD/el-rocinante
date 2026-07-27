@@ -18,8 +18,8 @@
  * fallback, and this override lands on top of it at runtime.
  *
  * File:    inc/folders/branding.php
- * Version: 1.0.0
- * Updated: 2026-07-26
+ * Version: 1.0.1
+ * Updated: 2026-07-27
  *
  * @package ElRocinante
  */
@@ -37,18 +37,21 @@ if ( ! defined( 'ABSPATH' ) ) {
  * Append a :root block overriding --folders-highlight to the admin sheet.
  *
  * SELF-GATING. The 'roci-admin-folders' handle is registered only by the two
- * enqueue call sites that already screen-gate themselves —
- * roci_enqueue_media_folder_js() (filters.php:417, gated on the post.php /
- * post-new.php / upload.php hook suffixes) and roci_enqueue_sidebar_assets()
+ * enqueue call sites that already gate themselves —
+ * roci_enqueue_media_folder_js() (filters.php:417, gated on
+ * wp_script_is( 'media-views', 'enqueued' ), i.e. any screen where the
+ * wp.media modal can be opened) and roci_enqueue_sidebar_assets()
  * (sidebar.php:435, gated on get_current_screen() against the folder
  * registry). Testing the handle with wp_style_is() inherits both gates for
  * free, so this emits on exactly the screens where Fauxlders renders and
- * nowhere else. Do not add a third copy of that screen-detection logic here —
- * it would drift from the two that already exist.
+ * nowhere else. Do not add a third copy of that detection logic here — it
+ * would drift from the two that already exist.
  *
  * PRIORITY 20. wp_add_inline_style() silently returns false if the handle is
- * not yet registered, and both enqueue callbacks run at the default priority
- * 10, so this must run after them.
+ * not yet registered, so this must run after both enqueue callbacks —
+ * roci_enqueue_sidebar_assets() at the default priority 10 and
+ * roci_enqueue_media_folder_js() at 15. Anything that raises either of those
+ * to 20 or beyond must raise this one with it.
  *
  * CASCADE. wp_add_inline_style() prints its CSS immediately after the
  * stylesheet it attaches to. This :root block and the compiled one in

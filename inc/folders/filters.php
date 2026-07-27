@@ -12,7 +12,7 @@
  *     folder filter into the AttachmentsBrowser toolbar (after the type + date filters)
  *
  * File:    inc/folders/filters.php
- * Version: 2.6.2
+ * Version: 2.6.3
  * Updated: 2026-07-27
  *
  * @package ElRocinante
@@ -400,23 +400,45 @@ function roci_get_folder_terms_for_js() {
 
 
 /**
- * Enqueue the media folder filter script on relevant admin screens.
+ * Enqueue the media folder filter wherever the wp.media modal can be opened.
  *
- * post.php / post-new.php — Featured Image picker + Insert Media dialog.
- * upload.php              — Media Library, both list view and grid view.
- *                           Grid view injects the dropdown + button via the
- *                           Backbone AttachmentsBrowser extension in the JS;
- *                           list view renders them via PHP (restrict_manage_posts).
+ * GATED ON THE MEDIA MODAL, NOT ON A SCREEN LIST. This used to test
+ * $hook_suffix against a hardcoded array of post.php / post-new.php /
+ * upload.php. That list could never cover the case it needed to: a Meta Box
+ * media or image field on a Theme Settings > Pages screen opens the same
+ * wp.media modal, but its hook suffix is a generated {parent}_page_{slug}
+ * string — and because child themes register those pages with their own
+ * slugs, no list maintained in the parent can enumerate them. The Fauxlder
+ * filter was therefore absent from every Settings Page modal while working
+ * correctly in the Media Library.
  *
- * The script depends on 'media-views', which WordPress loads on all three
- * screens either automatically (upload.php) or via wp_enqueue_media()
- * (post edit screens).
+ * wp_script_is( 'media-views', 'enqueued' ) is the signal instead. It is true
+ * on exactly the screens where a media modal can be opened, whoever opened
+ * it, with no screen detection to maintain — the same self-gating idiom
+ * branding.php:66 already uses against the style handle. media-views is also
+ * this script's declared dependency, so the test doubles as a guarantee that
+ * the dependency is genuinely present rather than being dragged in by us.
  *
- * @param string $hook_suffix  Current admin page hook suffix.
+ * PRIORITY 15. The test only works after whoever owns the screen has called
+ * wp_enqueue_media(), which for both core and Meta Box happens on
+ * admin_enqueue_scripts at the default priority 10. 15 is late enough to see
+ * them and early enough to stay ahead of branding.php's priority-20 callback,
+ * which gates on this same 'roci-admin-folders' handle being enqueued.
+ *
+ * upload.php in LIST mode is unaffected by the narrower JS coverage this
+ * implies: media-folder-filter.js self-exits at its own line 32 when
+ * media.view is absent, and the list-view dropdown is rendered server-side by
+ * roci_media_folder_filter_dropdown() on restrict_manage_posts, not by this
+ * script. The admin stylesheet still reaches list mode via
+ * roci_enqueue_sidebar_assets() (sidebar.php:463), which gates on the screen
+ * base rather than on media.
+ *
+ * @param string $hook_suffix  Current admin page hook suffix. Unused — the
+ *                             media-modal test replaced the screen gate.
  */
 function roci_enqueue_media_folder_js( $hook_suffix ) {
 
-	if ( ! in_array( $hook_suffix, array( 'post.php', 'post-new.php', 'upload.php' ), true ) ) {
+	if ( ! wp_script_is( 'media-views', 'enqueued' ) ) {
 		return;
 	}
 
@@ -444,7 +466,7 @@ function roci_enqueue_media_folder_js( $hook_suffix ) {
 // is suppressed when the sidebar is present. The script owns the Backbone model
 // integration (roci:sidebarFilter listener + defaultArgs extension) that makes
 // sidebar folder clicks trigger a grid-view AJAX refetch.
-add_action( 'admin_enqueue_scripts', 'roci_enqueue_media_folder_js' );
+add_action( 'admin_enqueue_scripts', 'roci_enqueue_media_folder_js', 15 );
 
 
 // ============================================================
