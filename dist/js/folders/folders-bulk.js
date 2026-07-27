@@ -21,8 +21,8 @@
  * Consolidation into a shared module is deferred to the audit phase (flagged).
  *
  * File:    dist/js/folders/folders-bulk.js
- * Version: 1.4.2
- * Updated: 2026-05-21
+ * Version: 1.4.3
+ * Updated: 2026-07-27
  *
  * @package ElRocinante
  */
@@ -884,7 +884,15 @@
 					}
 				} );
 
-				this.toolbar.set( 'rociBulkOrganize', new BulkOrgView( { priority: -70 } ).render() );
+				// -65, not -70. Core occupies -80 (type filter), -75 (date filter)
+				// and -70 (its own Bulk Select toggle), and media-folder-filter.js
+				// claims -70 for the Fauxlder filter. Equal priorities are not
+				// ordered by anything declared — PriorityList.set() inserts before
+				// the first view of strictly greater priority, so a tie resolves by
+				// which script wrapped createToolbar last, i.e. by enqueue order.
+				// -65 puts this button to the right of the filter, as intended, and
+				// stays negative so it remains in the secondary toolbar list.
+				this.toolbar.set( 'rociBulkOrganize', new BulkOrgView( { priority: -65 } ).render() );
 			}
 		} );
 
