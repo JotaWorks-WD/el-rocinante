@@ -6,8 +6,8 @@
  * is provided via the upload POST payload (wired via Plupload multipart_params).
  *
  * File:    inc/folders/upload.php
- * Version: 2.8.16
- * Updated: 2026-07-27
+ * Version: 2.8.17
+ * Updated: 2026-07-28
  *
  * @package ElRocinante
  */
@@ -84,12 +84,24 @@ function roci_upload_picker_enqueue( $hook ) {
 	$terms = get_terms( array(
 		'taxonomy'   => 'roci_media_folder',
 		'hide_empty' => false,
-		'orderby'    => 'name',
-		'order'      => 'ASC',
 	) );
 
 	$folders = array();
 	if ( ! is_wp_error( $terms ) ) {
+
+		// Sorted in PHP on the DECODED name, not by get_terms( orderby => 'name' ).
+		// WordPress stores term names HTML-encoded, so the SQL sort ordered
+		// "Logo &amp; Branding" by the literal "&amp;" — filed under "a", nowhere
+		// near the "&" on screen. Same strnatcasecmp + roci_folder_display_name()
+		// pairing as roci_sort_folder_children_alphabetically(); this picker is
+		// flat, so it sorts the term list directly rather than a children map.
+		usort( $terms, function ( $a, $b ) {
+			return strnatcasecmp(
+				roci_folder_display_name( $a ),
+				roci_folder_display_name( $b )
+			);
+		} );
+
 		foreach ( $terms as $term ) {
 			// Decoded here, not in JS: upload-picker.js runs the name through
 			// its own escapeHtml() before injecting it as innerHTML, so it must
