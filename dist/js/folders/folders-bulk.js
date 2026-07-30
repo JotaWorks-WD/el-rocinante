@@ -17,12 +17,17 @@
  * an [Undo] button, and moved attachments are surgically removed from the
  * current Backbone library view (mirrors v2.9.6 single-move behaviour).
  *
+ * Bulk delete applies its own optimistic sidebar count decrements. It cannot
+ * inherit the ones folders-sidebar.js performs, because that path is a patch on
+ * wp.media.model.Attachment.prototype.destroy and this handler uses a
+ * collection remove() — see performBulkDelete().
+ *
  * Note: the toast implementation is duplicated from folders-page-dragdrop.js.
  * Consolidation into a shared module is deferred to the audit phase (flagged).
  *
  * File:    dist/js/folders/folders-bulk.js
- * Version: 1.4.3
- * Updated: 2026-07-27
+ * Version: 1.4.4
+ * Updated: 2026-07-30
  *
  * @package ElRocinante
  */
@@ -710,7 +715,56 @@
 	// BULK AJAX DELETE
 	// ======================================================================
 
+	/**
+	 * Read an attachment's roci_media_folder term IDs off its Backbone model.
+	 *
+	 * The array is put on every attachment model by roci_expose_attachment_folder()
+	 * (inc/folders/taxonomies.php:143-148) via wp_prepare_attachment_for_js, for
+	 * exactly this purpose.
+	 *
+	 * Returns an empty array when the attachment has no folder (i.e. it lives in
+	 * Unassigned) AND when the model cannot be read at all. Callers treat both as
+	 * "was unassigned" — matching the captured-vs-fallback semantics of
+	 * handleAttachmentDeleted() in folders-sidebar.js. An un-hydrated model is
+	 * therefore indistinguishable from a genuinely unassigned one; in the grid the
+	 * models are always hydrated from query-attachments, so this does not arise in
+	 * practice, and decrementSidebarCount() floors at zero if it ever did.
+	 *
+	 * @param  {number|string} id  Attachment post ID.
+	 * @return {number[]}          Folder term IDs, possibly empty.
+	 */
+	function captureAttachmentFolders( id ) {
+		var terms = [];
+		try {
+			if ( ! window.wp || ! wp.media || typeof wp.media.attachment !== 'function' ) {
+				return terms;
+			}
+			var model = wp.media.attachment( String( id ) );
+			var value = model ? model.get( 'roci_media_folder' ) : null;
+			if ( Array.isArray( value ) ) {
+				value.forEach( function ( termId ) {
+					var parsed = parseInt( termId, 10 );
+					if ( parsed ) {
+						terms.push( parsed );
+					}
+				} );
+			}
+		} catch ( e ) {}
+		return terms;
+	}
+
 	function performBulkDelete( ids ) {
+
+		// Capture folder membership BEFORE the request goes out. The response
+		// carries no term data (roci_ajax_bulk_delete_attachments returns only
+		// deleted/failed), and by the time onload runs the models are about to be
+		// detached from the library — so the counts have to be resolved up front.
+		// Mirrors the pre-mutation capture in folders-sidebar.js:427-433.
+		var capturedFolders = {};
+		ids.forEach( function ( id ) {
+			capturedFolders[ String( id ) ] = captureAttachmentFolders( id );
+		} );
+
 		var fd = new FormData();
 		fd.append( 'action', 'roci_bulk_delete_attachments' );
 		fd.append( 'nonce',  rociFoldersBulk.nonce );
@@ -736,6 +790,40 @@
 			}
 
 			var deletedIds = resp.data.deleted || [];
+
+			// ── Optimistic sidebar count decrements ────────────────────────
+			//
+			// This handler removes models with library.remove() below — a
+			// Backbone COLLECTION remove, which fires no 'destroy'. The
+			// Attachment.prototype.destroy patch in folders-sidebar.js:417-449
+			// (and the handleAttachmentDeleted() decrements it wraps at :451)
+			// therefore never runs on this path, and every count stayed at its
+			// page-load value until a manual reload. Same shape as the bulk-move
+			// decrements at :559-581, plus the All Files decrement a move
+			// correctly omits — a move does not change the total, a delete does.
+			//
+			// Keyed off deletedIds, NOT ids: a partial failure must not
+			// decrement a file that survived.
+			deletedIds.forEach( function ( id ) {
+
+				if ( typeof window.rociDecrementSidebarCount === 'function' ) {
+					window.rociDecrementSidebarCount( '__all__' );
+				}
+
+				var terms = capturedFolders[ String( id ) ] || [];
+
+				if ( terms.length > 0 ) {
+					terms.forEach( function ( termId ) {
+						if ( typeof window.rociDecrementSidebarCount === 'function' ) {
+							window.rociDecrementSidebarCount( termId );
+						}
+					} );
+				} else {
+					if ( typeof window.rociDecrementSidebarCount === 'function' ) {
+						window.rociDecrementSidebarCount( '__unassigned__' );
+					}
+				}
+			} );
 
 			if ( window.wp && wp.media && wp.media.frame ) {
 				try {
