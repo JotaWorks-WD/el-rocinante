@@ -14,6 +14,7 @@
  *   roci_get_folder_registry()
  *   roci_get_folder_taxonomy_for_post_type( $post_type )
  *   roci_get_post_type_for_folder_taxonomy( $taxonomy_slug )
+ *   roci_get_folder_taxonomies()                — every folder taxonomy name
  *
  * Loads all folder-system sub-files in dependency order.
  * This file is the single require_once target in functions.php;
@@ -33,8 +34,8 @@
  *   branding.php   — brand accent -> --folders-highlight inline admin override
  *
  * File:    inc/folders/folders.php
- * Version: 2.14.0
- * Updated: 2026-07-27
+ * Version: 2.15.0
+ * Updated: 2026-07-30
  *
  * @package ElRocinante
  */
@@ -194,6 +195,28 @@ function roci_get_post_type_for_folder_taxonomy( $taxonomy_slug ) {
 }
 
 /**
+ * Return every folder taxonomy name.
+ *
+ * The Media folder taxonomy plus every registry-registered CPT folder taxonomy
+ * — page and post, and any CPT a child opts in with roci_register_folder_type().
+ * roci_media_folder is prepended rather than looked up because it belongs to the
+ * Media system and is deliberately not in the CPT registry.
+ *
+ * The same merge expression is currently inlined at five call sites
+ * (counts.php:171-174, create.php:251-254, order.php:65-68, :121-124, :252-255).
+ * Those are deliberately left alone for now — converging them is its own change.
+ * New callers should use this helper.
+ *
+ * @return string[]
+ */
+function roci_get_folder_taxonomies() {
+	return array_merge(
+		array( 'roci_media_folder' ),
+		array_values( roci_get_folder_registry() )
+	);
+}
+
+/**
  * Register a post type for Fauxlder support.
  *
  * Adds the post type to the folder infrastructure registry so the sidebar,
@@ -260,6 +283,15 @@ function roci_register_folder_type( $post_type, $taxonomy_slug, $taxonomy_args =
 				'menu_name'         => sprintf( __( '%s Fauxlders',        'rocinante' ),              $pt_label ),
 			),
 			'hierarchical'      => true,
+			// BUG #6 REMNANT FIX. This key was absent, and register_taxonomy()
+			// defaults 'public' to TRUE — so every CPT folder taxonomy created
+			// through this path got a live front-end archive at its query var,
+			// while the three explicitly registered ones in taxonomies.php were
+			// corrected to false in v1.6.1 and this path was missed.
+			// Archive exposure only; the REST half is handled separately by the
+			// permission gate in taxonomies.php, which is registry-driven and so
+			// already covers taxonomies registered here.
+			'public'            => false,
 			'show_ui'           => true,
 			'show_admin_column' => true,
 			'show_in_rest'      => true,
