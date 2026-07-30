@@ -22,11 +22,17 @@
  * wp.media.model.Attachment.prototype.destroy and this handler uses a
  * collection remove() — see performBulkDelete().
  *
+ * The Move panel is position: fixed and openMoveDropdown() writes its top/left
+ * inline on every open. That is what stops it being painted under the upload
+ * dropzone — as an absolute panel its z-index was capped by an ancestor stacking
+ * context in core's media-frame chain. The node stays in the action bar; it is
+ * not portaled. See openMoveDropdown() and _admin-folders-bulk.scss:165.
+ *
  * Note: the toast implementation is duplicated from folders-page-dragdrop.js.
  * Consolidation into a shared module is deferred to the audit phase (flagged).
  *
  * File:    dist/js/folders/folders-bulk.js
- * Version: 1.4.4
+ * Version: 1.5.0
  * Updated: 2026-07-30
  *
  * @package ElRocinante
@@ -58,6 +64,17 @@
 	var deleteBtnEl  = null;
 	var selectAllBtn = null;
 	var activeModal  = null;
+
+	// Move panel geometry. GAP is the button-to-panel offset (was the `4` inside
+	// the old top/bottom: calc(100% + 4px) in _admin-folders-bulk.scss); MARGIN
+	// is the minimum inset kept from a viewport edge when the panel has to be
+	// clamped because neither side has room.
+	var MOVE_PANEL_GAP    = 4;
+	var MOVE_PANEL_MARGIN = 4;
+
+	// Single bound reference for the scroll/resize dismiss listeners, so open and
+	// close attach and detach the same function object.
+	var moveDismissHandler = null;
 
 	// Exposed so folders-dragdrop.js can gate drag initiation.
 	window.rociIsBulkSelectMode = function () {
@@ -276,23 +293,113 @@
 				: rociFoldersBulk.i18n.moveNItemsPlural.replace( '%d', n );
 		}
 
+		// Display FIRST: the panel has to be laid out before it can be measured,
+		// and the direction decision below depends on its real height.
 		moveDropdown.classList.add( 'roci-bulk-move-dropdown--open' );
 
-		// Flip above if insufficient space below
-		var btnRect    = moveBtn.getBoundingClientRect();
-		var spaceBelow = window.innerHeight - btnRect.bottom;
-		if ( spaceBelow < 320 ) {
+		// The panel is position: fixed (see the long note at
+		// _admin-folders-bulk.scss:165), so top/left are VIEWPORT-relative and
+		// getBoundingClientRect() values are used directly with no scroll offset
+		// added. That also makes window.innerHeight the correct reference frame
+		// here — it was NOT correct while the panel was absolute inside the media
+		// frame's own scroll region, which is the second defect this fixes.
+		var btnRect     = moveBtn.getBoundingClientRect();
+		var panelHeight = moveDropdown.offsetHeight;
+		var panelWidth  = moveDropdown.offsetWidth;
+		var spaceBelow  = window.innerHeight - btnRect.bottom;
+		var spaceAbove  = btnRect.top;
+
+		// Measured height, not the old hardcoded 320. That literal duplicated
+		// max-height from the SCSS with nothing linking the two, and being the
+		// MAXIMUM it also flipped short panels that would have fitted below.
+		//
+		// Prefer below; go above only when below cannot take the panel; and when
+		// neither side can, take the roomier side rather than blindly flipping up
+		// into a space just as inadequate — the third defect this fixes.
+		var openAbove;
+		if ( spaceBelow >= panelHeight + MOVE_PANEL_GAP ) {
+			openAbove = false;
+		} else if ( spaceAbove >= panelHeight + MOVE_PANEL_GAP ) {
+			openAbove = true;
+		} else {
+			openAbove = spaceAbove > spaceBelow;
+		}
+
+		var top = openAbove
+			? btnRect.top - panelHeight - MOVE_PANEL_GAP
+			: btnRect.bottom + MOVE_PANEL_GAP;
+
+		// Clamp into the viewport: in the neither-side-fits branch above, the
+		// unclamped value runs off an edge. Max wins over min when the panel is
+		// taller than the viewport, pinning it to the top rather than off-screen.
+		top = Math.min( top, window.innerHeight - panelHeight - MOVE_PANEL_MARGIN );
+		top = Math.max( MOVE_PANEL_MARGIN, top );
+
+		// Right edge aligned to the button, which is what `right: 0` did while the
+		// panel was absolute inside .roci-bulk-move-wrap. Clamped the same way.
+		var left = btnRect.right - panelWidth;
+		left = Math.min( left, window.innerWidth - panelWidth - MOVE_PANEL_MARGIN );
+		left = Math.max( MOVE_PANEL_MARGIN, left );
+
+		moveDropdown.style.top  = top + 'px';
+		moveDropdown.style.left = left + 'px';
+
+		// Retained as a state marker only — no CSS keys off it now that the inline
+		// coordinate above is authoritative. Useful in devtools; do not give it
+		// offsets again (see the SCSS note).
+		if ( openAbove ) {
 			moveDropdown.classList.add( 'roci-bulk-move-dropdown--above' );
 		} else {
 			moveDropdown.classList.remove( 'roci-bulk-move-dropdown--above' );
 		}
+
+		bindMoveDismiss();
+	}
+
+	// A fixed panel does not travel with its button, so any scroll or resize
+	// invalidates the coordinates computed above. Dismissing on both is standard
+	// dropdown behaviour and avoids a reposition-on-scroll loop.
+	//
+	// Scroll is CAPTURED (third arg true) because the media frame scrolls an inner
+	// container rather than the window, and scroll events do not bubble from an
+	// element up to window — a bubble-phase listener would never see them.
+	function bindMoveDismiss() {
+		if ( moveDismissHandler ) {
+			return;
+		}
+		moveDismissHandler = function ( e ) {
+			// Scrolling the panel's own folder list must not dismiss it:
+			// .roci-bulk-move-list is overflow-y:auto and a capturing listener on
+			// document sees its scroll events too.
+			if ( e && 'scroll' === e.type && e.target && moveDropdown.contains( e.target ) ) {
+				return;
+			}
+			closeMoveDropdown();
+		};
+		document.addEventListener( 'scroll', moveDismissHandler, true );
+		window.addEventListener( 'resize', moveDismissHandler );
+	}
+
+	function unbindMoveDismiss() {
+		if ( ! moveDismissHandler ) {
+			return;
+		}
+		// The capture flag must match the one used to add, or the listener leaks.
+		document.removeEventListener( 'scroll', moveDismissHandler, true );
+		window.removeEventListener( 'resize', moveDismissHandler );
+		moveDismissHandler = null;
 	}
 
 	function closeMoveDropdown() {
 		if ( ! moveDropdown ) {
 			return;
 		}
+		unbindMoveDismiss();
 		moveDropdown.classList.remove( 'roci-bulk-move-dropdown--open', 'roci-bulk-move-dropdown--above' );
+		// Clear the computed coordinates so a stale position cannot flash at the
+		// old location before the next open recomputes them.
+		moveDropdown.style.top  = '';
+		moveDropdown.style.left = '';
 	}
 
 
