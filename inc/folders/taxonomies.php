@@ -17,7 +17,7 @@
  * public => false does not restrict the REST API.
  *
  * File:    inc/folders/taxonomies.php
- * Version: 1.7.0
+ * Version: 1.7.1
  * Updated: 2026-07-30
  *
  * @package ElRocinante
@@ -226,7 +226,32 @@ function roci_gate_folder_taxonomy_rest_reads( $endpoints ) {
 
 			foreach ( $handlers as $index => $handler ) {
 
-				if ( empty( $handler['methods']['GET'] ) ) {
+				// GET DETECTION MUST HANDLE THREE SHAPES. This is what the first
+				// cut of the gate got wrong, and the failure was silent: it
+				// tested empty( $handler['methods']['GET'] ), which only works
+				// once WP has normalised methods into array( 'GET' => true ).
+				// At rest_endpoints the value can still be the raw thing passed
+				// to register_rest_route() — the WP_REST_Server::READABLE
+				// constant, a plain string like 'GET', or a comma string like
+				// 'GET, POST'. Indexing a string by 'GET' does not evaluate the
+				// way the array form does, so the guard fired for every handler,
+				// nothing was ever wrapped, and anonymous reads kept returning
+				// 200 while the code looked correct. Normalise instead of
+				// assuming.
+				$methods = isset( $handler['methods'] ) ? $handler['methods'] : null;
+
+				if ( is_string( $methods ) ) {
+					$has_get = ( false !== stripos( $methods, 'GET' ) );
+				} elseif ( is_array( $methods ) ) {
+					// Either array( 'GET' => true ) or a list array( 'GET', 'POST' ).
+					$has_get = ! empty( $methods['GET'] )
+						|| in_array( 'GET', $methods, true )
+						|| in_array( 'GET', array_keys( $methods ), true );
+				} else {
+					$has_get = false;
+				}
+
+				if ( ! $has_get ) {
 					continue; // reads only
 				}
 
