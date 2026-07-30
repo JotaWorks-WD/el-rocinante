@@ -13,8 +13,8 @@
  *   roci_enqueue_admin_folders_js()        — enqueues dist/js/folders/admin-folders.js
  *
  * File:    inc/folders/create.php
- * Version: 1.9.2
- * Updated: 2026-07-27
+ * Version: 1.10.0
+ * Updated: 2026-07-30
  *
  * @package ElRocinante
  */
@@ -290,7 +290,7 @@ function roci_ajax_create_folder() {
 		}
 	}
 
-	wp_send_json_success( array(
+	$response = array(
 		'term'      => array(
 			'term_id' => $term->term_id,
 			'name'    => $term->name,
@@ -298,7 +298,31 @@ function roci_ajax_create_folder() {
 		),
 		'options'   => roci_build_folder_options_for_select( $taxonomy ),
 		'tree_html' => roci_get_folder_tree_html( $taxonomy, $taxonomy, $tree_base_url ),
-	) );
+	);
+
+	// Fresh flat list for the "Upload to fauxlder" picker in the upload dropzone
+	// (dist/js/folders/upload-picker.js), which builds its <select> once from a
+	// wp_localize_script snapshot and had no way to learn about a new folder
+	// until the screen was reloaded.
+	//
+	// A SEPARATE KEY, not a reuse of 'options' above. That value carries " (n)"
+	// counts and em-dash depth indents, and the picker is flat and countless.
+	// Nor can the picker read 'term' => 'name': that is deliberately the RAW
+	// ENCODED column value — it is not a display path and its only consumer
+	// reads the parent id — and upload-picker.js escapes what it receives with
+	// its own escapeHtml(), so an encoded name would render "&amp;amp;", the
+	// v5.7.0 defect class.
+	// roci_get_upload_picker_folders() decodes through roci_folder_display_name(),
+	// which is the whole reason the picker reads this key instead.
+	//
+	// Media-only by design: the picker exists for roci_media_folder alone, so a
+	// page/post/CPT folder creation ships no picker payload and the JS listener
+	// no-ops on the missing key rather than paying for a pointless term query.
+	if ( 'roci_media_folder' === $taxonomy ) {
+		$response['picker_folders'] = roci_get_upload_picker_folders();
+	}
+
+	wp_send_json_success( $response );
 }
 add_action( 'wp_ajax_roci_create_folder', 'roci_ajax_create_folder' );
 

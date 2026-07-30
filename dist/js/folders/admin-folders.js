@@ -11,8 +11,8 @@
  * uses it to refresh both the filter dropdown and the modal parent
  * dropdown in place — no page reload needed.
  *
- * Version: 1.2.5
- * Updated: 2026-05-16
+ * Version: 1.3.0
+ * Updated: 2026-07-30
  */
 
 ( function () {
@@ -201,12 +201,16 @@
                     );
 
                     // Notify other modules: media-folder-filter.js refreshes the
-                    // Backbone filter; folders-sidebar.js replaces the tree.
+                    // Backbone filter; folders-sidebar.js replaces the tree;
+                    // upload-picker.js rebuilds the "Upload to fauxlder" select
+                    // from picker_folders. That key is a flat decoded list and is
+                    // undefined for non-media taxonomies — its listener no-ops.
                     document.dispatchEvent( new CustomEvent( 'roci:folderCreated', {
                         detail: {
-                            options:   options,
-                            term:      response.data.term,
-                            tree_html: response.data.tree_html
+                            options:        options,
+                            term:           response.data.term,
+                            tree_html:      response.data.tree_html,
+                            picker_folders: response.data.picker_folders
                         }
                     } ) );
 

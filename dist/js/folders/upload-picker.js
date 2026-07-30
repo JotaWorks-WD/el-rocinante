@@ -4,9 +4,13 @@
  * Folder upload picker — renders a <select> next to admin upload dropzones
  * and wires the selected folder term ID into Plupload's multipart_params.
  *
+ * Also repopulates that <select> in place on roci:folderCreated, so a folder
+ * created from the sidebar is immediately available as an upload destination
+ * without a page reload. See rebuildPickers().
+ *
  * @package El_Rocinante
- * @version 2.8.8
- * Updated: 2026-05-15
+ * @version 2.9.0
+ * Updated: 2026-07-30
  */
 
 ( function () {
@@ -55,16 +59,79 @@
         return div.innerHTML;
     }
 
-    function buildPickerHTML() {
+    // Option markup only, so first paint and the post-create rebuild below
+    // cannot drift apart. Names arrive DECODED from PHP
+    // (roci_get_upload_picker_folders in inc/folders/upload.php), so escapeHtml()
+    // is the single correct encoder here — do not process them twice.
+    function buildPickerOptionsHTML() {
         var options = '<option value="">— No fauxlder —</option>';
         folders.forEach( function ( f ) {
             options += '<option value="' + f.id + '">' + escapeHtml( f.name ) + '</option>';
         } );
+        return options;
+    }
+
+    function buildPickerHTML() {
         return '<div class="roci-upload-picker">' +
             '<label class="roci-upload-picker__label">' + escapeHtml( labelText ) + '</label>' +
-            '<select class="roci-upload-picker__select">' + options + '</select>' +
+            '<select class="roci-upload-picker__select">' + buildPickerOptionsHTML() + '</select>' +
             '<p class="roci-upload-picker__helper">' + escapeHtml( helperText ) + '</p>' +
             '</div>';
+    }
+
+    /**
+     * Repopulate every rendered picker from a fresh folder list.
+     *
+     * Rebuilds the <option> list IN PLACE rather than re-running injectPickers():
+     * that function early-returns on any dropzone already holding a
+     * .roci-upload-picker, so it would leave the stale <select> exactly as it
+     * found it.
+     *
+     * `folders` is reassigned rather than window.rociUploadPicker.folders,
+     * because the module captured a closure copy of that array at the top of
+     * this IIFE and every builder reads the closure var, not the global.
+     *
+     * @param {Array} list  Flat [ { id, name } ] with names already decoded.
+     */
+    function rebuildPickers( list ) {
+        if ( ! Array.isArray( list ) ) {
+            return;
+        }
+
+        folders = list;
+
+        var optionsHtml = buildPickerOptionsHTML();
+
+        document.querySelectorAll( '.roci-upload-picker__select' ).forEach( function ( sel ) {
+            var prevVal = sel.value;
+
+            sel.innerHTML = optionsHtml;
+
+            // Restore the prior selection only if it survived the rebuild.
+            // Assigning a value with no matching option sets selectedIndex to -1
+            // and renders the control blank, so the miss falls back to the
+            // "— No fauxlder —" sentinel instead. Matched by iterating options
+            // rather than a querySelector, so the stored value is never
+            // interpolated into a selector.
+            var hasPrev = false;
+            if ( prevVal ) {
+                for ( var i = 0; i < sel.options.length; i++ ) {
+                    if ( sel.options[ i ].value === prevVal ) {
+                        hasPrev = true;
+                        break;
+                    }
+                }
+            }
+            sel.value = hasPrev ? prevVal : '';
+
+            // Setting .value programmatically fires no change event, so on a
+            // reset the uploaders would keep the old roci_target_folder and a
+            // file would land somewhere the UI no longer shows as selected.
+            // Unreachable on a create (the list only grows), cheap to hold.
+            if ( ! hasPrev && prevVal ) {
+                updateAllUploaders( 0 );
+            }
+        } );
     }
 
     function injectPickers() {
@@ -140,6 +207,16 @@
         } );
     }
 
+    // admin-folders.js dispatches roci:folderCreated after a successful create.
+    // Its detail carries picker_folders — a flat decoded list built by
+    // roci_get_upload_picker_folders() — for roci_media_folder creations only;
+    // rebuildPickers() no-ops on the undefined key for page/post/CPT folders.
+    function attachFolderCreatedListener () {
+        document.addEventListener( 'roci:folderCreated', function ( e ) {
+            rebuildPickers( e.detail && e.detail.picker_folders );
+        } );
+    }
+
     function setupDropzoneObserver () {
         if ( window._rociObserverSetup ) {
             return;
@@ -167,6 +244,7 @@
     function init () {
         injectPickers();
         attachHandler();
+        attachFolderCreatedListener();
         setupDropzoneObserver();
 
         if ( ! patchUploader() ) {
