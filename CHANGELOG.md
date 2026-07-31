@@ -4,6 +4,13 @@ All notable changes to the El Rocinante parent theme are recorded here. Entries 
 
 ---
 
+## [5.11.2] — 2026-07-31
+Fix stale line reference in `roci_brand_palette()` docblock (`_variables.scss` :65 → :84); no behavior change.
+
+`inc/theme-settings/settings-register.php` cited `abstracts/_variables.scss:65` as the declaration site of `$color-primary` — the value `roci_admin_brand_accent()` falls back to when the palette's PRIMARY slot is unfilled. The actual declaration is at `_variables.scss:84`; line 65 sits inside the Phase 6 retirement prose above it. The surrounding claim was correct and is unchanged — that variable does compile into both `--folders-highlight` (admin) and `--color-action` (front end) — only the line number had drifted. Comment-only: no code, no signature, no behaviour change, and nothing recompiled. `settings-register.php` goes 1.5.1 to 1.5.2.
+
+Companion Build-repo commit (no version here) corrects the same class of drift in three SCSS docblocks that described a per-child Sass override of `--folders-highlight`. That mechanism was never viable — Sass does not cross the repo boundary, each child Build repo being a separate compilation unit with no `loadPaths` — and it is superseded by the PHP inline-style bridge in `inc/folders/branding.php`, which overrides the token at runtime from `get_option('roci_design')['color-primary']` on `admin_enqueue_scripts` priority 20. `$palette-gray-700` and `$palette-black` were annotated as reserved rather than removed. `gulp build` confirmed `admin-folders.css` and `style.css` byte-identical, so no `dist` rebuild ships with this release. PATCH: documentation only, no new API, and no front-end rendering change on any site.
+
 ## [5.11.1] — 2026-07-30
 Fix #12 REST gate that never fired in 5.11.0 (handler-methods shape mismatch); anonymous folder-taxonomy reads are now actually blocked.
 
