@@ -4,6 +4,52 @@ All notable changes to the El Rocinante parent theme are recorded here. Entries 
 
 ---
 
+## [6.0.0] — 2026-08-02
+Flip `respond()` to **mobile-first** and **rename its tiers to the network standard `sm`/`md`/`lg`/`xl`**: all four tiers are now `min-width`, `phone`/`tab-port`/`tab-land`/`big-desktop` become `sm`/`md`/`lg`/`xl`, and the parent's four `u-` utility call sites are inverted to mobile-base/desktop-enhanced. `abstracts/_mixins.scss` goes 1.0.0 to 2.0.0.
+
+**MAJOR because `respond()` is part of the child-theme API surface and its meaning has inverted.** A block that previously *narrowed* a desktop base now *widens* a mobile base, which is close to the opposite. Read the next paragraph before planning any child work.
+
+**The break is inert downstream. No child is affected by this release.** No child `@use`s the parent's Sass — each child Build repo is a separate compilation unit with no `loadPaths`, no `includePaths` and no symlink, so Sass constructs cannot cross the repo boundary at all. (CSS classes can and do, via the enqueued stylesheet; Sass cannot.) Fish Potrero and Coco ATV Tours each carry their own physical copy of `_mixins.scss` and keep compiling exactly as before. 360 Splendor has no copy, never calls `respond()`, and already writes mobile-first raw media queries.
+
+A network crawl before this change counted **238 `respond()` occurrences: 234 call sites in Fish Potrero, 4 in this theme, 0 in Coco, 0 in RJK.** Coco's 9 hits are all inside comments and a placeholder mixin whose breakpoint names and values had already diverged completely from this one. So a major bump here touches **zero child sites**, and each child migrates on its own schedule.
+
+**The one rule that cannot be relaxed:** within any repo, the mixin and its call sites must flip in the same commit. A flipped mixin with unflipped callers inverts every breakpoint on that site at once — there is no safe intermediate state.
+
+### What changed
+
+**Before** — `phone` / `tab-port` / `tab-land` were `max-width` 36/48/64em and only `big-desktop` was `min-width` 90em. The mixin **mixed directions inside itself**, the classic overlap-bug generator, and it was why any "from tablet up" rule had to be written as declare-then-reset: no upward tier existed below 90em. The two `-md` utilities did exactly that, and their own comment apologised for it.
+
+**After** — `min-width` 36/48/64/90em as `sm`/`md`/`lg`/`xl`. Same `@if`/`@else if` structure, same `@error` on unknown names. The `xl` tier's value and direction are unchanged; it was already `min-width: 90em`.
+
+### Why the rename shipped with the flip rather than after it
+
+Device names were survivable under `max-width`, where `respond(phone)` genuinely meant "on phones". Under `min-width` the identical call means **"576px and up"** — nearly the opposite of how it reads, and a trap that gets more expensive with every call site added. `sm`/`md`/`lg`/`xl` carry no device claim and cannot be misread that way.
+
+Doing it in the same release also converts a silent-wrong-behaviour failure into a build failure: every old tier name is now an unknown breakpoint, so a stale `respond(tab-port)` left anywhere hits the `@error` instead of quietly compiling against a flipped direction.
+
+**The rename changes no CSS.** Values and directions are untouched — only the labels moved. Verified by diffing the pre-rename and post-rename compiles: byte-identical.
+
+⚠ **Name collision to know about.** Coco ATV Tours' placeholder mixin already uses `lg`/`md`/`sm`, and they mean the opposite — `max-width`, in px, at 1199.98 / 991.98 / 767.98. So `respond(md)` now compiles in both repos and means "768px and up" here versus "991.98px and down" there. That file documents itself as an unverified guess made when the parent was unreachable, and it has zero real call sites, so replacing it wholesale is cheap today and gets more dangerous the longer the collision stands.
+
+The four call sites in `base/_utilities.scss` all invert cleanly:
+
+| Class | Before | After |
+|---|---|---|
+| `.u-row` | base `row` · `column` ≤48em | base `column` · `row` ≥48em |
+| `.u-col-half` | base `50%` · `100%` ≤48em | base `100%` · `50%` ≥48em |
+| `.u-justify-end-md` | base `flex-end` · `flex-start` ≤48em | base `flex-start` · `flex-end` ≥48em |
+| `.u-text-right-md` | base `right` · `left` ≤48em | base `left` · `right` ≥48em |
+
+**Rendered output is identical at every width except exactly 48em/768px.** Both the old `max-width` and the new `min-width` tiers are inclusive, so a viewport at precisely that width matched the small branch before and matches the large branch now — a one-pixel shift at one breakpoint, accepted deliberately. It is the same class of divergence already documented in `CLAUDE.md` §18.2 for the old mixin. Preserving it byte-exactly would need `min-width: 48.0625em`, which would put an off-number into every child migration that follows.
+
+The base values on the two `-md` utilities are stated **explicitly** rather than left to their initial values, because `text-align` inherits and the old code explicitly forced `left` below the breakpoint — dropping it would let an ancestor's `center` leak through where it previously could not.
+
+**Consequence for the child migrations.** With the names moved too, a child's migration is no longer a name-for-name mapping but a two-part rewrite per repo — invert the base/override relationship **and** rename the tier, in one commit. Fish Potrero is the bulk of it at 234 call sites: 130 `phone` → `sm`, 73 `tab-port` → `md`, 27 `tab-land` → `lg`, 4 `big-desktop` → `xl`. The compensation is that a half-done migration cannot ship silently — an un-renamed call is an unknown breakpoint and fails the build.
+
+Compiled `dist/css/style.css` goes from 2,892 to 2,911 bytes, the growth being `.u-row`'s now-explicit `flex-direction: column` base. The four `@media (max-width: 48em)` blocks it previously emitted are now `@media (min-width: 48em)`, and **no `max-width` query remains anywhere in the parent's stylesheet**. `html { font-size: 62.5% }` is untouched and still flat, so the v4.0.0 root flatten is unaffected and children inheriting the root see no change.
+
+SCSS only: no PHP, no JavaScript. Companion Build-repo commit carries the two SCSS sources. MAJOR: breaking change to a child-theme API surface, with a verified blast radius of zero on all three current children.
+
 ## [5.11.2] — 2026-07-31
 Fix stale line reference in `roci_brand_palette()` docblock (`_variables.scss` :65 → :84); no behavior change.
 
@@ -115,10 +161,10 @@ Added parent-level SVG upload support (`inc/media/svg-support.php`): admins (`ma
 New "layout bundles" architecture: per-vertical parent feature bundles gated by `add_theme_support`. First bundle `roci-tour-layout` (`inc/layout-bundles/`) adds a dedicated Hero Display meta box (`roci_hero_focus` select + `roci_hero_focus_custom` conditional text) on the SEO post types, plus helpers `roci_sanitize_object_position()` (strict CSS `object-position` whitelist) and `roci_get_hero_focus()` (sanitized resolver for templates). Fully inert until a child opts in; child wiring lands separately.
 
 ## [2.19.2] — 2026-07-08
-Fix the root cause of the slug-meta corruption: added an `rwmb_roci_slug_value` save-time value filter. DB inspection confirmed MB Pro serializes the `roci_slug` field's config array into the `roci_slug` postmeta on REST/Gutenberg saves where the input is absent — the stored value was the `autocomplete…datalist…` config cruft. The v2.19.1 `is_string()` guard in `roci_save_slug_field()` only protected the `$_POST` read that syncs `post_name`; it could not stop the meta write, which happens inside MB Pro's own save pipeline before our `save_post` handler runs. The new filter fires at MB Pro's write point (`rwmb_{$field_id}_value`, before save) and rejects the non-string config-array fallback — returning the prior value, or empty — so the serialized config can never persist to meta. Filter signature verified against the Meta Box documentation. The display-time filter and the `is_string()` guard remain in place as defense in depth. See CLAUDE.md §13.1.
+Fix the root cause of the slug-meta corruption: added an `rwmb_roci_slug_value` save-time value filter. DB inspection confirmed MB Pro serializes the `roci_slug` field's config array into the `roci_slug` postmeta on REST/Gutenberg saves where the input is absent — the stored value was the `autocomplete…datalist…` config cruft. The v2.19.1 `is_string()` guard in `roci_save_slug_field()` only protected the `$_POST` read that syncs `post_name`; it could not stop the meta write, which happens inside MB Pro's own save pipeline before our `save_post` handler runs. The new filter fires at MB Pro's write point (`rwmb_{$field_id}_value`, before save) and rejects the non-string config-array fallback — returning the prior value, or empty — so the serialized config can never persist to meta. Filter signature verified against the Meta Box documentation. The display-time filter and the `is_string()` guard remain in place as defense in depth. See CLAUDE.md.
 
 ## [2.19.1] — 2026-07-08
-Fix `roci_save_slug_field()`: the handler only guarded against `$_POST['roci_slug']` being unset, but on REST/Gutenberg/no-input save paths MB Pro substitutes the field's config array as the value — which passed the `isset()` check, was flattened by `sanitize_title()`, and wrote garbage (`autocompletefalsedatalist…`) into `post_name`. The guard now also requires `is_string()`, rejecting the config-array fallback before it can reach `sanitize_title()`. An empty string submission is treated as "no override intended" and leaves the existing `post_name` untouched. See CLAUDE.md §13.1.
+Fix `roci_save_slug_field()`: the handler only guarded against `$_POST['roci_slug']` being unset, but on REST/Gutenberg/no-input save paths MB Pro substitutes the field's config array as the value — which passed the `isset()` check, was flattened by `sanitize_title()`, and wrote garbage (`autocompletefalsedatalist…`) into `post_name`. The guard now also requires `is_string()`, rejecting the config-array fallback before it can reach `sanitize_title()`. An empty string submission is treated as "no override intended" and leaves the existing `post_name` untouched. See CLAUDE.md.
 
 ## [2.19.0] — 2026-06-27
 LocalBusiness schema: added two global Business-tab Theme Settings fields — Schema Image (a media upload storing a URL, mirroring the SEO Default OG Image pattern and wired by the generic `theme-settings.js`) and Price Range (text). Both are emitted into the site-level LocalBusiness JSON-LD as `image` / `priceRange` via conditional-assign guards, omitted when blank. A blank Schema Image intentionally leaves Google's optional "missing image" warning in place as a reminder.
