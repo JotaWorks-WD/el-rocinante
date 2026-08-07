@@ -4,6 +4,54 @@ All notable changes to the El Rocinante parent theme are recorded here. Entries 
 
 ---
 
+## [6.2.0] — 2026-08-07
+Add a page-identifier registry — the `roci_registered_pages` filter — and reader-side validation that reports a read against an identifier nobody registered. **Parent-only, additive, and completely inert until a child opts in.** No current read changes behaviour.
+
+**The problem.** The page identifier is the first argument to `roci_get_setting()` / `roci_get_setting_raw()` — the string that completes `{prefix}{page}` to name a `wp_options` row. It has always been a bare hand-typed literal at every call site with **no validation of any kind**: no whitelist, no known-set check, no error on unknown. A typo therefore names an option row that does not exist, `get_option()` returns its default, and the reader returns `$default` — so **every field on that page blanks out silently**, one call at a time, with no notice, no log entry and no PHP error. The readers could not distinguish *"wrong page name"* from *"the editor hasn't filled this field yet."* This release makes the first case say so.
+
+### `roci_registered_pages` — the filter
+
+`inc/pages/page-registry.php` (new, 1.0.0). Merge-style, matching the three existing append-filters (`roci_seo_post_types` and siblings), and memoized in a `static` the same way. A child contributes its identifiers:
+
+```php
+function mychild_register_pages( $pages ) {
+    return array_merge( $pages, array( 'home', 'about', 'contact' ) );
+}
+add_filter( 'roci_registered_pages', 'mychild_register_pages' );
+```
+
+**The default is an empty array, and that is load-bearing.** The parent is content-agnostic and owns no pages (CLAUDE.md §12.4), so every value comes from a child. An empty registry means *"this child has not opted in"* and disables validation entirely, rather than flagging every read on the site. Without that, merely shipping this file would make an unmigrated child report on every page.
+
+**The registry holds resolved identifier strings**, not the names of constants that hold them. A child defining `const MYCHILD_PAGE_HOME = 'home'` registers the constant, which PHP evaluates to `'home'` before the filter ever sees it — the reader receives `'home'`, so that is what the registry must contain.
+
+⚠ **Register at load time.** The filter dispatches once per request on first call and caches in a `static`; an `add_filter()` running after that is a silent no-op. A bare `add_filter()` in the child's `functions.php` is always early enough, since WordPress includes the child's `functions.php` before the parent's. This is the same trap §12.5 documents for the post-type filters, and it fails the same quiet way.
+
+### `roci_strict_pages_enabled()` — the gate, and the seam
+
+Returns `defined( 'WP_DEBUG' ) && WP_DEBUG` and nothing more. It exists as a **named predicate rather than an inline check** so that everything which might later change about *when* validation runs changes in one function without touching a caller — an explicit `ROCI_STRICT_PAGES` constant for staging installs where `WP_DEBUG` is off, a filter, or a hard-fail mode. **None of those exist yet and none should be added speculatively**; the point is that adding one later is a change to this function alone.
+
+The `defined()` guard is mandatory, not defensive noise: `WP_DEBUG` is declared in `wp-config.php` and is not guaranteed to exist, and a bare reference to an undefined constant is an `E_WARNING` evaluating to its own name on PHP 7 and a fatal `Error` on PHP 8. Neither is acceptable in a diagnostic whose job is to not disturb the page it watches.
+
+### `roci_validate_page_identifier()` — reports, never acts
+
+**This is the most important property of the release.** The function has nothing to return: its only two `return` statements are bare, and callers invoke it and then proceed to their normal lookup unconditionally. They do not branch on it, cannot branch on it, and **both readers' return paths are byte-identical to before** — verified by diffing the executable lines against the previous commit, where the entire delta is two added call lines and zero modifications.
+
+Do not convert it to a bool-returning early-bail. That would turn a diagnostic into a behaviour change, and would break every site whose child has not opted in — the failure mode being a whole page of blank fields, which is precisely the silent breakage this exists to expose.
+
+It is silent in three cases, in order: strict mode off; registry empty; identifier registered. Otherwise it calls `_doing_it_wrong()` with the calling reader's `__FUNCTION__`, the offending identifier, and `6.2.0`. Comparison is `in_array( …, true )` — strict, because the registry holds strings and a loose match would let `0 == 'home'` pass on some PHP versions.
+
+`_doing_it_wrong()` is the deliberate vehicle: it emits an `E_USER_NOTICE` through core's own `wp_doing_it_wrong_trigger_error` filter, so it respects `WP_DEBUG` a second time, appears in a debug log, and **cannot be fatal**. A diagnostic that could white-screen a client site would be worse than the silent bug it replaces. This is the parent's first `_doing_it_wrong()` call — it previously contained zero `_doing_it_wrong`, `WP_DEBUG`, `trigger_error` and `error_log` references.
+
+### Both readers, and the guard order
+
+`inc/metabox/metabox-readers.php` goes 1.1.1 to 1.2.0. `roci_get_setting_raw()` calls the validator before building `$option_name`. `roci_get_setting()` calls it **after** the MB Pro `function_exists( 'rwmb_meta' )` guard, which stays first and untouched — a missing plugin is an environment condition rather than a coding error, so it must not be reported as one, and there is no point validating an identifier on a request already returning `$default`.
+
+`roci_get_setting()` has no live call sites in the network today, but leaving it unvalidated would let the siblings drift — the exact class of defect the v6.1.0 docblock fix corrected.
+
+`functions.php` goes 1.7.0 to 1.8.0 and requires the new file under a `// PAGE IDENTIFIER REGISTRY` banner, ahead of the per-page asset loader and well ahead of `metabox-loader.php`. Load order is not actually constrained — every `require_once` completes during `functions.php` load, long before any template reads a setting — but the ordering costs nothing.
+
+**Blast radius: none.** Neither child registers anything yet, so both registries are empty and validation short-circuits on every call. PHP only: no SCSS, no JavaScript, no `dist` rebuild and no Build-repo counterpart. MINOR: new public API (`roci_registered_pages` filter plus three `roci_` functions), additive, with no signature change and no front-end rendering change on any site.
+
 ## [6.1.1] — 2026-08-07
 Rename the per-page bundle stylesheet handle from `roci-page-{slug}` to `roci-{slug}`. Cosmetic; no behaviour or API change.
 

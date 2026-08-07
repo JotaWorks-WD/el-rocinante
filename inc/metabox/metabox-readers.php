@@ -17,7 +17,7 @@
  * and may be consolidated here in a future refactor.
  *
  * File:    inc/metabox/metabox-readers.php
- * Version: 1.1.1
+ * Version: 1.2.0
  * Updated: 2026-08-07
  *
  * @package ElRocinante
@@ -93,9 +93,18 @@ function roci_page_option_prefix() {
 function roci_get_setting( $page, $field, $default = '' ) {
 
     // Guard: MB Pro not active. Templates should still render.
+    //
+    // This stays FIRST, ahead of the validation call below. A missing plugin is
+    // an environment condition, not a coding error, so it must not be reported
+    // as one — and there is no point validating an identifier on a request that
+    // is going to return $default anyway.
     if ( ! function_exists( 'rwmb_meta' ) ) {
         return $default;
     }
+
+    // Diagnostic only — reports an unregistered identifier under WP_DEBUG and
+    // returns nothing. The lookup below is unchanged and runs regardless.
+    roci_validate_page_identifier( $page, __FUNCTION__ );
 
     // Build the option name from the filterable prefix (default 'roci_page_').
     // Children override 'roci_page_option_prefix' to supply their namespace.
@@ -175,6 +184,11 @@ function roci_get_setting( $page, $field, $default = '' ) {
  * @return mixed           The raw stored value, or $default if not set.
  */
 function roci_get_setting_raw( $page, $field, $default = '' ) {
+
+    // Diagnostic only — reports an unregistered identifier under WP_DEBUG and
+    // returns nothing. The lookup below is unchanged and runs regardless.
+    roci_validate_page_identifier( $page, __FUNCTION__ );
+
     $option_name = roci_page_option_prefix() . $page;
     $options     = get_option( $option_name, array() );
     return isset( $options[ $field ] ) && $options[ $field ] !== ''
