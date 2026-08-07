@@ -6,8 +6,8 @@
  * loads includes, and outputs analytics/integration scripts.
  *
  * File:    functions.php
- * Version: 1.6.0
- * Updated: 2026-07-26
+ * Version: 1.7.0
+ * Updated: 2026-08-07
  *
  * @package ElRocinante
  */
@@ -137,6 +137,13 @@ require_once get_template_directory() . '/inc/theme-settings/settings-loader.php
 // ============================================================
 
 require_once get_template_directory() . '/inc/pages/pages-register.php';
+
+
+// ============================================================
+// PER-PAGE ASSET LOADER
+// ============================================================
+
+require_once get_template_directory() . '/inc/pages/page-assets.php';
 
 
 // ============================================================

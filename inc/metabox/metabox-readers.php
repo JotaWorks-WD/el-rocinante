@@ -17,8 +17,8 @@
  * and may be consolidated here in a future refactor.
  *
  * File:    inc/metabox/metabox-readers.php
- * Version: 1.1.0
- * Updated: 2026-06-14
+ * Version: 1.1.1
+ * Updated: 2026-08-07
  *
  * @package ElRocinante
  */
@@ -75,10 +75,15 @@ function roci_page_option_prefix() {
  * For clone groups (repeating field sets), the returned value is an
  * array of arrays, one per clone. Iterate with foreach in the template.
  *
- * @param  string $page    Page slug matching the template filename
- *                         (e.g. 'home', 'charters', 'tours'). For
- *                         multi-word templates, hyphens are dropped and
- *                         lowercased (see CLAUDE.md section 12.6).
+ * @param  string $page    Page slug matching the template filename with the
+ *                         'page-' prefix and '.php' extension stripped
+ *                         (e.g. 'home', 'charters', 'tours'). HYPHENS ARE
+ *                         KEPT, NOT STRIPPED: 'pages/page-tide-weather.php'
+ *                         maps to 'tide-weather', which reads the option row
+ *                         '{prefix}_page_tide-weather'. Do not lowercase and
+ *                         concatenate — see CLAUDE.md section 12.6 and the
+ *                         roci_get_setting_raw() docblock below, which has
+ *                         always described this parameter correctly.
  * @param  string $field   Field ID within the page's Settings Page,
  *                         matching the 'id' key in the field config.
  * @param  mixed  $default Value to return if the field is empty, null,
