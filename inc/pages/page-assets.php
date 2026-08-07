@@ -19,7 +19,7 @@
  * capability this lacks, and would have to be written once per child.
  *
  * File:    inc/pages/page-assets.php
- * Version: 1.0.0
+ * Version: 1.0.1
  * Updated: 2026-08-07
  *
  * @package ElRocinante
@@ -227,8 +227,14 @@ function roci_enqueue_page_bundle() {
         get_stylesheet() . '-style'
     );
 
+    /*
+     * HANDLE IS 'roci-' + THE SLUG, AND THE SLUG ALREADY CARRIES 'page-'.
+     * So 'page-contact' yields the handle 'roci-page-contact'. The prefix is
+     * NOT missing here — adding a second 'page-' would double it back to
+     * 'roci-page-page-contact', which is what this used to emit.
+     */
     wp_enqueue_style(
-        'roci-page-' . $roci_slug,
+        'roci-' . $roci_slug,
         get_stylesheet_directory_uri() . $roci_relative,
         array( $roci_dependency ),
         filemtime( $roci_abs )

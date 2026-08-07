@@ -4,6 +4,17 @@ All notable changes to the El Rocinante parent theme are recorded here. Entries 
 
 ---
 
+## [6.1.1] — 2026-08-07
+Rename the per-page bundle stylesheet handle from `roci-page-{slug}` to `roci-{slug}`. Cosmetic; no behaviour or API change.
+
+The slug produced by `roci_page_asset_slug()` **already carries the `page-` prefix** — it is derived from the template filename with only the directory and extension stripped, so `pages/page-contact.php` yields `page-contact`. Prefixing that with `roci-page-` doubled the segment and emitted `roci-page-page-contact`. The handle is now `roci-` plus the slug, giving `roci-page-contact`.
+
+**Nothing referenced the old handle.** Confirmed by grepping the parent and both children for `roci-page` across `.php` and `.js`, and separately for every style-handle consumer (`wp_add_inline_style`, `wp_style_add_data`, `wp_style_is`, `wp_dequeue_style`, `wp_deregister_style`). The only occurrence of the enqueue handle was its own definition site. The other matches are unrelated strings that merely look similar: `roci-pages` is the admin submenu slug for the Pages grouping, `roci-page-drag-handle` is a Fauxlders CSS class, and `text/x-roci-page` is a drag-payload MIME type. The style-handle consumers that do exist name `roci-admin-folders` (parent, admin-only) and `fishpotrero-style` (Fish Potrero); 360 Splendor has none.
+
+A comment at the call site now states that the handle is `roci-` plus a slug that already includes `page-`, so the prefix is not re-added by someone reading it as missing.
+
+`inc/pages/page-assets.php` goes 1.0.0 to 1.0.1. One string changed; the slug, path, both guards, the `roci_page_asset_dependency` filter and the `filemtime()` version are untouched. PHP only: no SCSS, no JavaScript, no `dist` rebuild and no Build-repo counterpart. PATCH: internal handle naming only, no new API, and no front-end rendering change on any site.
+
 ## [6.1.0] — 2026-08-07
 Add `page.php` and a convention-based per-page CSS loader: **the parent owns the mechanism, the child owns the bundle files.** Also fixes the D9 docblock defect in `metabox-readers.php`, which asserted a hyphen-stripping rule the code never performed.
 
