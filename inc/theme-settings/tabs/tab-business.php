@@ -5,7 +5,7 @@
  * Included by settings-page.php inside roci_settings_page().
  *
  * File:    inc/theme-settings/tabs/tab-business.php
- * Version: 1.5.0
+ * Version: 1.6.0
  * Updated: 2026-08-08
  *
  * @package ElRocinante
@@ -180,25 +180,65 @@ foreach ( $roci_business_type_map as $roci_type_slug => $roci_type_def ) :
 
         <?php
         /*
-         * PHASE 2 PLACEHOLDER — REPLACE, DO NOT EXTEND.
+         * FIELDS ARE GATED ON THE MAP'S DECLARATION, NOT ON THE SELECTED TYPE.
          *
-         * Phase 2 ships the show/hide mechanism only. This paragraph exists so
-         * the toggle is visibly working before there is anything real to toggle.
-         * Phase 3 replaces it with this type's actual fields — for lodging:
-         * numberOfRooms, petsAllowed and amenities — each of which must also be
-         * added to roci_sanitize_business() in the same commit (see the sync
-         * warning at the top of this file). Delete this block then.
+         * This is NOT the hazard described above and must not be confused with
+         * it. in_array( …, $roci_type_def['fields'] ) asks "does this vertical
+         * declare this field", which is a static property of the map — it
+         * evaluates identically on every request regardless of what the admin
+         * has selected. Every group still renders every field it declares, on
+         * every request, and every one of them still submits.
+         *
+         * The forbidden thing is gating on $roci_biz_type, the SAVED value.
+         * That is what would stop a field submitting and let a save blank it.
+         *
+         * Gating this way also means a child that registers a vertical
+         * declaring 'numberOfRooms' gets this input for free, with no edit here.
          */
         ?>
-        <p class="roci-note">
-            <?php
-            printf(
-                /* translators: %s: comma-separated list of field keys. */
-                esc_html__( 'Placeholder — no fields built yet. This group will hold: %s', 'rocinante' ),
-                esc_html( implode( ', ', $roci_type_def['fields'] ) )
-            );
+        <table class="form-table">
+
+            <?php if ( in_array( 'numberOfRooms', $roci_type_def['fields'], true ) ) : ?>
+            <tr>
+                <th><label for="roci_biz_number_of_rooms"><?php esc_html_e( 'Number of Rooms', 'rocinante' ); ?></label></th>
+                <td>
+                    <input type="number" name="roci_business[numberOfRooms]" id="roci_biz_number_of_rooms" class="small-text" min="0" step="1" value="<?php echo esc_attr( isset( $business['numberOfRooms'] ) ? $business['numberOfRooms'] : '' ); ?>">
+                    <p class="roci-note"><?php esc_html_e( 'Number of guest rooms or units. Leave blank to omit — a blank field emits nothing, it does not emit zero.', 'rocinante' ); ?></p>
+                </td>
+            </tr>
+            <?php endif; ?>
+
+            <?php if ( in_array( 'petsAllowed', $roci_type_def['fields'], true ) ) : ?>
+            <tr>
+                <th><label for="roci_biz_pets_allowed"><?php esc_html_e( 'Pets Allowed', 'rocinante' ); ?></label></th>
+                <td>
+                    <label>
+                        <input type="checkbox" name="roci_business[petsAllowed]" id="roci_biz_pets_allowed" value="1" <?php checked( isset( $business['petsAllowed'] ) ? $business['petsAllowed'] : '0', '1' ); ?>>
+                        <?php esc_html_e( 'Pets are allowed', 'rocinante' ); ?>
+                    </label>
+                    <p class="roci-note"><?php esc_html_e( 'Unlike the other fields, this one always emits: ticked publishes "pets allowed", unticked publishes "pets not allowed". There is no blank state — a checkbox cannot express one.', 'rocinante' ); ?></p>
+                </td>
+            </tr>
+            <?php endif; ?>
+
+        </table>
+
+        <?php
+        /*
+         * PHASE 4 PLACEHOLDER — amenities only.
+         *
+         * amenityFeature is a repeatable array of LocationFeatureSpecification
+         * objects, which the flat one-key-one-value pattern above cannot carry.
+         * Phase 4 replaces this paragraph, and whatever it ships must be added
+         * to roci_sanitize_business() in the same commit — see the sync warning
+         * at the top of this file.
+         */
+        if ( in_array( 'amenities', $roci_type_def['fields'], true ) ) :
             ?>
-        </p>
+            <p class="roci-note"><?php esc_html_e( 'Amenities — repeatable field, Phase 4. Not built yet.', 'rocinante' ); ?></p>
+            <?php
+        endif;
+        ?>
 
     </div>
     <?php

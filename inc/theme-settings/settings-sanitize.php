@@ -3,7 +3,7 @@
  * Theme Settings — Sanitize Callbacks
  *
  * File:    inc/theme-settings/settings-sanitize.php
- * Version: 1.5.0
+ * Version: 1.6.0
  * Updated: 2026-08-08
  *
  * @package ElRocinante
@@ -96,12 +96,46 @@ function roci_sanitize_business( $input ) {
             : '';
     }
 
+    /*
+     * NUMBER OF ROOMS — '' when blank, never 0.
+     *
+     * Same reasoning as the coordinates: blank and zero must stay
+     * distinguishable, so the emit guard can omit the key entirely rather than
+     * publish a count nobody entered. Zero rooms is nonsensical for a lodging
+     * business, but the pattern is kept consistent rather than special-cased —
+     * the next numeric field may well have a meaningful zero.
+     *
+     * A negative count is DISCARDED, not clamped, matching the coordinates
+     * above: clamping -5 to 0 would assert a number the admin did not type.
+     * min="0" on the input is a client-side courtesy, not a guarantee.
+     */
+    $roci_rooms_raw = isset( $input['numberOfRooms'] ) ? trim( (string) $input['numberOfRooms'] ) : '';
+    $roci_rooms     = ( '' !== $roci_rooms_raw && is_numeric( $roci_rooms_raw ) && intval( $roci_rooms_raw ) >= 0 )
+        ? (string) intval( $roci_rooms_raw )
+        : '';
+
+    /*
+     * PETS ALLOWED — ABSENCE MEANS FALSE, NOT UNSET.
+     *
+     * An unchecked checkbox submits NOTHING. There is no petsAllowed key in
+     * $_POST at all when the box is clear, so the usual isset()-means-provided
+     * reading is exactly backwards here: absence is the user's answer, and the
+     * answer is no.
+     *
+     * Stored as a definite '1' or '0', never ''. This field has no blank state
+     * to represent — a checkbox cannot express "unknown" — and that is why it
+     * is the one field that always emits rather than being omitted when empty.
+     */
+    $roci_pets = isset( $input['petsAllowed'] ) ? '1' : '0';
+
     return array(
         'type'     => $roci_type,
         'name'     => isset( $input['name'] )     ? sanitize_text_field( $input['name'] )     : '',
         'description' => isset( $input['description'] ) ? sanitize_textarea_field( $input['description'] ) : '',
         'latitude'    => $roci_coords['latitude'],
         'longitude'   => $roci_coords['longitude'],
+        'numberOfRooms' => $roci_rooms,
+        'petsAllowed'   => $roci_pets,
         'phone'    => isset( $input['phone'] )    ? sanitize_text_field( $input['phone'] )    : '',
         'email'    => isset( $input['email'] )    ? sanitize_email( $input['email'] )         : '',
         'street'   => sanitize_text_field( $input['street'] ?? '' ),

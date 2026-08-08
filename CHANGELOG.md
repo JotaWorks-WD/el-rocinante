@@ -4,6 +4,41 @@ All notable changes to the El Rocinante parent theme are recorded here. Entries 
 
 ---
 
+## [6.7.0] — 2026-08-08
+Fill the lodging field group with its two flat fields — **`numberOfRooms`** and **`petsAllowed`** — and emit both into the site-level JSON-LD. Phase 3 of the business schema system. Amenities remains a placeholder; it is a repeatable structure the flat pattern cannot carry, and it is Phase 4.
+
+**No output changes until an admin selects Lodging / Rental and fills the fields.** Every other vertical emits exactly what it did at 6.6.0.
+
+### The fields
+
+**`numberOfRooms`** — `<input type="number" min="0" step="1">`. Blank stores `''` and omits the key; a value stores `(string) intval()` and emits `(int)`, so the JSON carries `"numberOfRooms": 12` rather than a quoted string. Non-numeric input and negatives are **discarded, not clamped** — the same choice the coordinates make, because clamping `-5` to `0` asserts a number the admin never typed. `min="0"` on the input is a client-side courtesy, not a guarantee.
+
+**`petsAllowed`** — a checkbox, and **the only field in this file that emits unconditionally** once its type declares it.
+
+⚠ **An unchecked checkbox submits nothing at all.** There is no `petsAllowed` key in `$_POST` when the box is clear, so the usual "`isset()` means the user provided a value" reading is exactly backwards: *absence is the answer, and the answer is no*. The sanitizer therefore reads `isset( $input['petsAllowed'] ) ? '1' : '0'` and stores a definite `'1'` or `'0'`, never `''`. There is no blank state to represent — a checkbox cannot express "unknown" — which is why this field has no omit-when-empty branch. It emits a real JSON boolean (`true` / `false`), not `"1"` / `"0"`.
+
+### Emit is gated on map field-membership, not on a hardcoded type string
+
+Both properties emit only when the **saved** type declares them, resolved through `$roci_type_fields` — `roci_business_types()[ $type ]['fields']` — rather than a literal `'lodging'` comparison.
+
+**This gate is load-bearing, and the case it prevents is one this system creates by design.** 6.6.0 deliberately keeps hidden field groups in the DOM and submitting, so their values survive a type switch. That means a site that was Lodging, entered 12 rooms, then switched to Restaurant **still has `numberOfRooms = '12'` in storage**. Ungated, it would keep publishing — and `numberOfRooms` and `petsAllowed` are `LodgingBusiness` / `Accommodation` properties that are not valid on `Restaurant`, `TouristAttraction` or plain `LocalBusiness`. The gate makes the saved type authoritative: stale values from a previous vertical stay in storage, ready if the admin switches back, and publish nothing meanwhile.
+
+Reading the map rather than hardcoding the slug also keeps the one-source rule from 6.4.0 intact — a literal `'lodging'` in `header.php` would be the fourth copy of a list that is supposed to exist once. A child vertical declaring `numberOfRooms` now gets both the admin input and the emission with no edit to either file.
+
+### The same variable, opposite roles — worth understanding before Phase 4
+
+`$roci_biz_type` (the saved selection) **must** gate emission in `header.php`, and **must never** gate rendering in `tabs/tab-business.php`. On the front end the saved type is exactly what decides what publishes; in the admin, gating render on it would stop a field submitting and let the next save blank it.
+
+The tab's field gates therefore read `$roci_type_def['fields']` — the **loop's** map entry, a static property that evaluates identically on every request whatever the dropdown says — never `$roci_biz_type`. That distinction is the difference between a correct implementation and silent data loss, and both files carry comments saying so at the point of use.
+
+### Files
+
+`tabs/tab-business.php` 1.5.0 → 1.6.0 · `settings-sanitize.php` 1.5.0 → 1.6.0 · `header.php` 1.6.0 → 1.7.0. All three move together: a field without its sanitizer entry is wiped on the first save. PHP only — no SCSS, no JavaScript, no `dist/` rebuild, no Build-repo counterpart.
+
+**MINOR** — new settings fields and new schema properties, additive, with no change to any existing emission.
+
+---
+
 ## [6.6.0] — 2026-08-08
 Add the show/hide mechanism for per-type field groups on the Business tab. **Admin UI only — no schema output changes, on any site.** Phase 2 of the business schema system; the groups are still empty placeholders, and Phase 3 fills them.
 

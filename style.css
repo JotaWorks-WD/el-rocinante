@@ -4,7 +4,7 @@ Theme URI: https://jota.works
 Author: JotaWorks
 Author URI: https://jota.works
 Description: A lean, professional WordPress base theme by JotaWorks. Built for service businesses, tourism, and property management — with a custom SEO layer, schema markup, and no page builder bloat.
-Version: 6.6.0
+Version: 6.7.0
 License: Private
 License URI: https://jota.works
 Text Domain: rocinante
@@ -14,11 +14,11 @@ GitHub Branch: main
 
 /*
 Changelog (newest first, rolling 6):
+v6.7.0 — 2026-08-08 — MINOR — Business schema: Lodging numberOfRooms + petsAllowed fields. Emit gated on map field-membership (not a hardcoded type string), so a site switched away from lodging won't publish stale lodging fields. numberOfRooms emits as int, petsAllowed as boolean.
 v6.6.0 — 2026-08-08 — MINOR — Business schema: JS show/hide for per-type settings field groups (all groups always in DOM, visibility-only toggle, visible if JS fails — prevents the save-wipes-hidden-fields hazard).
 v6.5.0 — 2026-08-08 — MINOR — Business schema: type selector drives @type via roci_business_types(); universal geo (numeric, count===2 gated) + description fields. Sanitizer reads the type map (not a hardcoded list).
 v6.4.0 — 2026-08-08 — MINOR — Business schema type taxonomy: roci_business_types() filterable map (inc/schema/). Inert scaffolding — no consumer yet, zero output change.
 v6.3.0 — 2026-08-08 — MINOR — header.php exposes roci_schema_data filter: site-level LocalBusiness JSON-LD is now child-extensible before encode. Additive, transparent with no listener.
 v6.2.0 — 2026-08-07 — MINOR — Page-identifier registry: roci_registered_pages filter (empty default, child opt-in) + reader-side validation via _doing_it_wrong under WP_DEBUG. Reports only, never changes reads. Inert until a child registers.
-v6.1.1 — 2026-08-07 — PATCH — Rename per-page bundle handle roci-page-{slug} → roci-{slug} (slug already carries page-; removes doubled prefix). Cosmetic, no behavior/API change.
 */
 

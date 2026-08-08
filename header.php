@@ -10,7 +10,7 @@
  * its @type resolves from roci_business_types() (inc/schema/business-types.php).
  *
  * File:    header.php
- * Version: 1.6.0
+ * Version: 1.7.0
  * Updated: 2026-08-08
  *
  * @package ElRocinante
@@ -161,6 +161,8 @@
         $roci_biz_description  = roci_setting( 'business', 'description' );
         $roci_biz_latitude     = roci_setting( 'business', 'latitude' );
         $roci_biz_longitude    = roci_setting( 'business', 'longitude' );
+        $roci_biz_rooms        = roci_setting( 'business', 'numberOfRooms' );
+        $roci_biz_pets         = roci_setting( 'business', 'petsAllowed', '0' );
 
         /*
          * @type resolved from the business type map, not hardcoded.
@@ -178,6 +180,27 @@
         $roci_schema_type       = isset( $roci_business_type_map[ $roci_biz_type ]['schema'] )
             ? $roci_business_type_map[ $roci_biz_type ]['schema']
             : 'LocalBusiness';
+
+        /*
+         * The field keys THIS type declares — the emit gate for type-specific
+         * properties below.
+         *
+         * Gating on the map rather than on a hardcoded slug matters for two
+         * reasons. First, numberOfRooms and petsAllowed are LodgingBusiness
+         * properties and are not valid on Restaurant or TouristAttraction, so
+         * they must not leak onto another vertical. Second — and this is the
+         * case that actually happens — the settings tab deliberately keeps every
+         * group submitting even while hidden, so a site that was lodging, filled
+         * these in, then switched to Restaurant STILL HAS THOSE VALUES STORED.
+         * Without this gate they would keep publishing on the new type.
+         *
+         * Reading the map here also keeps the render gate and the emit gate on
+         * the same source: a child vertical declaring 'numberOfRooms' gets both
+         * the input and the emission with no edit to either file.
+         */
+        $roci_type_fields = isset( $roci_business_type_map[ $roci_biz_type ]['fields'] ) && is_array( $roci_business_type_map[ $roci_biz_type ]['fields'] )
+            ? $roci_business_type_map[ $roci_biz_type ]['fields']
+            : array();
 
         $roci_same_as = array_values( array_filter( [
             roci_setting( 'social', 'facebook' ),
@@ -264,6 +287,28 @@
             // Only emit description when set (blank = key omitted, as above).
             if ( '' !== $roci_biz_description ) {
                 $roci_local_schema['description'] = $roci_biz_description;
+            }
+
+            /*
+             * TYPE-SPECIFIC PROPERTIES — gated on the vertical declaring them.
+             *
+             * numberOfRooms follows the usual rule: blank omits the key, and the
+             * cast to int keeps the JSON numeric ("numberOfRooms": 12, not
+             * "12"), same as the coordinates.
+             *
+             * petsAllowed is the exception in this file — THE ONLY FIELD THAT
+             * EMITS UNCONDITIONALLY once its type declares it. It is stored as a
+             * definite '1' or '0' because an unchecked checkbox has no blank
+             * state to represent, and both answers are real information worth
+             * publishing: "pets not allowed" is as useful to a traveller as
+             * "pets allowed". It emits a JSON boolean, not a string.
+             */
+            if ( in_array( 'numberOfRooms', $roci_type_fields, true ) && '' !== $roci_biz_rooms ) {
+                $roci_local_schema['numberOfRooms'] = (int) $roci_biz_rooms;
+            }
+
+            if ( in_array( 'petsAllowed', $roci_type_fields, true ) ) {
+                $roci_local_schema['petsAllowed'] = ( '1' === $roci_biz_pets );
             }
 
             /*
