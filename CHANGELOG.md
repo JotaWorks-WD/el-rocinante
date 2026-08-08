@@ -4,6 +4,55 @@ All notable changes to the El Rocinante parent theme are recorded here. Entries 
 
 ---
 
+## [6.5.0] — 2026-08-08
+Wire the type taxonomy shipped inert in 6.4.0 to its three consumers, and add the first universal schema fields. The Business tab gains a **Business Type** selector that resolves the site-level `@type`, plus **latitude / longitude** and **description**. Phase 1 of the business schema system.
+
+**Output is unchanged on a site that never opens the Business tab** — an unset type resolves to `general` → `LocalBusiness`, exactly what was hardcoded before, and the three new fields emit nothing while blank.
+
+### `@type` is no longer hardcoded
+
+`header.php:181` was `'@type' => 'LocalBusiness'`. It now reads `$roci_schema_type`, resolved at `:175-179` from `roci_business_types()` keyed by the saved `roci_business['type']`, with `LocalBusiness` as the fallback for an unset or unrecognised slug. A site is one dropdown away from `LodgingBusiness`, `TouristAttraction` or `Restaurant`, with no code and no child filter.
+
+### Three consumers, one map — the rule 6.4.0 set up
+
+`roci_business_types()` is now read in all three places, and **none of them carries a copy of the list**:
+
+| Consumer | Site | Uses |
+|---|---|---|
+| Business tab | `tabs/tab-business.php:35` | builds the `<select>` |
+| Sanitizer | `settings-sanitize.php:71` | `array_keys()` → strict `in_array()` whitelist |
+| Schema assembly | `header.php:176` | resolves `@type` |
+
+That is what makes a child's `roci_business_types` filter actually work. Had the sanitizer duplicated the list, a child-added vertical would render in the selector and then be rejected on save, silently resetting to `general` — the `roci_social_platforms` failure exactly, where `tab-social.php:19` dispatches a filter `roci_sanitize_social()` never consults.
+
+### Geo — three deliberate departures from the `address` pattern
+
+`address` emits when **any** part is set, guards on truthiness, and stores strings. `geo` does none of those, and each difference is load-bearing:
+
+1. **Both coordinates or neither.** `2 === count( $roci_geo_parts )`. A `GeoCoordinates` node carrying one coordinate is not partial data — it points at a real place that is not this one.
+2. **The guard is `'' !==`, not truthiness.** Latitude `0` is the equator and longitude `0` is Greenwich: both valid, both falsy. Every previous field here was a non-empty string, so `if ( $v )` had always been safe; for these two it is not. This is why the sanitizer stores a numeric **string** rather than a float — `''` and `0` must stay distinguishable all the way to the guard.
+3. **The cast to float happens inside the guard.** Only a value that has already passed `'' !==` is cast, so `''` never becomes `0.0`. Casting first would silently place every un-geocoded site at Null Island. The cast exists so the JSON-LD carries unquoted numbers — `"latitude": 10.4406`, the conventional form; schema.org accepts Number or Text.
+
+The sanitizer **discards** out-of-range and non-numeric input rather than clamping it: clamping a typo to `90` would assert a coordinate nobody entered. Bounds are `abs() <= 90` / `<= 180`.
+
+### The sync hazard, now documented in place
+
+`roci_sanitize_business()` rebuilds the option array from `$input` and the return replaces the stored row wholesale — so **a field rendered by the tab but missing from the sanitizer is wiped on the first save**, and a key listed in the sanitizer but not rendered is blanked on every save. The Business tab had no warning about this; `tab-design.php` has carried one for releases. Both files now state the contract at the top. All four new keys (`type`, `description`, `latitude`, `longitude`) were added to both in this commit, and the twelve existing keys are untouched.
+
+**This is also why Phase 2's per-type field groups must be JS show/hide rather than PHP-conditional rendering** — a field not rendered submits nothing, so hiding lodging fields in PHP and saving would destroy their values.
+
+### i18n
+
+The four type labels are wrapped in `__()`; the four `schema` values are not, and must never be — they are schema.org identifiers, and a translated one is invalid. Safe because the map is only ever built at call time (admin render, schema assembly), long after the text domain loads. `business-types.php`'s docblock records both halves, including the warning never to call the function at file scope.
+
+### Files
+
+`header.php` 1.5.0 → 1.6.0 · `tabs/tab-business.php` 1.3.0 → 1.4.0 · `settings-sanitize.php` 1.4.0 → 1.5.0 · `inc/schema/business-types.php` 1.0.0 → 1.0.1. PHP only: no SCSS, no JavaScript, no `dist/` rebuild, no Build-repo counterpart.
+
+**MINOR** — new settings fields and new schema behaviour, additive, with no output change on any current site until an admin sets a type.
+
+---
+
 ## [6.4.0] — 2026-08-08
 Add `inc/schema/business-types.php` and the filterable `roci_business_types()` map — the type taxonomy that will drive the Business tab's field groups, the settings sanitizer's key whitelist, and the schema `@type`. **Phase 0: inert scaffolding. Nothing consumes it, and output is unchanged on every site.**
 

@@ -6,10 +6,11 @@
  * Outputs the full <head> block including SEO meta, OG tags,
  * Twitter Card, schema JSON-LD, and the primary navigation.
  * Nav output is controlled per child theme via do_action('roci_nav').
- * Site-level LocalBusiness JSON-LD is filterable via apply_filters('roci_schema_data').
+ * Site-level business JSON-LD is filterable via apply_filters('roci_schema_data');
+ * its @type resolves from roci_business_types() (inc/schema/business-types.php).
  *
  * File:    header.php
- * Version: 1.5.0
+ * Version: 1.6.0
  * Updated: 2026-08-08
  *
  * @package ElRocinante
@@ -157,6 +158,26 @@
         $roci_biz_country  = roci_setting( 'business', 'country' );
         $roci_biz_schema_image = roci_setting( 'business', 'schema_image' );
         $roci_biz_price_range  = roci_setting( 'business', 'price_range' );
+        $roci_biz_description  = roci_setting( 'business', 'description' );
+        $roci_biz_latitude     = roci_setting( 'business', 'latitude' );
+        $roci_biz_longitude    = roci_setting( 'business', 'longitude' );
+
+        /*
+         * @type resolved from the business type map, not hardcoded.
+         *
+         * inc/schema/business-types.php is the single source; the Business tab
+         * and the settings sanitiser read the same function, so a child adding a
+         * vertical through roci_business_types gets it here for free.
+         *
+         * An unset or unrecognised slug falls back to LocalBusiness — what this
+         * file emitted before the map existed, so a site that has never opened
+         * the Business tab is unchanged.
+         */
+        $roci_business_type_map = roci_business_types();
+        $roci_biz_type          = roci_setting( 'business', 'type', 'general' );
+        $roci_schema_type       = isset( $roci_business_type_map[ $roci_biz_type ]['schema'] )
+            ? $roci_business_type_map[ $roci_biz_type ]['schema']
+            : 'LocalBusiness';
 
         $roci_same_as = array_values( array_filter( [
             roci_setting( 'social', 'facebook' ),
@@ -180,7 +201,7 @@
 
             $roci_local_schema = [
                 '@context'  => 'https://schema.org',
-                '@type'     => 'LocalBusiness',
+                '@type'     => $roci_schema_type,
                 '@id'       => home_url( '/#organization' ),
                 'name'      => $roci_biz_name,
                 'url'       => home_url( '/' ),
@@ -202,6 +223,47 @@
             // Only emit a PostalAddress node when at least one address part is set.
             if ( $roci_address_parts ) {
                 $roci_local_schema['address'] = [ '@type' => 'PostalAddress' ] + $roci_address_parts;
+            }
+
+            /*
+             * GEO — both coordinates or neither.
+             *
+             * TWO DELIBERATE DEPARTURES FROM THE address PATTERN ABOVE.
+             *
+             * 1. The guard is '' !== , not truthiness. Latitude 0 is the equator
+             *    and longitude 0 is the Greenwich meridian — both valid, both
+             *    falsy. Every other field here is a non-empty string, so if(...)
+             *    has always been safe; for these two it is not.
+             *
+             * 2. Both parts are required, where address emits on ANY one part.
+             *    A GeoCoordinates node carrying one coordinate is not partial
+             *    data, it is wrong data — it points at a real place that is not
+             *    this one. Half-populated emits nothing.
+             *
+             * THE CAST HAPPENS INSIDE THE GUARD, AND THE ORDER MATTERS. The
+             * stored value is a numeric STRING so that '' stays distinguishable
+             * from '0'; the test is therefore on the string, and only a value
+             * that has already passed it is cast. Casting first would turn ''
+             * into 0.0 and silently place the site at Null Island.
+             *
+             * Casting at all is so the JSON-LD carries unquoted numbers —
+             * "latitude": 10.4406, not "10.4406". schema.org accepts Number or
+             * Text for these, but Number is the conventional form.
+             */
+            $roci_geo_parts = array();
+            if ( '' !== $roci_biz_latitude ) {
+                $roci_geo_parts['latitude'] = (float) $roci_biz_latitude;
+            }
+            if ( '' !== $roci_biz_longitude ) {
+                $roci_geo_parts['longitude'] = (float) $roci_biz_longitude;
+            }
+            if ( 2 === count( $roci_geo_parts ) ) {
+                $roci_local_schema['geo'] = [ '@type' => 'GeoCoordinates' ] + $roci_geo_parts;
+            }
+
+            // Only emit description when set (blank = key omitted, as above).
+            if ( '' !== $roci_biz_description ) {
+                $roci_local_schema['description'] = $roci_biz_description;
             }
 
             /*

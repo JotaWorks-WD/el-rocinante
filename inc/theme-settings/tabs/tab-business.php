@@ -5,8 +5,8 @@
  * Included by settings-page.php inside roci_settings_page().
  *
  * File:    inc/theme-settings/tabs/tab-business.php
- * Version: 1.3.0
- * Updated: 2026-06-27
+ * Version: 1.4.0
+ * Updated: 2026-08-08
  *
  * @package ElRocinante
  */
@@ -14,13 +14,56 @@
 if ( ! defined( 'ABSPATH' ) ) exit;
 
 settings_fields( 'roci_business_group' );
+
+/*
+ * THIS TAB AND roci_sanitize_business() IN settings-sanitize.php MUST STAY IN
+ * SYNC. The sanitiser rebuilds the option from scratch on every save and returns
+ * it wholesale, so a key rendered here but missing there is SILENTLY WIPED the
+ * first time anyone saves this tab — no error, no warning, the field simply
+ * empties. A key listed there but not rendered here is blanked on every save for
+ * the same reason: an unrendered field submits nothing.
+ *
+ * Add a field here and add it there, in the same commit. Always.
+ */
 $business = get_option( 'roci_business', array() );
+
+/*
+ * The type map is the single source for the selector below, for the sanitiser's
+ * validation, and for header.php's @type resolution. Read the function — never
+ * copy the list — so a child's roci_business_types filter reaches all three.
+ */
+$roci_business_type_map = roci_business_types();
+$roci_biz_type          = isset( $business['type'] ) && '' !== $business['type'] ? $business['type'] : 'general';
 ?>
+<h2 class="roci-section-title"><?php esc_html_e( 'Business Type', 'rocinante' ); ?></h2>
+<table class="form-table">
+    <tr>
+        <th><label for="roci_biz_type"><?php esc_html_e( 'Business Type', 'rocinante' ); ?></label></th>
+        <td>
+            <select name="roci_business[type]" id="roci_biz_type">
+                <?php foreach ( $roci_business_type_map as $roci_type_slug => $roci_type_def ) : ?>
+                    <option value="<?php echo esc_attr( $roci_type_slug ); ?>" <?php selected( $roci_biz_type, $roci_type_slug ); ?>>
+                        <?php echo esc_html( $roci_type_def['label'] ); ?>
+                    </option>
+                <?php endforeach; ?>
+            </select>
+            <p class="roci-note"><?php esc_html_e( 'Sets the schema.org type for this site\'s structured data. Choose the closest match to what the business actually is.', 'rocinante' ); ?></p>
+        </td>
+    </tr>
+</table>
+
 <h2 class="roci-section-title"><?php esc_html_e( 'Business Information', 'rocinante' ); ?></h2>
 <table class="form-table">
     <tr>
         <th><label for="roci_biz_name"><?php esc_html_e( 'Business Name', 'rocinante' ); ?></label></th>
         <td><input type="text" name="roci_business[name]" id="roci_biz_name" class="regular-text" value="<?php echo esc_attr( isset( $business['name'] ) ? $business['name'] : '' ); ?>"></td>
+    </tr>
+    <tr>
+        <th><label for="roci_biz_description"><?php esc_html_e( 'Business Description', 'rocinante' ); ?></label></th>
+        <td>
+            <textarea name="roci_business[description]" id="roci_biz_description" class="large-text" rows="4"><?php echo esc_textarea( isset( $business['description'] ) ? $business['description'] : '' ); ?></textarea>
+            <p class="roci-note"><?php esc_html_e( 'Optional. One or two sentences describing the business, used in the structured data. Leave blank to omit.', 'rocinante' ); ?></p>
+        </td>
     </tr>
     <tr>
         <th><label for="roci_biz_phone"><?php esc_html_e( 'Phone Number', 'rocinante' ); ?></label></th>
@@ -49,6 +92,17 @@ $business = get_option( 'roci_business', array() );
     <tr>
         <th><label for="roci_biz_country"><?php esc_html_e( 'Country (2-letter ISO, e.g. CR)', 'rocinante' ); ?></label></th>
         <td><input type="text" name="roci_business[country]" id="roci_biz_country" class="large-text" value="<?php echo esc_attr( isset( $business['country'] ) ? $business['country'] : '' ); ?>"></td>
+    </tr>
+    <tr>
+        <th><label for="roci_biz_latitude"><?php esc_html_e( 'Latitude (decimal, e.g. 10.4406)', 'rocinante' ); ?></label></th>
+        <td><input type="text" name="roci_business[latitude]" id="roci_biz_latitude" class="regular-text" value="<?php echo esc_attr( isset( $business['latitude'] ) ? $business['latitude'] : '' ); ?>"></td>
+    </tr>
+    <tr>
+        <th><label for="roci_biz_longitude"><?php esc_html_e( 'Longitude (decimal, e.g. -85.7920)', 'rocinante' ); ?></label></th>
+        <td>
+            <input type="text" name="roci_business[longitude]" id="roci_biz_longitude" class="regular-text" value="<?php echo esc_attr( isset( $business['longitude'] ) ? $business['longitude'] : '' ); ?>">
+            <p class="roci-note"><?php esc_html_e( 'Both coordinates are required — a single one emits nothing. Decimal degrees only, not degrees/minutes/seconds. Anything out of range (-90 to 90, -180 to 180) is discarded on save.', 'rocinante' ); ?></p>
+        </td>
     </tr>
     <tr>
         <th><label for="roci_biz_whatsapp"><?php esc_html_e( 'WhatsApp Number', 'rocinante' ); ?></label></th>

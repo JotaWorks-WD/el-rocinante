@@ -15,7 +15,7 @@
  * that lists types MUST read this function so the filter reaches all three.
  *
  * File:    inc/schema/business-types.php
- * Version: 1.0.0
+ * Version: 1.0.1
  * Updated: 2026-08-08
  *
  * @package ElRocinante
@@ -29,10 +29,15 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
  * Each entry is keyed by a storage slug — the value saved as
  * roci_business['type'] — and carries three things:
  *
- *   label  Admin-facing name, shown in the type selector.
- *   schema The schema.org @type the slug resolves to. The slug is deliberately
- *          NOT the schema type: it decouples the admin vocabulary from
- *          schema.org's, so a mapping can change without a data migration.
+ *   label  Admin-facing name, shown in the type selector. Translated — the map
+ *          is only ever built at call time (admin render, schema assembly), so
+ *          __() runs long after the text domain is loaded. Never call this
+ *          function at file scope, where it would run too early to translate.
+ *   schema The schema.org @type the slug resolves to. NOT translatable — these
+ *          are schema.org identifiers, and a translated one is an invalid one.
+ *          The slug is deliberately not the schema type either: it decouples the
+ *          admin vocabulary from schema.org's, so a mapping can change without
+ *          a data migration.
  *   fields Type-specific field keys this vertical adds on top of the universal
  *          set. An empty array means the type contributes no extra fields and
  *          differs from the others only by @type.
@@ -44,9 +49,9 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
  */
 function roci_business_types() {
     return apply_filters( 'roci_business_types', array(
-        'general'    => array( 'label' => 'General Business',   'schema' => 'LocalBusiness',     'fields' => array() ),
-        'lodging'    => array( 'label' => 'Lodging / Rental',   'schema' => 'LodgingBusiness',   'fields' => array( 'numberOfRooms', 'petsAllowed', 'amenities' ) ),
-        'tourism'    => array( 'label' => 'Tourism / Activity', 'schema' => 'TouristAttraction', 'fields' => array() ),
-        'restaurant' => array( 'label' => 'Restaurant',         'schema' => 'Restaurant',        'fields' => array() ),
+        'general'    => array( 'label' => __( 'General Business', 'rocinante' ),   'schema' => 'LocalBusiness',     'fields' => array() ),
+        'lodging'    => array( 'label' => __( 'Lodging / Rental', 'rocinante' ),   'schema' => 'LodgingBusiness',   'fields' => array( 'numberOfRooms', 'petsAllowed', 'amenities' ) ),
+        'tourism'    => array( 'label' => __( 'Tourism / Activity', 'rocinante' ), 'schema' => 'TouristAttraction', 'fields' => array() ),
+        'restaurant' => array( 'label' => __( 'Restaurant', 'rocinante' ),         'schema' => 'Restaurant',        'fields' => array() ),
     ) );
 }

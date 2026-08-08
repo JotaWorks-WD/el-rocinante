@@ -3,8 +3,8 @@
  * Theme Settings — Sanitize Callbacks
  *
  * File:    inc/theme-settings/settings-sanitize.php
- * Version: 1.4.0
- * Updated: 2026-07-26
+ * Version: 1.5.0
+ * Updated: 2026-08-08
  *
  * @package ElRocinante
  */
@@ -46,8 +46,62 @@ function roci_sanitize_design( $input ) {
 }
 
 function roci_sanitize_business( $input ) {
+
+    /*
+     * MUST STAY IN SYNC with tabs/tab-business.php. This function rebuilds the
+     * option from scratch and the return replaces the stored row wholesale — a
+     * key rendered by the tab but missing here is wiped on the first save, and a
+     * key listed here but not rendered is blanked on every save. Same contract
+     * roci_sanitize_design() carries.
+     */
+
+    /*
+     * TYPE — validated against roci_business_types(), NEVER a hardcoded list.
+     *
+     * Reading the function is what lets a child's roci_business_types filter
+     * actually work: a duplicated list here would render a child-added type in
+     * the selector and then reject it on save, silently resetting to 'general'.
+     * That is precisely the roci_social_platforms bug below, where the tab
+     * dispatches a filter the sanitiser never consults.
+     *
+     * An unknown, unset or empty value resolves to 'general' — the neutral
+     * vertical, whose schema type is the LocalBusiness the parent emitted before
+     * this map existed. There is no "no type" state.
+     */
+    $roci_valid_types = array_keys( roci_business_types() );
+    $roci_type        = isset( $input['type'] ) ? sanitize_key( $input['type'] ) : '';
+    if ( ! in_array( $roci_type, $roci_valid_types, true ) ) {
+        $roci_type = 'general';
+    }
+
+    /*
+     * COORDINATES — stored as a NUMERIC STRING, or '' when absent/invalid.
+     *
+     * The empty string is load-bearing and must not become 0. Latitude 0 is the
+     * equator and longitude 0 is the Greenwich meridian: both are valid, both
+     * are falsy, and the emit guard in header.php therefore tests '' !== rather
+     * than truthiness. Collapsing "not set" and "zero" into one value here would
+     * make that distinction unrecoverable downstream.
+     *
+     * Out-of-range and non-numeric input is DISCARDED rather than clamped —
+     * clamping a typo to 90 would assert a coordinate nobody entered. abs()
+     * covers both signs; the ranges are the real ones, not conventions.
+     */
+    $roci_coord_bounds = array( 'latitude' => 90, 'longitude' => 180 );
+    $roci_coords       = array();
+    foreach ( $roci_coord_bounds as $roci_coord_key => $roci_coord_max ) {
+        $roci_raw = isset( $input[ $roci_coord_key ] ) ? trim( (string) $input[ $roci_coord_key ] ) : '';
+        $roci_coords[ $roci_coord_key ] = ( '' !== $roci_raw && is_numeric( $roci_raw ) && abs( floatval( $roci_raw ) ) <= $roci_coord_max )
+            ? (string) floatval( $roci_raw )
+            : '';
+    }
+
     return array(
+        'type'     => $roci_type,
         'name'     => isset( $input['name'] )     ? sanitize_text_field( $input['name'] )     : '',
+        'description' => isset( $input['description'] ) ? sanitize_textarea_field( $input['description'] ) : '',
+        'latitude'    => $roci_coords['latitude'],
+        'longitude'   => $roci_coords['longitude'],
         'phone'    => isset( $input['phone'] )    ? sanitize_text_field( $input['phone'] )    : '',
         'email'    => isset( $input['email'] )    ? sanitize_email( $input['email'] )         : '',
         'street'   => sanitize_text_field( $input['street'] ?? '' ),
