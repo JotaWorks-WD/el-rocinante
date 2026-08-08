@@ -6,10 +6,11 @@
  * Outputs the full <head> block including SEO meta, OG tags,
  * Twitter Card, schema JSON-LD, and the primary navigation.
  * Nav output is controlled per child theme via do_action('roci_nav').
+ * Site-level LocalBusiness JSON-LD is filterable via apply_filters('roci_schema_data').
  *
  * File:    header.php
- * Version: 1.4.0
- * Updated: 2026-06-27
+ * Version: 1.5.0
+ * Updated: 2026-08-08
  *
  * @package ElRocinante
  */
@@ -202,6 +203,29 @@
             if ( $roci_address_parts ) {
                 $roci_local_schema['address'] = [ '@type' => 'PostalAddress' ] + $roci_address_parts;
             }
+
+            /*
+             * roci_schema_data — the site-level JSON-LD, filtered before encode.
+             *
+             * Receives the fully assembled LocalBusiness array: the eight base
+             * keys plus whichever of image / priceRange / address survived their
+             * gates above. A child may modify it, add to it, or replace it
+             * outright — change '@type' to the vertical it actually is, add
+             * openingHoursSpecification / geo / aggregateRating, swap a value
+             * the Business tab cannot express — and return it. Whatever comes
+             * back is what gets encoded.
+             *
+             * Returning the array unchanged is the default: with no listener
+             * this dispatch is transparent and the emitted JSON-LD is identical
+             * to what the parent built. Nothing downstream re-reads the
+             * settings, so the filter is the last word.
+             *
+             * This is the only extension point for site-level structured data.
+             * Before it existed, a child that needed a different '@type' had to
+             * override header.php — which silently drops the whole <head> SEO,
+             * OG, Twitter and per-page schema block with it. See CLAUDE.md §5b.
+             */
+            $roci_local_schema = apply_filters( 'roci_schema_data', $roci_local_schema );
         ?>
     <!-- Schema JSON-LD — Site Level (Theme Settings) -->
     <script type="application/ld+json">

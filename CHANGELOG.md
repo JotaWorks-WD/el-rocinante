@@ -4,6 +4,37 @@ All notable changes to the El Rocinante parent theme are recorded here. Entries 
 
 ---
 
+## [6.3.0] — 2026-08-08
+Expose `roci_schema_data` — a filter applied to the assembled site-level LocalBusiness schema array immediately before `wp_json_encode()`, so a child can modify, extend, or replace its own structured data without forking `<head>`. **Additive and transparent: with no listener the emitted JSON-LD is byte-identical to 6.2.0.**
+
+**The problem.** `header.php` assembled `$roci_local_schema` and encoded it inline, with no `apply_filters()` anywhere before the encode. A child whose business is not a generic walk-in `LocalBusiness` — a luxury rental, a charter operator — had no way to change `@type`, add `openingHoursSpecification` / `geo` / `aggregateRating`, or override a value the Business tab cannot express. The only route was defining its own `header.php`, which under WordPress's template resolution **replaces** the parent's rather than extending it, silently dropping the entire `<head>` layer with it: meta description, robots, canonical, hreflang, the full Open Graph and Twitter Card blocks, per-page JSON-LD, and the `do_action( 'roci_nav' )` dispatch that is the only nav injection point the parent provides. CLAUDE.md §5b already forbids that override; this release removes the reason anyone would want it.
+
+### The dispatch site
+
+One statement, at the end of the existing `if ( $roci_biz_name )` block, immediately before the `?>` that closes into the `<script type="application/ld+json">` wrapper:
+
+```php
+$roci_local_schema = apply_filters( 'roci_schema_data', $roci_local_schema );
+```
+
+It receives the **fully assembled** array — the eight base keys (`@context`, `@type`, `@id`, `name`, `url`, `telephone`, `email`, `sameAs`) plus whichever of `image`, `priceRange` and `address` survived their own gates. Filtering after those conditionals rather than before is deliberate: a child sees the array as it would actually have been emitted, and can remove a key the settings produced as readily as add one. Nothing downstream re-reads the Business or Social settings, so the filter is the last word before encode.
+
+**No listener exists anywhere in the network today**, so this release changes no rendered output on any site.
+
+### Two boundaries worth knowing
+
+**Both gates still apply, and the filter sits inside them.** `is_front_page()` and a non-empty `roci_setting( 'business', 'name' )` still bound the whole block, so `roci_schema_data` does not fire on interior routes or when the Business name is blank. That is what makes the release byte-identical by default, but it means the filter **cannot be used to add site-level schema to a site that has no business name set** — it extends the existing emission, it does not create one. If that becomes a real need, the gate is the thing to revisit, not the filter.
+
+**Per-page schema is deliberately NOT filtered.** `$roci_schema` (the `roci_schema_json` field) is a different animal: an admin-authored `textarea` read via `roci_get_field()`, stored and echoed as a **raw string** with no `wp_json_encode()` and no escaping — the field's own help text instructs the admin to paste complete JSON-LD without `<script>` tags. It is therefore already fully controllable by whoever can edit the post, so a filter would add no extensibility a child does not already have; and because the value is echoed unescaped into `<head>`, a filter there would hand arbitrary markup a direct injection path with nothing to gain. The asymmetry is intentional: the site-level filter inherits the safety of `wp_json_encode()`, and a per-page one would not.
+
+### Files
+
+`header.php` 1.4.0 → 1.5.0 — one filter dispatch, its docblock, and a line in the file header noting the new hook alongside `roci_nav`. No other file touched: PHP only, no SCSS, no JavaScript, no `dist/` rebuild, and no Build-repo counterpart.
+
+**MINOR** — new extension point on the child-theme API surface, additive, with no behaviour change on any current site.
+
+---
+
 ## [6.2.0] — 2026-08-07
 Add a page-identifier registry — the `roci_registered_pages` filter — and reader-side validation that reports a read against an identifier nobody registered. **Parent-only, additive, and completely inert until a child opts in.** No current read changes behaviour.
 
