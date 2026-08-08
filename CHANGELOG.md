@@ -4,6 +4,48 @@ All notable changes to the El Rocinante parent theme are recorded here. Entries 
 
 ---
 
+## [6.4.0] — 2026-08-08
+Add `inc/schema/business-types.php` and the filterable `roci_business_types()` map — the type taxonomy that will drive the Business tab's field groups, the settings sanitizer's key whitelist, and the schema `@type`. **Phase 0: inert scaffolding. Nothing consumes it, and output is unchanged on every site.**
+
+### The map
+
+Four generic verticals, each a slug carrying three things:
+
+| Slug | Label | `schema` | `fields` |
+|---|---|---|---|
+| `general` | General Business | `LocalBusiness` | — |
+| `lodging` | Lodging / Rental | `LodgingBusiness` | `numberOfRooms`, `petsAllowed`, `amenities` |
+| `tourism` | Tourism / Activity | `TouristAttraction` | — |
+| `restaurant` | Restaurant | `Restaurant` | — |
+
+**The slug is deliberately not the schema type.** It decouples the admin vocabulary from schema.org's, so a mapping can be corrected later without touching a single stored value. An empty `fields` array means the vertical contributes no extra fields and differs from the others only by `@type` — a real state, not a placeholder.
+
+Verticals are generic by construction; §12.4 forbids client names or client vocabulary in the parent.
+
+### One source, three consumers — and why that matters
+
+The map exists as a **function rather than a literal** because three places will need to agree on it: the Business tab (renders the selector, decides which field groups exist), `roci_sanitize_business()` (whitelists which keys persist), and `header.php`'s schema assembly (resolves `@type`, emits type-specific fields).
+
+⚠ **Every consumer that lists types must read `roci_business_types()`, never a copy.** `roci_sanitize_business()` rebuilds the option array from scratch and returns it wholesale, so a key it does not list is silently discarded on the first save — no error, no warning. A sanitizer carrying its own hardcoded type list would therefore render a child-added type's fields and then wipe their values.
+
+That is not hypothetical. `roci_social_platforms` (`tabs/tab-social.php:19`) is filterable at the render site, but `roci_sanitize_social()` hardcodes the same eight platforms and never consults the filter — so a child-added platform renders an input whose value is discarded on save, while the tab's own help text at `:31` promises otherwise. This map is built as a function specifically so the same bug cannot be reproduced here.
+
+### Loading
+
+Required from `functions.php` under a new `// BUSINESS SCHEMA SYSTEM` banner, placed first in the require block — above `theme-settings/settings-loader.php`, which pulls in two of the three future consumers. Every `require_once` in `functions.php` completes before any admin screen is built or any template renders, so the ordering is presentational rather than load-bearing; it puts the definition above its consumers, which is how it reads.
+
+### Inert
+
+Verified by grep: `roci_business_types()` has **no call sites**. `header.php:183` still reads `'@type' => 'LocalBusiness'`, hardcoded. `tabs/tab-business.php` and `settings-sanitize.php` are untouched. Defining a function and requiring a file emits nothing, and `apply_filters()` does not dispatch until the function is called — so a child hooking `roci_business_types` today changes nothing either.
+
+### Files
+
+`inc/schema/business-types.php` 1.0.0 (new, new directory) — `functions.php` 1.8.0 → 1.9.0 (require + banner). PHP only: no SCSS, no JavaScript, no `dist/` rebuild, no Build-repo counterpart.
+
+**MINOR** — new additive API on the child-theme surface, with no behaviour change anywhere.
+
+---
+
 ## [6.3.0] — 2026-08-08
 Expose `roci_schema_data` — a filter applied to the assembled site-level LocalBusiness schema array immediately before `wp_json_encode()`, so a child can modify, extend, or replace its own structured data without forking `<head>`. **Additive and transparent: with no listener the emitted JSON-LD is byte-identical to 6.2.0.**
 
