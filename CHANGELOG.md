@@ -4,6 +4,41 @@ All notable changes to the El Rocinante parent theme are recorded here. Entries 
 
 ---
 
+## [6.10.0] — 2026-08-08
+Business schema now emits **site-wide, not homepage-only**. Removed the `is_front_page()` gate wrapping the site-level business JSON-LD in `header.php`; the inner `$roci_biz_name` guard is retained, so a site with no business name configured still emits nothing.
+
+⚠ **BEHAVIOURAL / CONTRACT CHANGE, INVISIBLE IN THE DIFF:** the `roci_schema_data` filter now fires on **every page load** where a business name is set, not once per homepage — child callbacks registered on it run per-request. **No child currently registers it.** Interior pages with a populated `roci_schema_json` field now emit **two** JSON-LD blocks (page-level + site-level), which is valid.
+
+### What changed, exactly
+
+Two lines. The gate was a single `is_front_page()` conditional in alternative syntax, opening at old `:150` and closing at old `:404`, wrapping 253 lines.
+
+⚠ **The opening line was `<?php if ( is_front_page() ) :` — a PHP opening tag *and* a conditional.** Only the conditional was removed; the bare `<?php` remains. Deleting the whole line drops every statement below it into raw HTML context, where PHP source prints to the page as literal text. This was caught mid-edit by a tag-balance check (`<?php` 33 / `?>` 34) and corrected. Anyone revisiting this should know the line was never a pure conditional.
+
+The closing line was a self-contained `<?php endif; ?>` and was removed whole.
+
+### What was deliberately kept
+
+**The inner `if ( $roci_biz_name ) :` guard and its `endif`.** It was one level deeper inside the gate and closes at what is now `:403`. It is what still prevents empty output on an unconfigured site, and confusing it for the gate's own `endif` would have left the file structurally broken — the two closers sat adjacent and differed only by indentation.
+
+**The per-page `roci_schema_json` block** (`:143-148`) is untouched. It was never gated by route, sits above the former gate, and describes a different entity. It is the reason interior pages can now carry two JSON-LD blocks.
+
+### Why this is safe on the entity level
+
+The node's `@id` is `home_url( '/#organization' )` and its `url` is `home_url( '/' )` — both route-invariant. It identifies the business, not the page, so emitting it on every page asserts the same entity consistently rather than duplicating a page-specific one. That is the normal shape for an organization node.
+
+### The cost, stated plainly
+
+The gate wrapped the **whole build**, not just the echo. Roughly eighteen `roci_setting()` reads plus the `roci_business_types()` and `roci_social_platforms()` filter dispatches now run on every request rather than on one route. All read autoloaded options, so the cost is small — but it is not nothing, and it is the reason to reconsider if a future field ever needs an expensive lookup.
+
+### Files
+
+`header.php` 1.9.0 → 1.10.0, and nothing else. The bulk of the raw diff is a whitespace-only reindent of the unwrapped block; `git diff --ignore-all-space` reduces it to three hunks — the version bump, the conditional removal, and the `endif` removal.
+
+**MINOR** — additive in reach (schema appears where it previously did not), no change to what a homepage emits, and no child affected today.
+
+---
+
 ## [6.9.0] — 2026-08-08
 Fix `roci_social_platforms` filterable-in-name-only bug. Extracted the platform list into a single filterable getter `roci_social_platforms()` (new `inc/schema/social-platforms.php`); the Social tab render, `roci_sanitize_social()`, and `header.php` sameAs now all read that one source. Child-registered platforms now persist on save AND reach `sameAs` (previously wiped on save, absent from schema). Removed dead `roci_social[custom]` sanitizer block. **One-source-three-consumers, mirroring `roci_business_types()`.**
 
