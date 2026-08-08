@@ -5,7 +5,7 @@
  * Included by settings-page.php inside roci_settings_page().
  *
  * File:    inc/theme-settings/tabs/tab-business.php
- * Version: 1.4.0
+ * Version: 1.5.0
  * Updated: 2026-08-08
  *
  * @package ElRocinante
@@ -141,3 +141,67 @@ $roci_biz_type          = isset( $business['type'] ) && '' !== $business['type']
         </td>
     </tr>
 </table>
+
+<?php
+/*
+ * PER-TYPE FIELD GROUPS — ALWAYS RENDERED, VISIBILITY TOGGLED BY JS ALONE.
+ *
+ * ⚠ NEVER WRAP THESE IN A PHP CONDITIONAL ON THE SELECTED TYPE. A field that is
+ * not rendered is not submitted, and roci_sanitize_business() rebuilds the whole
+ * option row from $_POST — so an unrendered field is stored as ''. Rendering
+ * only the active type's group would therefore DESTROY every other type's saved
+ * values the moment anyone pressed Save, silently, with no error. Switch to
+ * Restaurant, save, switch back to Lodging: the lodging fields are gone.
+ *
+ * Every group is in the DOM on every request and submits on every save.
+ * dist/js/theme-settings.js hides the inactive ones by ADDING .is-hidden, and
+ * .roci-type-group carries no hiding of its own — so if that script fails to
+ * load, every group is visible. That is the safe failure direction: the admin
+ * sees fields that do not apply, rather than losing data they cannot see.
+ *
+ * Only types with a non-empty 'fields' array get a group. general, tourism and
+ * restaurant currently declare none, so they render nothing here — correct,
+ * since there is nothing to show or hide for them.
+ */
+foreach ( $roci_business_type_map as $roci_type_slug => $roci_type_def ) :
+
+    if ( empty( $roci_type_def['fields'] ) ) {
+        continue;
+    }
+    ?>
+    <div class="roci-type-group" data-type="<?php echo esc_attr( $roci_type_slug ); ?>">
+
+        <h2 class="roci-section-title">
+            <?php
+            /* translators: %s: business type label, e.g. "Lodging / Rental". */
+            printf( esc_html__( '%s Details', 'rocinante' ), esc_html( $roci_type_def['label'] ) );
+            ?>
+        </h2>
+
+        <?php
+        /*
+         * PHASE 2 PLACEHOLDER — REPLACE, DO NOT EXTEND.
+         *
+         * Phase 2 ships the show/hide mechanism only. This paragraph exists so
+         * the toggle is visibly working before there is anything real to toggle.
+         * Phase 3 replaces it with this type's actual fields — for lodging:
+         * numberOfRooms, petsAllowed and amenities — each of which must also be
+         * added to roci_sanitize_business() in the same commit (see the sync
+         * warning at the top of this file). Delete this block then.
+         */
+        ?>
+        <p class="roci-note">
+            <?php
+            printf(
+                /* translators: %s: comma-separated list of field keys. */
+                esc_html__( 'Placeholder — no fields built yet. This group will hold: %s', 'rocinante' ),
+                esc_html( implode( ', ', $roci_type_def['fields'] ) )
+            );
+            ?>
+        </p>
+
+    </div>
+    <?php
+
+endforeach;
+?>

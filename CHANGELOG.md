@@ -4,6 +4,49 @@ All notable changes to the El Rocinante parent theme are recorded here. Entries 
 
 ---
 
+## [6.6.0] — 2026-08-08
+Add the show/hide mechanism for per-type field groups on the Business tab. **Admin UI only — no schema output changes, on any site.** Phase 2 of the business schema system; the groups are still empty placeholders, and Phase 3 fills them.
+
+### The safety property is the whole point of this release
+
+The obvious implementation — render only the selected type's fields in PHP — **destroys data**, and it does so silently.
+
+`roci_sanitize_business()` rebuilds the option row from `$_POST` and its return replaces the stored row wholesale. A field that is not rendered is not submitted, so it arrives at the sanitizer as absent and is stored as `''`. Render only the active type's group, and the sequence *switch to Restaurant → Save → switch back to Lodging* returns to a set of empty fields. No error, no warning, no way to tell it happened from the code.
+
+So the rule this release establishes, and which Phase 3 must not relax:
+
+- **Every group is rendered on every request** and submits on every save. The only thing that varies is CSS visibility.
+- **`.is-hidden` is added by JavaScript and nowhere else.** No PHP path emits it.
+- **The default state is visible.** If the script fails to load, every group shows. The admin sees fields that do not apply to their business type — mildly untidy, and strictly better than losing values they could not see. A `display: none` on the base class would invert this into the dangerous direction.
+
+Note the neighbouring `.roci-media-preview` rule uses the opposite pattern (hidden on the base class, shown by a state class). That is right for a preview image with nothing to show, and wrong here; the CSS comment says so in place so the two are not "made consistent" later.
+
+### What ships
+
+**`tabs/tab-business.php`** — after the Business Information table, a `foreach` over `roci_business_types()` renders one `<div class="roci-type-group" data-type="{slug}">` per type **that declares a non-empty `fields` array**. The skip is on the map's shape, never on the admin's selection. Today only `lodging` qualifies; `general`, `tourism` and `restaurant` declare no fields and correctly render no group at all.
+
+Each group currently holds a placeholder paragraph that names the keys it will hold, built with `implode()` from the map rather than hand-typed, so it cannot drift. It is marked **PHASE 2 PLACEHOLDER — REPLACE, DO NOT EXTEND**, with the reminder that every field Phase 3 adds needs a `roci_sanitize_business()` entry in the same commit.
+
+**`dist/js/theme-settings.js`** (1.2.0 → 1.3.0) — `rociSyncTypeGroups()` reads `#roci_biz_type` and, for each group, calls `toggleClass( "is-hidden", $group.attr("data-type") !== selected )`. The explicit boolean makes this a *set*, not a flip: the matching group has the class actively removed, so reselecting a previously hidden group reliably restores it. Bound to `change` via the delegated `$(document).on()` the file already uses for its media handlers, and called once on ready so the saved type's group is correct on page load. Guarded on the select existing, since the script loads on all seven tabs.
+
+`.attr("data-type")` rather than `.data("type")` — jQuery's `data()` type-coerces and caches its first read, which is harmless for today's alphabetic slugs but would misbehave on a numeric-looking one a child might register.
+
+**`settings-page.php`** (1.2.0 → 1.2.1) — one rule added to the page's inline `<style>` block, where every other Theme Settings admin rule lives:
+
+```css
+.roci-settings-wrap .roci-type-group.is-hidden { display: none; }
+```
+
+### Files
+
+`tabs/tab-business.php` 1.4.0 → 1.5.0 · `dist/js/theme-settings.js` 1.2.0 → 1.3.0 · `settings-page.php` 1.2.0 → 1.2.1.
+
+`theme-settings.js` lives under `dist/js/` but is hand-written, not compiled (§8), so this is a theme-repo edit with no Build-repo counterpart and no gulp step.
+
+**MINOR** — new admin capability, no front-end or schema behaviour change. The manifest bump is what carries it to children through Git Updater.
+
+---
+
 ## [6.5.0] — 2026-08-08
 Wire the type taxonomy shipped inert in 6.4.0 to its three consumers, and add the first universal schema fields. The Business tab gains a **Business Type** selector that resolves the site-level `@type`, plus **latitude / longitude** and **description**. Phase 1 of the business schema system.
 

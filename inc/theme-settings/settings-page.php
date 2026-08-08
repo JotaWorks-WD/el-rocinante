@@ -7,8 +7,8 @@
  * to the individual files in tabs/.
  *
  * File:    inc/theme-settings/settings-page.php
- * Version: 1.2.0
- * Updated: 2026-07-26
+ * Version: 1.2.1
+ * Updated: 2026-08-08
  *
  * @package ElRocinante
  */
@@ -73,6 +73,13 @@ function roci_settings_page() {
             .roci-settings-wrap .button-small { font-size: 12px; }
             .roci-settings-wrap .roci-note { font-size: 12px; color: #888; margin-top: 4px; }
             .roci-settings-wrap .roci-sync-note { font-size: 12px; color: #2271b1; margin-top: 4px; font-style: italic; }
+            /* Per-type field groups (Business tab). The hide rule is scoped to
+               .is-hidden, which ONLY dist/js/theme-settings.js adds — the base
+               .roci-type-group has no hiding, so with JS unavailable every group
+               renders visible. Do not add display:none to the base class: the
+               groups must stay submittable, and a group hidden before JS runs
+               would be a group the admin cannot see but can still wipe. */
+            .roci-settings-wrap .roci-type-group.is-hidden { display: none; }
         </style>
 
         <nav class="nav-tab-wrapper">

@@ -1,12 +1,12 @@
 /**
  * Theme Settings — Admin JS
  *
- * Handles media upload/remove for the Theme Settings admin page.
- * for the El Rocinante Theme Settings admin page.
+ * Handles media upload/remove for the Theme Settings admin page,
+ * and per-type field group visibility on the Business tab.
  *
  * File:    theme-settings.js
- * Version: 1.2.0
- * Updated: 2026-07-26
+ * Version: 1.3.0
+ * Updated: 2026-08-08
  *
  * @package ElRocinante
  */
@@ -73,4 +73,36 @@ jQuery(document).ready(function ($) {
       .attr("src", "")
       .removeClass("has-image");
   });
+
+  // --------------------------------------------------------
+  // BUSINESS TYPE — PER-TYPE FIELD GROUP VISIBILITY
+  //
+  // DISPLAY ONLY. Every .roci-type-group stays in the DOM and submits on every
+  // save. roci_sanitize_business() rebuilds the option row from $_POST, so a
+  // field that does not submit is stored as '' — hiding a group by removing it
+  // from the page would silently destroy that type's saved values on the next
+  // save. Never convert this to markup removal.
+  //
+  // .is-hidden is added HERE and nowhere else. The PHP renders no hiding class,
+  // so if this file fails to load every group stays visible — the safe
+  // direction: the admin sees inapplicable fields rather than losing data.
+  // --------------------------------------------------------
+
+  function rociSyncTypeGroups() {
+    var $select = $("#roci_biz_type");
+    if (!$select.length) return; // Business tab not active — nothing to sync
+
+    var selected = $select.val();
+
+    $(".roci-type-group").each(function () {
+      var $group = $(this);
+      // attr(), not data(): data() coerces values and caches the first read.
+      $group.toggleClass("is-hidden", $group.attr("data-type") !== selected);
+    });
+  }
+
+  $(document).on("change", "#roci_biz_type", rociSyncTypeGroups);
+
+  // Initial state — show the saved type's group, hide the rest.
+  rociSyncTypeGroups();
 });
