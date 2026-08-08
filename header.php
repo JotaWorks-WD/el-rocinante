@@ -10,7 +10,7 @@
  * its @type resolves from roci_business_types() (inc/schema/business-types.php).
  *
  * File:    header.php
- * Version: 1.7.0
+ * Version: 1.8.0
  * Updated: 2026-08-08
  *
  * @package ElRocinante
@@ -164,6 +164,11 @@
         $roci_biz_rooms        = roci_setting( 'business', 'numberOfRooms' );
         $roci_biz_pets         = roci_setting( 'business', 'petsAllowed', '0' );
 
+        // array() default, not '': roci_setting() hands back its default for an
+        // unset key, and foreach over a string is a fatal. The (array) cast at
+        // the loop below is the second belt.
+        $roci_biz_amenities    = roci_setting( 'business', 'amenities', array() );
+
         /*
          * @type resolved from the business type map, not hardcoded.
          *
@@ -309,6 +314,51 @@
 
             if ( in_array( 'petsAllowed', $roci_type_fields, true ) ) {
                 $roci_local_schema['petsAllowed'] = ( '1' === $roci_biz_pets );
+            }
+
+            /*
+             * AMENITIES → amenityFeature[], a list of LocationFeatureSpecification.
+             *
+             * Built first, assigned only if non-empty — the address idiom, and
+             * for the same reason: an empty "amenityFeature": [] is worse than
+             * an absent key.
+             *
+             * BLANK VALUE EMITS true, NOT "". schema.org types PropertyValue's
+             * value as Boolean|Number|Text, so both forms are valid, and true is
+             * the conventional encoding for "this feature is present". An empty
+             * string would read as "the value of this feature is the empty
+             * string", which is not what a blank field means. This is the second
+             * field after petsAllowed where blank does not mean omit.
+             *
+             * ⚠ array_values() IS NOT DECORATIVE. wp_json_encode() emits a PHP
+             * array as a JSON list ONLY when its keys are sequential from zero;
+             * any gap makes it an object — {"0":…,"2":…} instead of […] — which
+             * is invalid for a schema.org repeated property. The sanitiser
+             * already renumbers on save, so this guards the case where stored
+             * data predates it or was written by something else.
+             */
+            if ( in_array( 'amenities', $roci_type_fields, true ) ) {
+
+                $roci_amenity_nodes = array();
+
+                foreach ( (array) $roci_biz_amenities as $roci_amenity ) {
+
+                    if ( ! is_array( $roci_amenity ) || empty( $roci_amenity['name'] ) ) {
+                        continue;
+                    }
+
+                    $roci_amenity_value = isset( $roci_amenity['value'] ) ? $roci_amenity['value'] : '';
+
+                    $roci_amenity_nodes[] = array(
+                        '@type' => 'LocationFeatureSpecification',
+                        'name'  => $roci_amenity['name'],
+                        'value' => ( '' !== $roci_amenity_value ) ? $roci_amenity_value : true,
+                    );
+                }
+
+                if ( $roci_amenity_nodes ) {
+                    $roci_local_schema['amenityFeature'] = array_values( $roci_amenity_nodes );
+                }
             }
 
             /*

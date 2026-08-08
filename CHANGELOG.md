@@ -4,6 +4,50 @@ All notable changes to the El Rocinante parent theme are recorded here. Entries 
 
 ---
 
+## [6.8.0] — 2026-08-08
+Business Schema: repeatable amenities field (`amenityFeature[]` of `LocationFeatureSpecification`). Settings-driven rows of `{name, value}`; blank value publishes as `true` (2nd field after `petsAllowed` where blank ≠ omit). Emit gated on business-type map membership; `array_values()` guarantees a JSON list. **First repeatable field in the codebase.**
+
+### The field
+
+Inside the lodging group, gated on `in_array( 'amenities', $roci_type_def['fields'], true )` — the map's declaration, not the selected type, so the rows always render and always submit.
+
+One PHP loop renders **both the saved rows and the hidden prototype**, by appending a `null` sentinel to the saved array and branching on it. That is the design decision the whole feature turns on: **the row markup exists once, in PHP.** The alternative — building row HTML from a string inside `theme-settings.js` — puts the same markup in two languages, and every failure mode this feature could have traces back to those two copies drifting.
+
+The prototype carries `__INDEX__` in place of a row index and **`disabled` on both inputs**. A disabled input is not submitted, so the template never posts a literal `__INDEX__` row into the option. JS strips the attribute on the clone. This is load-bearing, not defensive.
+
+### The JS — net-new, and the first of its kind here
+
+There was no add-row, remove-row or row-template machinery anywhere in the parent before this. The single `cloneNode` in `dist/js/folders/` is a text-extraction trick, not a template.
+
+Both handlers are delegated on `$(document)`, matching the file's existing media and type-sync idiom — which is what makes a cloned row's Remove button work with no rebinding. The index counter is **monotonic and never reused**: a removed index is retired rather than backfilled, because two rows sharing an index would silently overwrite each other when PHP parses the POST. The server reindexes on save regardless, so gaps are harmless; the counter only has to stay unique within one page load.
+
+### The sanitizer — two properties from one line
+
+`$roci_amenities[] = array( … )` gives both of these for free:
+
+- **Nameless rows are dropped.** Clearing the name is the admin's second way to delete a row. It also means the prototype is harmless even if it ever did submit — its name is empty, so it is skipped. That is a backstop, **not** a substitute for `disabled`.
+- **Rows renumber from zero.** Submitted indexes arrive with gaps wherever a row was removed; appending to a fresh array discards them.
+
+`'amenities' => $roci_amenities` is in the rebuilt return array — without it the field would be wiped on the first save, per the whitelist contract this file has carried since 6.5.0.
+
+### Emit
+
+Built first, assigned only if non-empty — the `address` idiom, for the same reason: an empty `"amenityFeature": []` is worse than an absent key.
+
+**Blank value emits `true`, not `""`.** schema.org types `PropertyValue`'s `value` as `Boolean|Number|Text`, so both are valid, and `true` is the conventional encoding for "this feature is present". An empty string would read as "the value of this feature is the empty string", which is not what a blank field means. This makes amenities the second field after `petsAllowed` where blank does not mean omit — now a small pattern rather than a one-off.
+
+⚠ **`array_values()` is not decorative.** `wp_json_encode()` emits a PHP array as a JSON list only when its keys are sequential from zero; any gap makes it an object — `{"0":…,"2":…}` instead of `[…]` — which is invalid for a schema.org repeated property. The sanitizer already renumbers on save, so this guards stored data that predates it or was written by something else.
+
+### Files
+
+`tabs/tab-business.php` 1.6.0 → 1.7.0 · `settings-sanitize.php` 1.6.0 → 1.7.0 · `header.php` 1.7.0 → 1.8.0 · `dist/js/theme-settings.js` 1.3.0 → 1.4.0.
+
+All four move together — the tab, the sanitizer and the JS are mutually dependent, and a rendered field with no sanitizer entry is wiped on save. `theme-settings.js` is hand-written under `dist/js/`, not compiled, so there is no Build-repo counterpart and no gulp step.
+
+**MINOR** — new settings field and new schema property, additive, with no change to any existing emission.
+
+---
+
 ## [6.7.0] — 2026-08-08
 Fill the lodging field group with its two flat fields — **`numberOfRooms`** and **`petsAllowed`** — and emit both into the site-level JSON-LD. Phase 3 of the business schema system. Amenities remains a placeholder; it is a repeatable structure the flat pattern cannot carry, and it is Phase 4.
 

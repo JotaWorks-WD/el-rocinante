@@ -2,10 +2,11 @@
  * Theme Settings — Admin JS
  *
  * Handles media upload/remove for the Theme Settings admin page,
- * and per-type field group visibility on the Business tab.
+ * per-type field group visibility on the Business tab, and the
+ * repeatable amenity rows within it.
  *
  * File:    theme-settings.js
- * Version: 1.3.0
+ * Version: 1.4.0
  * Updated: 2026-08-08
  *
  * @package ElRocinante
@@ -105,4 +106,55 @@ jQuery(document).ready(function ($) {
 
   // Initial state — show the saved type's group, hide the rest.
   rociSyncTypeGroups();
+
+  // --------------------------------------------------------
+  // AMENITIES — REPEATABLE ROWS
+  //
+  // The row markup lives ONLY in tab-business.php. This script never builds a
+  // row from a string: it clones the hidden .roci-amenity-row--template that
+  // PHP already rendered, so a saved row and an added row cannot drift apart.
+  //
+  // Both handlers are delegated on $(document), which is what makes cloned rows
+  // work with no rebinding — a row added after page load gets its Remove button
+  // for free.
+  // --------------------------------------------------------
+
+  // Monotonic, never reused. Index collisions after a removal would silently
+  // overwrite one row with another when PHP parses the POST, so a removed index
+  // is retired rather than backfilled. The server reindexes on save anyway, so
+  // gaps here are harmless — this counter only has to stay unique per page load.
+  var rociAmenityIndex = $("#roci-amenities .roci-amenity-row").not(".roci-amenity-row--template").length;
+
+  $(document).on("click", ".roci-amenity-add", function (e) {
+    e.preventDefault();
+
+    var $container = $("#roci-amenities");
+    var $template = $container.find(".roci-amenity-row--template");
+    if (!$container.length || !$template.length) return; // not on the Business tab
+
+    var index = rociAmenityIndex++;
+    var $row = $template.clone();
+
+    $row.removeClass("roci-amenity-row--template").removeAttr("style");
+
+    $row.find("input").each(function () {
+      var $input = $(this);
+      var name = $input.attr("name");
+
+      // Re-enable: the prototype's inputs are disabled so it never submits.
+      $input.prop("disabled", false);
+
+      if (name) {
+        $input.attr("name", name.replace("__INDEX__", index));
+      }
+    });
+
+    $container.append($row);
+    $row.find("input").first().focus();
+  });
+
+  $(document).on("click", ".roci-amenity-remove", function (e) {
+    e.preventDefault();
+    $(this).closest(".roci-amenity-row").remove();
+  });
 });

@@ -3,7 +3,7 @@
  * Theme Settings — Sanitize Callbacks
  *
  * File:    inc/theme-settings/settings-sanitize.php
- * Version: 1.6.0
+ * Version: 1.7.0
  * Updated: 2026-08-08
  *
  * @package ElRocinante
@@ -128,6 +128,49 @@ function roci_sanitize_business( $input ) {
      */
     $roci_pets = isset( $input['petsAllowed'] ) ? '1' : '0';
 
+    /*
+     * AMENITIES — the one repeatable field, stored as a list of {name, value}.
+     *
+     * Guard idiom borrowed from roci_sanitize_social()'s 'custom' block below;
+     * the row loop is new, because that block is a flat key => scalar map and
+     * this is an indexed list that has to drop empties and renumber.
+     *
+     * TWO PROPERTIES THE APPEND GIVES FOR FREE, both of which matter downstream:
+     *
+     * 1. A nameless row is dropped. There is no such thing as an amenity with no
+     *    name, and clearing the name field is the admin's second way to delete a
+     *    row (the first being the Remove button). It also means the hidden
+     *    prototype row is harmless even if it ever did submit — its name is
+     *    empty, so it is skipped. That is a backstop, NOT a substitute for the
+     *    disabled attribute on the prototype's inputs.
+     *
+     * 2. $arr[] renumbers from zero. The submitted indexes are whatever the
+     *    browser sent, with gaps wherever a row was removed. Appending to a
+     *    fresh array discards them and produces a sequential list — which is
+     *    what wp_json_encode() needs to emit a JSON array rather than an object
+     *    keyed "0", "2", "5".
+     */
+    $roci_amenities = array();
+    if ( isset( $input['amenities'] ) && is_array( $input['amenities'] ) ) {
+        foreach ( $input['amenities'] as $roci_row ) {
+
+            if ( ! is_array( $roci_row ) ) {
+                continue;
+            }
+
+            $roci_a_name = isset( $roci_row['name'] ) ? sanitize_text_field( $roci_row['name'] ) : '';
+
+            if ( '' === trim( $roci_a_name ) ) {
+                continue;
+            }
+
+            $roci_amenities[] = array(
+                'name'  => $roci_a_name,
+                'value' => isset( $roci_row['value'] ) ? sanitize_text_field( $roci_row['value'] ) : '',
+            );
+        }
+    }
+
     return array(
         'type'     => $roci_type,
         'name'     => isset( $input['name'] )     ? sanitize_text_field( $input['name'] )     : '',
@@ -136,6 +179,7 @@ function roci_sanitize_business( $input ) {
         'longitude'   => $roci_coords['longitude'],
         'numberOfRooms' => $roci_rooms,
         'petsAllowed'   => $roci_pets,
+        'amenities'     => $roci_amenities,
         'phone'    => isset( $input['phone'] )    ? sanitize_text_field( $input['phone'] )    : '',
         'email'    => isset( $input['email'] )    ? sanitize_email( $input['email'] )         : '',
         'street'   => sanitize_text_field( $input['street'] ?? '' ),

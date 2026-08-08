@@ -5,7 +5,7 @@
  * Included by settings-page.php inside roci_settings_page().
  *
  * File:    inc/theme-settings/tabs/tab-business.php
- * Version: 1.6.0
+ * Version: 1.7.0
  * Updated: 2026-08-08
  *
  * @package ElRocinante
@@ -225,17 +225,88 @@ foreach ( $roci_business_type_map as $roci_type_slug => $roci_type_def ) :
 
         <?php
         /*
-         * PHASE 4 PLACEHOLDER — amenities only.
+         * AMENITIES — the one repeatable field, emitted as amenityFeature[].
          *
-         * amenityFeature is a repeatable array of LocationFeatureSpecification
-         * objects, which the flat one-key-one-value pattern above cannot carry.
-         * Phase 4 replaces this paragraph, and whatever it ships must be added
-         * to roci_sanitize_business() in the same commit — see the sync warning
-         * at the top of this file.
+         * ⚠ DEFAULT TO array(), NOT ''. roci_setting() returns its $default
+         * whenever the stored value is '' — and that default is '' unless told
+         * otherwise. An unset amenities key would therefore hand back a STRING,
+         * and foreach over a string is a fatal. The array() default plus the
+         * is_array() belt below is the guard.
          */
         if ( in_array( 'amenities', $roci_type_def['fields'], true ) ) :
+
+            $roci_amenities = roci_setting( 'business', 'amenities', array() );
+            if ( ! is_array( $roci_amenities ) ) {
+                $roci_amenities = array();
+            }
+
+            /*
+             * ONE LOOP RENDERS BOTH THE SAVED ROWS AND THE PROTOTYPE.
+             *
+             * The null sentinel appended below is the hidden template row that
+             * JS clones when the admin adds an amenity. Rendering it through the
+             * same loop is the point: the row markup exists ONCE, in PHP, so a
+             * saved row and a JS-added row cannot drift apart. The alternative —
+             * building row HTML from a string inside theme-settings.js — puts
+             * the same markup in two languages and is how this pattern rots.
+             */
+            $roci_amenity_rows   = $roci_amenities;
+            $roci_amenity_rows[] = null;
             ?>
-            <p class="roci-note"><?php esc_html_e( 'Amenities — repeatable field, Phase 4. Not built yet.', 'rocinante' ); ?></p>
+
+            <h2 class="roci-section-title"><?php esc_html_e( 'Amenities', 'rocinante' ); ?></h2>
+
+            <div class="roci-amenities" id="roci-amenities">
+
+                <?php foreach ( $roci_amenity_rows as $roci_row_i => $roci_row ) :
+
+                    $roci_is_template = ( null === $roci_row );
+
+                    // The prototype carries a placeholder index; JS swaps it for
+                    // a real one on clone. Saved rows use their real position.
+                    $roci_row_index = $roci_is_template ? '__INDEX__' : $roci_row_i;
+                    $roci_row_name  = ( ! $roci_is_template && isset( $roci_row['name'] ) )  ? $roci_row['name']  : '';
+                    $roci_row_value = ( ! $roci_is_template && isset( $roci_row['value'] ) ) ? $roci_row['value'] : '';
+                    ?>
+                    <div class="roci-amenity-row<?php echo $roci_is_template ? ' roci-amenity-row--template' : ''; ?>"<?php echo $roci_is_template ? ' style="display:none;"' : ''; ?>>
+
+                        <?php
+                        /*
+                         * ⚠ THE PROTOTYPE'S INPUTS ARE DISABLED, AND THAT IS
+                         * LOAD-BEARING. A disabled input is not submitted, so the
+                         * template never posts a literal '__INDEX__' row into the
+                         * option. JS strips the attribute on the clone. Removing
+                         * `disabled` here would write a junk amenity on every save.
+                         */
+                        $roci_row_disabled = $roci_is_template ? ' disabled' : '';
+                        ?>
+
+                        <input type="text"
+                               name="roci_business[amenities][<?php echo esc_attr( $roci_row_index ); ?>][name]"
+                               class="regular-text"
+                               placeholder="<?php esc_attr_e( 'Name — e.g. Pool', 'rocinante' ); ?>"
+                               value="<?php echo esc_attr( $roci_row_name ); ?>"<?php echo $roci_row_disabled; ?>>
+
+                        <input type="text"
+                               name="roci_business[amenities][<?php echo esc_attr( $roci_row_index ); ?>][value]"
+                               class="regular-text"
+                               placeholder="<?php esc_attr_e( 'Value — optional, e.g. heated saltwater', 'rocinante' ); ?>"
+                               value="<?php echo esc_attr( $roci_row_value ); ?>"<?php echo $roci_row_disabled; ?>>
+
+                        <?php // type="button" is required — a bare <button> in a form submits it. ?>
+                        <button type="button" class="button button-small roci-amenity-remove"><?php esc_html_e( 'Remove', 'rocinante' ); ?></button>
+
+                    </div>
+                <?php endforeach; ?>
+
+            </div>
+
+            <p>
+                <button type="button" class="button roci-amenity-add"><?php esc_html_e( 'Add Amenity', 'rocinante' ); ?></button>
+            </p>
+
+            <p class="roci-note"><?php esc_html_e( 'Name is required; value is optional. A blank value publishes the amenity as simply present. Clear the name or press Remove to drop an amenity — nameless rows are discarded on save.', 'rocinante' ); ?></p>
+
             <?php
         endif;
         ?>
