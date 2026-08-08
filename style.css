@@ -4,7 +4,7 @@ Theme URI: https://jota.works
 Author: JotaWorks
 Author URI: https://jota.works
 Description: A lean, professional WordPress base theme by JotaWorks. Built for service businesses, tourism, and property management — with a custom SEO layer, schema markup, and no page builder bloat.
-Version: 6.8.0
+Version: 6.9.0
 License: Private
 License URI: https://jota.works
 Text Domain: rocinante
@@ -14,11 +14,11 @@ GitHub Branch: main
 
 /*
 Changelog (newest first, rolling 6):
+v6.9.0 — 2026-08-08 — MINOR — Fix roci_social_platforms filterable-in-name-only bug. Extracted the platform list into a single filterable getter roci_social_platforms() (new inc/schema/social-platforms.php); the Social tab render, roci_sanitize_social(), and header.php sameAs now all read that one source. Child-registered platforms now persist on save AND reach sameAs (previously wiped on save, absent from schema). Removed dead roci_social[custom] sanitizer block. One-source-three-consumers, mirroring roci_business_types().
 v6.8.0 — 2026-08-08 — MINOR — Business Schema: repeatable amenities field (amenityFeature[] of LocationFeatureSpecification). Settings-driven rows of {name, value}; blank value publishes as `true` (2nd field after petsAllowed where blank ≠ omit). Emit gated on business-type map membership; array_values() guarantees a JSON list. First repeatable field in the codebase.
 v6.7.0 — 2026-08-08 — MINOR — Business schema: Lodging numberOfRooms + petsAllowed fields. Emit gated on map field-membership (not a hardcoded type string), so a site switched away from lodging won't publish stale lodging fields. numberOfRooms emits as int, petsAllowed as boolean.
 v6.6.0 — 2026-08-08 — MINOR — Business schema: JS show/hide for per-type settings field groups (all groups always in DOM, visibility-only toggle, visible if JS fails — prevents the save-wipes-hidden-fields hazard).
 v6.5.0 — 2026-08-08 — MINOR — Business schema: type selector drives @type via roci_business_types(); universal geo (numeric, count===2 gated) + description fields. Sanitizer reads the type map (not a hardcoded list).
 v6.4.0 — 2026-08-08 — MINOR — Business schema type taxonomy: roci_business_types() filterable map (inc/schema/). Inert scaffolding — no consumer yet, zero output change.
-v6.3.0 — 2026-08-08 — MINOR — header.php exposes roci_schema_data filter: site-level LocalBusiness JSON-LD is now child-extensible before encode. Additive, transparent with no listener.
 */
 

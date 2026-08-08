@@ -3,7 +3,7 @@
  * Theme Settings — Sanitize Callbacks
  *
  * File:    inc/theme-settings/settings-sanitize.php
- * Version: 1.7.0
+ * Version: 1.8.0
  * Updated: 2026-08-08
  *
  * @package ElRocinante
@@ -195,19 +195,27 @@ function roci_sanitize_business( $input ) {
 }
 
 function roci_sanitize_social( $input ) {
-    $platforms = array(
-        'facebook', 'instagram', 'whatsapp', 'tiktok',
-        'youtube', 'linkedin', 'twitter', 'tripadvisor',
-    );
+
+    /*
+     * WHITELIST FROM roci_social_platforms(), NEVER A LOCAL LIST.
+     *
+     * This function used to hardcode the same eight platforms the Social tab
+     * rendered from a filter it could not see. Because the loop below rebuilds
+     * the option row from scratch and the return REPLACES it wholesale, an
+     * unlisted key was not merely skipped — its stored value was erased on every
+     * save. A child that registered a platform got a working input, typed a URL
+     * into it, saved, and watched it blank with no error.
+     *
+     * Keys only here; the getter's values are admin-facing labels the tab needs
+     * and this function does not.
+     */
+    $platforms = array_keys( roci_social_platforms() );
+
     $sanitized = array();
     foreach ( $platforms as $platform ) {
         $sanitized[ $platform ] = isset( $input[ $platform ] ) ? esc_url_raw( $input[ $platform ] ) : '';
     }
-    if ( isset( $input['custom'] ) && is_array( $input['custom'] ) ) {
-        foreach ( $input['custom'] as $key => $url ) {
-            $sanitized['custom'][ sanitize_key( $key ) ] = esc_url_raw( $url );
-        }
-    }
+
     return $sanitized;
 }
 

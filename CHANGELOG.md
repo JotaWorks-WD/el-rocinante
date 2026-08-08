@@ -4,6 +4,57 @@ All notable changes to the El Rocinante parent theme are recorded here. Entries 
 
 ---
 
+## [6.9.0] — 2026-08-08
+Fix `roci_social_platforms` filterable-in-name-only bug. Extracted the platform list into a single filterable getter `roci_social_platforms()` (new `inc/schema/social-platforms.php`); the Social tab render, `roci_sanitize_social()`, and `header.php` sameAs now all read that one source. Child-registered platforms now persist on save AND reach `sameAs` (previously wiped on save, absent from schema). Removed dead `roci_social[custom]` sanitizer block. **One-source-three-consumers, mirroring `roci_business_types()`.**
+
+**Output is unchanged for every current site.** No child in the network registers a platform, and the getter's defaults are the same eight keys in the same order, so `sameAs` emits byte-identically.
+
+### What was actually broken
+
+The filter existed, the tab dispatched it, and the tab's own help text told admins it worked. It did not.
+
+**Three independent copies of the platform list existed, and only one read the filter:**
+
+| Site | Form | Read the filter? |
+|---|---|---|
+| `tabs/tab-social.php:19` | `apply_filters()` + `key => Label` | ✅ the only one |
+| `settings-sanitize.php:198` | hardcoded flat array of keys | ❌ |
+| `header.php:210` | eight literal `roci_setting()` calls | ❌ |
+
+The structural cause was that the filter was dispatched **inline inside a template**, so no other file could reach the filtered result even if it wanted to.
+
+⚠ **The sanitizer's copy did not merely ignore a child platform — it erased it.** `roci_sanitize_social()` builds a fresh array and returns it wholesale, replacing the stored option row, so a key absent from its local list has its stored value dropped on every save of the tab. The sequence was: child registers a platform → tab renders a working input → admin types a URL → saves → field is blank on reload, with no error, no warning and no notice.
+
+And `header.php`'s copy meant that even once saving was fixed, a child platform would still never have reached the structured data — which is the entire reason to add a social profile.
+
+### The fix
+
+`inc/schema/social-platforms.php` (new, 1.0.0) holds `roci_social_platforms()`, returning `apply_filters( 'roci_social_platforms', $defaults )`. All three consumers now call it:
+
+- **Tab** — `$platforms = roci_social_platforms();`, render loop unchanged (still `key => Label`).
+- **Sanitizer** — `$platforms = array_keys( roci_social_platforms() );`, keys only; it whitelists by key and has no use for labels.
+- **`header.php`** — `sameAs` is now a `foreach` over `array_keys( roci_social_platforms() )` calling `roci_setting( 'social', $key )` per key, still wrapped in `array_values( array_filter( … ) )`. This was the real edit rather than a source swap: the previous code was eight literals, not a loop.
+
+**Declaration order in the getter is the emission order in `sameAs`.** The defaults are declared `facebook → tripadvisor`, matching the literals they replaced, which is what makes the output byte-identical for an unmigrated site. Reordering the map reorders the JSON-LD.
+
+**Keys are the stored contract and must not be renamed** — a key change orphans every URL already saved under the old one. Note `twitter` deliberately keeps its key while its label reads `X (Twitter)`; the label moved when the platform rebranded, the key did not, and it must stay that way.
+
+Labels are now translated (`__()`), matching the rest of the settings UI and what `business-types.php` does. Keys are not — they are storage identifiers.
+
+### The dead `custom` block is gone
+
+`roci_sanitize_social()` carried a nested `$input['custom']` handler that **nothing ever rendered** — no `roci_social[custom]` input exists anywhere in the parent. It was the unbuilt half of an earlier attempt at the same extensibility this release delivers properly. Deleted rather than left in place, so there is one extension path rather than one working and one half-built.
+
+### Files
+
+`inc/schema/social-platforms.php` 1.0.0 (new) · `functions.php` 1.9.0 → 1.10.0 (require + banner) · `tabs/tab-social.php` 1.1.2 → 1.2.0 · `settings-sanitize.php` 1.7.0 → 1.8.0 · `header.php` 1.8.0 → 1.9.0.
+
+PHP only — no SCSS, no JavaScript, no `dist/` rebuild, no Build-repo counterpart.
+
+**MINOR** — a filter that was advertised but non-functional now works, plus one new file on the child-theme API surface. No behaviour change on any site that has not registered a platform.
+
+---
+
 ## [6.8.0] — 2026-08-08
 Business Schema: repeatable amenities field (`amenityFeature[]` of `LocationFeatureSpecification`). Settings-driven rows of `{name, value}`; blank value publishes as `true` (2nd field after `petsAllowed` where blank ≠ omit). Emit gated on business-type map membership; `array_values()` guarantees a JSON list. **First repeatable field in the codebase.**
 

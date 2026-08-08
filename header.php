@@ -10,7 +10,7 @@
  * its @type resolves from roci_business_types() (inc/schema/business-types.php).
  *
  * File:    header.php
- * Version: 1.8.0
+ * Version: 1.9.0
  * Updated: 2026-08-08
  *
  * @package ElRocinante
@@ -207,16 +207,28 @@
             ? $roci_business_type_map[ $roci_biz_type ]['fields']
             : array();
 
-        $roci_same_as = array_values( array_filter( [
-            roci_setting( 'social', 'facebook' ),
-            roci_setting( 'social', 'instagram' ),
-            roci_setting( 'social', 'whatsapp' ),
-            roci_setting( 'social', 'tiktok' ),
-            roci_setting( 'social', 'youtube' ),
-            roci_setting( 'social', 'linkedin' ),
-            roci_setting( 'social', 'twitter' ),
-            roci_setting( 'social', 'tripadvisor' ),
-        ] ) );
+        /*
+         * sameAs — iterated from roci_social_platforms(), not written out.
+         *
+         * This was eight literal roci_setting() calls, which meant a
+         * child-registered platform could never reach the structured data even
+         * once saving was fixed — the third of three hardcoded copies of the
+         * same list. The getter is now the only source.
+         *
+         * DECLARATION ORDER IN THE GETTER IS THE EMISSION ORDER HERE. The
+         * default eight are declared facebook → tripadvisor, matching the
+         * literals this replaced, so the emitted sameAs is byte-identical for
+         * any site that has not registered a platform.
+         *
+         * array_filter() drops platforms with no URL saved; array_values()
+         * reindexes so the result encodes as a JSON list rather than an object
+         * keyed by the surviving positions.
+         */
+        $roci_same_as = array();
+        foreach ( array_keys( roci_social_platforms() ) as $roci_social_key ) {
+            $roci_same_as[] = roci_setting( 'social', $roci_social_key );
+        }
+        $roci_same_as = array_values( array_filter( $roci_same_as ) );
 
         if ( $roci_biz_name ) :
             $roci_address_parts = array_filter( [

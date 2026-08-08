@@ -6,7 +6,7 @@
  * loads includes, and outputs analytics/integration scripts.
  *
  * File:    functions.php
- * Version: 1.9.0
+ * Version: 1.10.0
  * Updated: 2026-08-08
  *
  * @package ElRocinante
@@ -129,14 +129,15 @@ add_filter( 'pre_get_document_title', function( $title ) {
 // BUSINESS SCHEMA SYSTEM
 // ============================================================
 //
-// Loaded ahead of the settings system because the Business tab, the settings
-// sanitizer and header.php's schema assembly all resolve their type list from
-// roci_business_types(). Every require in this file completes before any
-// template renders or any admin screen is built, so the ordering is belt-and-
-// braces rather than load-bearing — but it puts the definition above its
-// consumers, which is how it reads.
+// Loaded ahead of the settings system because the Business and Social tabs, the
+// settings sanitizers and header.php's schema assembly all resolve their lists
+// from roci_business_types() and roci_social_platforms(). Every require in this
+// file completes before any template renders or any admin screen is built, so
+// the ordering is belt-and-braces rather than load-bearing — but it puts the
+// definitions above their consumers, which is how it reads.
 
 require_once get_template_directory() . '/inc/schema/business-types.php';
+require_once get_template_directory() . '/inc/schema/social-platforms.php';
 
 
 // ============================================================
