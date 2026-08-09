@@ -13,8 +13,8 @@
  *   roci_enqueue_admin_folders_js()        — enqueues dist/js/folders/admin-folders.js
  *
  * File:    inc/folders/create.php
- * Version: 1.10.0
- * Updated: 2026-07-30
+ * Version: 1.10.1
+ * Updated: 2026-08-09
  *
  * @package ElRocinante
  */
@@ -385,7 +385,6 @@ function roci_enqueue_admin_folders_js( $hook_suffix ) {
 			'noParent'       => __( '— No Parent —', 'rocinante' ),
 			'nameRequired'   => __( 'Fauxlder name is required.', 'rocinante' ),
 			'requestFailed'  => __( 'Request failed. Please try again.', 'rocinante' ),
-			'newFolderLabel' => __( '+ New Fauxlder', 'rocinante' ),
 		),
 	) );
 }

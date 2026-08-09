@@ -9,7 +9,7 @@
  * without a page reload. See rebuildPickers().
  *
  * @package El_Rocinante
- * @version 2.9.0
+ * Version: 2.9.0
  * Updated: 2026-07-30
  */
 

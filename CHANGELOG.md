@@ -4,6 +4,33 @@ All notable changes to the El Rocinante parent theme are recorded here. Entries 
 
 ---
 
+## [6.10.1] — 2026-08-09
+Housekeeping only — **no behavioural change on any surface.** Two mechanical fixes from the 2026-08-09 deadcode/DRY/drift audit.
+
+### Removed dead localized data
+
+`inc/folders/create.php` (v1.10.0 → v1.10.1) — dropped the `newFolderLabel` key from the `rociAdminFolders.i18n` payload in `roci_enqueue_admin_folders_js()`.
+
+**Confirmed unread before deletion:** zero occurrences of `newFolderLabel` in any `.js` file in the theme. Its consumer was a Backbone create button removed earlier; the payload was left behind. The stale doc-comment at `admin-folders.js:40-42` describing that button is a known separate item and is **not** addressed here.
+
+Every other key in the array — `nonce`, `ajaxUrl`, `taxonomy`, `filterSelectId`, and the four surviving `i18n` strings — **is** consumed and was left untouched.
+
+### Added missing docblock versions
+
+Three files violated the §3 per-file versioning convention:
+
+| File | Before | After |
+|---|---|---|
+| `index.php` | no docblock at all | v1.0.0 |
+| `single.php` | no docblock at all | v1.0.0 |
+| `dist/js/folders/upload-picker.js` | `@version 2.9.0` (JSDoc form) | `Version: 2.9.0` (house form) |
+
+⚠ **`upload-picker.js` was never missing a version** — the audit finding that said so was a false positive from a shallow header scan. It carried `@version 2.9.0` at line 12 in JSDoc syntax while 9 of the parent's 10 JS files use `Version:`. **This was a format normalization; the existing 2.9.0 was preserved, not chosen**, and its `Updated:` date was deliberately left at 2026-07-30 because the file's behaviour did not change.
+
+`index.php` and `single.php` genuinely had no header and start at **v1.0.0** — a baseline, not a reconstruction. Both predate the convention and no changelog history was invented for them. `index.php`'s docblock records that `page.php` mirrors its structure deliberately, matching what `page.php` already states in the other direction.
+
+**Still outstanding, noted not fixed:** `upload-picker.js` carries `@package El_Rocinante` where the PHP files use `ElRocinante`, and its sibling `admin-folders.js` carries no `@package` line at all.
+
 ## [6.10.0] — 2026-08-08
 Business schema now emits **site-wide, not homepage-only**. Removed the `is_front_page()` gate wrapping the site-level business JSON-LD in `header.php`; the inner `$roci_biz_name` guard is retained, so a site with no business name configured still emits nothing.
 
