@@ -26,14 +26,14 @@
  * inline on every open. That is what stops it being painted under the upload
  * dropzone — as an absolute panel its z-index was capped by an ancestor stacking
  * context in core's media-frame chain. The node stays in the action bar; it is
- * not portaled. See openMoveDropdown() and _admin-folders-bulk.scss:165.
+ * not portaled. See openMoveDropdown() and _admin-folders-bulk.scss:232-257.
  *
- * Note: the toast implementation is duplicated from folders-page-dragdrop.js.
- * Consolidation into a shared module is deferred to the audit phase (flagged).
+ * Note: the toast implementation is duplicated from folders-list-dragdrop.js.
+ * Consolidation into a shared module is still open — not yet ruled on.
  *
  * File:    dist/js/folders/folders-bulk.js
- * Version: 1.5.0
- * Updated: 2026-07-30
+ * Version: 1.5.1
+ * Updated: 2026-08-09
  *
  * @package ElRocinante
  */
@@ -298,7 +298,7 @@
 		moveDropdown.classList.add( 'roci-bulk-move-dropdown--open' );
 
 		// The panel is position: fixed (see the long note at
-		// _admin-folders-bulk.scss:165), so top/left are VIEWPORT-relative and
+		// _admin-folders-bulk.scss:232-257), so top/left are VIEWPORT-relative and
 		// getBoundingClientRect() values are used directly with no scroll offset
 		// added. That also makes window.innerHeight the correct reference frame
 		// here — it was NOT correct while the panel was absolute inside the media
@@ -975,7 +975,7 @@
 
 
 	// ======================================================================
-	// TOAST  (duplicated from folders-page-dragdrop.js — consolidate in audit)
+	// TOAST  (duplicated from folders-list-dragdrop.js — consolidation still open)
 	// ======================================================================
 
 	var currentToast   = null;

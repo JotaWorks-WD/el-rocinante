@@ -5,7 +5,7 @@
  * Bridges the site's brand accent into the Fauxlders admin UI.
  *
  * WHY THIS FILE EXISTS. --folders-highlight is declared at
- * Build/scss/admin/_folder-tokens.scss:19 as #{$color-primary}, compiling to
+ * Build/scss/admin/_folder-tokens.scss:29 as #{$color-primary}, compiling to
  * the neutral placeholder #000, and is read by 33 rules across the admin
  * sheet. The promoted --color-* layer a child actually fills is emitted by
  * Build/scss/base/_tokens.scss into dist/css/style.css, which is enqueued on
@@ -18,8 +18,8 @@
  * fallback, and this override lands on top of it at runtime.
  *
  * File:    inc/folders/branding.php
- * Version: 1.0.1
- * Updated: 2026-07-27
+ * Version: 1.0.2
+ * Updated: 2026-08-09
  *
  * @package ElRocinante
  */
@@ -38,7 +38,7 @@ if ( ! defined( 'ABSPATH' ) ) {
  *
  * SELF-GATING. The 'roci-admin-folders' handle is registered only by the two
  * enqueue call sites that already gate themselves —
- * roci_enqueue_media_folder_js() (filters.php:417, gated on
+ * roci_enqueue_media_folder_js() (filters.php:467, gated on
  * wp_script_is( 'media-views', 'enqueued' ), i.e. any screen where the
  * wp.media modal can be opened) and roci_enqueue_sidebar_assets()
  * (sidebar.php:435, gated on get_current_screen() against the folder

@@ -12,8 +12,8 @@
  *     folder filter into the AttachmentsBrowser toolbar (after the type + date filters)
  *
  * File:    inc/folders/filters.php
- * Version: 2.6.4
- * Updated: 2026-07-27
+ * Version: 2.6.5
+ * Updated: 2026-08-09
  *
  * @package ElRocinante
  */
@@ -443,7 +443,7 @@ function roci_get_folder_terms_for_js() {
  * wp_script_is( 'media-views', 'enqueued' ) is the signal instead. It is true
  * on exactly the screens where a media modal can be opened, whoever opened
  * it, with no screen detection to maintain — the same self-gating idiom
- * branding.php:66 already uses against the style handle. media-views is also
+ * branding.php:69 already uses against the style handle. media-views is also
  * this script's declared dependency, so the test doubles as a guarantee that
  * the dependency is genuinely present rather than being dragged in by us.
  *

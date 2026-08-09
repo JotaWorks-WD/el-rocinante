@@ -4,6 +4,25 @@ All notable changes to the El Rocinante parent theme are recorded here. Entries 
 
 ---
 
+## [6.10.3] — 2026-08-09
+Comment-only — **no behavioural change on any surface.** Six drifted line references in the Fauxlders subsystem, all surfaced by the 2026-08-09 deadcode/DRY/drift audit and re-verified against source before editing.
+
+| File | The reference | Was | Is |
+|---|---|---|---|
+| `dist/js/folders/folders-bulk.js` (v1.5.0 → v1.5.1) | the `position: fixed` Move-panel note, cited at `:29` and `:301` | `_admin-folders-bulk.scss:165` | `:232-257` |
+| `dist/js/folders/folders-bulk.js` | the duplicated toast's source, cited at `:31` and `:978` | `folders-page-dragdrop.js` | `folders-list-dragdrop.js` |
+| `inc/folders/branding.php` (v1.0.1 → v1.0.2) | where `--folders-highlight` is declared, at `:8` | `_folder-tokens.scss:19` | `:29` |
+| `inc/folders/branding.php` | `roci_enqueue_media_folder_js()`, at `:41` | `filters.php:417` | `:467` |
+| `inc/folders/filters.php` (v2.6.4 → v2.6.5) | the self-gating idiom it borrows, at `:446` | `branding.php:66` | `:69` |
+
+**`folders-page-dragdrop.js` does not exist.** The per-post-type dragdrop files were consolidated into `folders-list-dragdrop.js` and the toast went with them; both references had been dangling since. Of the others: `_admin-folders-bulk.scss:165` is `flex-wrap: wrap` inside `.roci-bulk-action-bar`, `branding.php:66` is a docblock's closing `*/`, and `filters.php:417` is a `foreach` in an unrelated function.
+
+Also retensed `folders-bulk.js`'s toast-consolidation note. It read *"deferred to the audit phase (flagged)"*; that audit has since run and did not rule on the duplication, so the note now reads as still open. **The duplication itself is untouched** — consolidating it is a code change and is not part of this release.
+
+**Checked and deliberately left alone, because they are correct:** `branding.php`'s `sidebar.php:435`, `filters.php`'s `sidebar.php:463`, `folders.php`'s five inlined-merge citations, `upload.php:72` → `create.php:56`, and `theme-settings.js` → `settings-register.php:67, :72`.
+
+**No code was touched.** Every changed line is inside a docblock or a comment.
+
 ## [6.10.2] — 2026-08-09
 Comment-only — **no behavioural change on any surface.**
 
