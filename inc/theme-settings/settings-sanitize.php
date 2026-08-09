@@ -3,8 +3,8 @@
  * Theme Settings — Sanitize Callbacks
  *
  * File:    inc/theme-settings/settings-sanitize.php
- * Version: 1.8.0
- * Updated: 2026-08-08
+ * Version: 1.8.1
+ * Updated: 2026-08-09
  *
  * @package ElRocinante
  */
@@ -61,8 +61,9 @@ function roci_sanitize_business( $input ) {
      * Reading the function is what lets a child's roci_business_types filter
      * actually work: a duplicated list here would render a child-added type in
      * the selector and then reject it on save, silently resetting to 'general'.
-     * That is precisely the roci_social_platforms bug below, where the tab
-     * dispatches a filter the sanitiser never consults.
+     * That was precisely the roci_social_platforms bug this file used to carry,
+     * where the tab dispatched a filter the sanitiser never consulted. Fixed in
+     * v6.9.0 — see the note on roci_sanitize_social() below, which records it.
      *
      * An unknown, unset or empty value resolves to 'general' — the neutral
      * vertical, whose schema type is the LocalBusiness the parent emitted before

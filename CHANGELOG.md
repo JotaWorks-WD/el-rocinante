@@ -4,6 +4,17 @@ All notable changes to the El Rocinante parent theme are recorded here. Entries 
 
 ---
 
+## [6.10.2] — 2026-08-09
+Comment-only — **no behavioural change on any surface.**
+
+`inc/theme-settings/settings-sanitize.php` (v1.8.0 → v1.8.1) — retensed a stale comment in `roci_sanitize_business()`.
+
+The TYPE block described the `roci_social_platforms` hardcoding bug as **live "below"**, where the tab dispatched a filter the sanitiser never consulted. That bug was **fixed in v6.9.0**, and the file's own note on `roci_sanitize_social()` (`:199-211`) already described it in the past tense as something this file had fixed. The file therefore carried two comments about one defect, 135 lines apart, in opposite tenses — and a reader hitting the first was told a working extension point was broken.
+
+The comment now states the correction and points at that note. **The reasoning it carried was kept:** a hardcoded list in a sanitiser is worse than one in a renderer, because the sanitiser rebuilds the option row wholesale and *erases* an unlisted key rather than merely failing to render it. That is precisely why the TYPE block cites it as the anti-pattern `roci_business_types()` exists to avoid.
+
+**No code was touched.** Every changed line sits inside the file's header docblock or the `/* */` block at `:58-71`.
+
 ## [6.10.1] — 2026-08-09
 Housekeeping only — **no behavioural change on any surface.** Two mechanical fixes from the 2026-08-09 deadcode/DRY/drift audit.
 
