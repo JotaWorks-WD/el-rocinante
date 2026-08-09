@@ -4,6 +4,58 @@ All notable changes to the El Rocinante parent theme are recorded here. Entries 
 
 ---
 
+## [6.11.0] — 2026-08-09
+Refactor — **no behavioural change on any surface.** The toast/notification block was duplicated across two Fauxlders scripts; it is now one shared utility that both depend on.
+
+### The new file
+
+`dist/js/folders/folders-toast.js` (**v1.0.0**) exports a single global, `window.rociShowToast( opts )`. It is the **first shared utility** in `dist/js/folders/` — every other file there is a self-contained feature script.
+
+The global is deliberate and unavoidable: both consumers wrap themselves in an IIFE, so a private function cannot cross the file boundary.
+
+```js
+rociShowToast( {
+    message:      String,        // required
+    duration:     Number,        // optional, default 8000
+    undoCallback: Function,      // optional — presence renders the Undo button
+    undoLabel:    String         // optional — falls back to 'Undo'
+} );
+```
+
+### What was actually duplicated, and what diverged
+
+The two copies were **73 and 76 lines and character-identical apart from three hunks**: the function name (`rociShowBulkToast` vs `rociShowToast`), two explanatory comments, and one real difference — where the Undo label was read from.
+
+| | `folders-bulk.js` | `folders-list-dragdrop.js` |
+|---|---|---|
+| Undo label source | `rociFoldersBulk.i18n.undo` | `config.i18n.undo` (`= rociDragDrop`) |
+
+Each consumer receives its own `wp_localize_script` payload, so a shared function can read **neither**. That one line became the `undoLabel` parameter. **Everything else unified with no flag, because nothing else differed** — same 8000 ms default, same 220 ms hide delay, same classes, same ARIA, same `document.body` mount, same double-`requestAnimationFrame` entrance.
+
+⚠ **Per-scenario durations are preserved, not collapsed.** `3000` for undo-confirmations, `success ? 5000 : 8000` for bulk delete, default `8000` for moves. Those live at the call sites and were never drift — they track which operations each surface has.
+
+### Consumers
+
+| File | Version | Change |
+|---|---|---|
+| `dist/js/folders/folders-bulk.js` | 1.5.1 → **1.6.0** | local block removed (76 lines); 3 call sites repointed; `:705` gains `undoLabel` |
+| `dist/js/folders/folders-list-dragdrop.js` | 1.0.0 → **1.1.0** | local block removed (79 lines); `:434` gains `undoLabel` |
+
+### Load order is guaranteed by WordPress, not by call order
+
+`roci_register_folders_toast()` (`inc/folders/folders.php` **2.15.0 → 2.16.0**) registers the handle `roci-folders-toast`; it **registers, never enqueues**, and is idempotent behind a `wp_script_is()` guard. Both consumers declare it as a script **dependency**, so WP enqueues it for them and prints it first:
+
+| Context | Enqueue | Dependencies |
+|---|---|---|
+| `upload.php` | `inc/folders/filters.php` **2.6.5 → 2.7.0** | `array( 'media-views', 'roci-folders-toast' )` |
+| `edit.php` | `inc/folders/move.php` **1.4.1 → 1.5.0** | `array( 'roci-folders-toast' )` |
+
+Cache-busting is `filemtime()` via `roci_asset_version()`, matching every sibling. These files are hand-authored — there is no build step for `dist/js/`.
+
+**One semantic change worth knowing:** `currentToast` / `currentTimeout` are now a single shared pair rather than two independent ones. Harmless in practice — the two consumers gate on mutually exclusive screens (`upload.php` vs `edit.php`) and never co-occur — and the replace-in-flight guard keeps it correct even if they ever did.
+
+Net: **−170 / +56** across five files, plus 129 in the new one.
+
 ## [6.10.3] — 2026-08-09
 Comment-only — **no behavioural change on any surface.** Six drifted line references in the Fauxlders subsystem, all surfaced by the 2026-08-09 deadcode/DRY/drift audit and re-verified against source before editing.
 

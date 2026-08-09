@@ -17,8 +17,8 @@
  *   roci_enqueue_dragdrop_assets()         — enqueues drag JS for Media + CPT list screens
  *
  * File:    inc/folders/move.php
- * Version: 1.4.1
- * Updated: 2026-07-27
+ * Version: 1.5.0
+ * Updated: 2026-08-09
  *
  * @package ElRocinante
  */
@@ -538,10 +538,12 @@ function roci_enqueue_dragdrop_assets( $hook_suffix ) {
 	$parts        = explode( '-', $slug_hyphen );
 	$dataset_attr = $parts[0] . implode( '', array_map( 'ucfirst', array_slice( $parts, 1 ) ) ) . 'Id';
 
+	roci_register_folders_toast();
+
 	wp_enqueue_script(
 		'roci-dragdrop-' . $current_post_type,
 		get_template_directory_uri() . '/' . $js_file,
-		array(),
+		array( 'roci-folders-toast' ),
 		roci_asset_version( $js_file ),
 		true
 	);

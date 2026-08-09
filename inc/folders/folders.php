@@ -34,8 +34,8 @@
  *   branding.php   — brand accent -> --folders-highlight inline admin override
  *
  * File:    inc/folders/folders.php
- * Version: 2.15.0
- * Updated: 2026-07-30
+ * Version: 2.16.0
+ * Updated: 2026-08-09
  *
  * @package ElRocinante
  */
@@ -62,6 +62,38 @@ if ( ! defined( 'ABSPATH' ) ) {
 function roci_asset_version( $relative_path ) {
 	$abs = get_template_directory() . '/' . ltrim( $relative_path, '/' );
 	return file_exists( $abs ) ? filemtime( $abs ) : '1.0.0';
+}
+
+/**
+ * Register the shared toast utility.
+ *
+ * REGISTER, NOT ENQUEUE. The consumers declare 'roci-folders-toast' in their
+ * own dependency arrays, so WordPress enqueues it for them and — crucially —
+ * prints it FIRST. Enqueueing it here as well would put it on screens whose
+ * consumer never loads.
+ *
+ * Idempotent by design: both roci_enqueue_bulk_organize_js() (upload.php) and
+ * roci_enqueue_dragdrop_assets() (edit.php) call this before their own
+ * wp_enqueue_script(), and the two never fire on the same request. The
+ * wp_script_is() guard makes a double call harmless regardless.
+ *
+ * The file exports one global, window.rociShowToast — see its docblock for why
+ * a global is unavoidable here (both consumers are IIFE-wrapped, so a private
+ * function cannot cross the file boundary).
+ */
+function roci_register_folders_toast() {
+
+	if ( wp_script_is( 'roci-folders-toast', 'registered' ) ) {
+		return;
+	}
+
+	wp_register_script(
+		'roci-folders-toast',
+		get_template_directory_uri() . '/dist/js/folders/folders-toast.js',
+		array(),
+		roci_asset_version( 'dist/js/folders/folders-toast.js' ),
+		true
+	);
 }
 
 /**

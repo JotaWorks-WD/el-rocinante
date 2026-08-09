@@ -12,7 +12,7 @@
  *     folder filter into the AttachmentsBrowser toolbar (after the type + date filters)
  *
  * File:    inc/folders/filters.php
- * Version: 2.6.5
+ * Version: 2.7.0
  * Updated: 2026-08-09
  *
  * @package ElRocinante
@@ -568,10 +568,12 @@ function roci_enqueue_bulk_organize_js( $hook_suffix ) {
 		return;
 	}
 
+	roci_register_folders_toast();
+
 	wp_enqueue_script(
 		'roci-bulk-organize',
 		get_template_directory_uri() . '/dist/js/folders/folders-bulk.js',
-		array( 'media-views' ),
+		array( 'media-views', 'roci-folders-toast' ),
 		roci_asset_version( 'dist/js/folders/folders-bulk.js' ),
 		true
 	);

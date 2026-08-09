@@ -30,8 +30,8 @@
  * type and ignores other drags.
  *
  * File:    dist/js/folders/folders-list-dragdrop.js
- * Version: 1.0.0
- * Updated: 2026-05-21
+ * Version: 1.1.0
+ * Updated: 2026-08-09
  *
  * @package ElRocinante
  */
@@ -433,6 +433,7 @@
 
 					rociShowToast( {
 						message:      msg,
+						undoLabel:    config.i18n.undo,
 						undoCallback: function () {
 							var undoTerm = ( previousTerms.length > 0 )
 								? String( previousTerms[ 0 ] )
@@ -458,85 +459,6 @@
 		};
 
 		xhr.send( fd );
-	}
-
-
-	// ======================================================================
-	// TOAST NOTIFICATION
-	// ======================================================================
-
-	var currentToast   = null;
-	var currentTimeout = null;
-
-	function rociShowToast( opts ) {
-
-		// Replace any in-flight toast immediately.
-		if ( currentToast && currentToast.parentNode ) {
-			currentToast.parentNode.removeChild( currentToast );
-		}
-		if ( currentTimeout ) {
-			clearTimeout( currentTimeout );
-			currentTimeout = null;
-		}
-
-		var toast = document.createElement( 'div' );
-		toast.className = 'roci-toast';
-		toast.setAttribute( 'role', 'alert' );
-		toast.setAttribute( 'aria-live', 'polite' );
-
-		var msgEl = document.createElement( 'span' );
-		msgEl.className   = 'roci-toast__message';
-		msgEl.textContent = opts.message;
-		toast.appendChild( msgEl );
-
-		if ( opts.undoCallback ) {
-			var undoBtn = document.createElement( 'button' );
-			undoBtn.type        = 'button';
-			undoBtn.className   = 'roci-toast__undo';
-			undoBtn.textContent = config.i18n.undo;
-			undoBtn.addEventListener( 'click', function () {
-				dismiss();
-				opts.undoCallback();
-			} );
-			toast.appendChild( undoBtn );
-		}
-
-		var closeBtn = document.createElement( 'button' );
-		closeBtn.type      = 'button';
-		closeBtn.className = 'roci-toast__close';
-		closeBtn.setAttribute( 'aria-label', 'Dismiss' );
-		closeBtn.innerHTML = '&times;';
-		closeBtn.addEventListener( 'click', dismiss );
-		toast.appendChild( closeBtn );
-
-		function dismiss() {
-			if ( currentTimeout ) {
-				clearTimeout( currentTimeout );
-				currentTimeout = null;
-			}
-			toast.classList.remove( 'roci-toast--visible' );
-			toast.classList.add( 'roci-toast--hiding' );
-			setTimeout( function () {
-				if ( toast.parentNode ) {
-					toast.parentNode.removeChild( toast );
-				}
-				if ( currentToast === toast ) {
-					currentToast = null;
-				}
-			}, 220 );
-		}
-
-		document.body.appendChild( toast );
-		currentToast = toast;
-
-		// Trigger entrance animation on next frame so the transition fires.
-		requestAnimationFrame( function () {
-			requestAnimationFrame( function () {
-				toast.classList.add( 'roci-toast--visible' );
-			} );
-		} );
-
-		currentTimeout = setTimeout( dismiss, opts.duration || 8000 );
 	}
 
 

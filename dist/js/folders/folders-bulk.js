@@ -28,11 +28,14 @@
  * context in core's media-frame chain. The node stays in the action bar; it is
  * not portaled. See openMoveDropdown() and _admin-folders-bulk.scss:232-257.
  *
- * Note: the toast implementation is duplicated from folders-list-dragdrop.js.
- * Consolidation into a shared module is still open — not yet ruled on.
+ * Toast output goes through the shared window.rociShowToast() in
+ * folders-toast.js, declared as a script dependency so it always loads first.
+ * The local copy that used to live here was consolidated with the near-identical
+ * one in folders-list-dragdrop.js; pass undoLabel because the shared function
+ * cannot read this file's rociFoldersBulk localisation.
  *
  * File:    dist/js/folders/folders-bulk.js
- * Version: 1.5.1
+ * Version: 1.6.0
  * Updated: 2026-08-09
  *
  * @package ElRocinante
@@ -632,7 +635,7 @@
 					}
 				} );
 				refreshGrid();
-				rociShowBulkToast( { message: rociFoldersBulk.i18n.undone, duration: 3000 } );
+				rociShowToast( { message: rociFoldersBulk.i18n.undone, duration: 3000 } );
 				return;
 			}
 
@@ -699,8 +702,9 @@
 				? rociFoldersBulk.i18n.movedUnassigned.replace( '%d', n )
 				: rociFoldersBulk.i18n.moved.replace( '%d', n ).replace( '%s', resolvedName );
 
-			rociShowBulkToast( {
+			rociShowToast( {
 				message:      msg,
+				undoLabel:    rociFoldersBulk.i18n.undo,
 				undoCallback: function () {
 					performBulkMove( movedIds.map( String ), targetTerm, resolvedName, true, prevAssign );
 				}
@@ -970,83 +974,7 @@
 				? rociFoldersBulk.i18n.deleteFailureToastSingular
 				: rociFoldersBulk.i18n.deleteFailureToastPlural.replace( '%d', n );
 		}
-		rociShowBulkToast( { message: msg, duration: success ? 5000 : 8000 } );
-	}
-
-
-	// ======================================================================
-	// TOAST  (duplicated from folders-list-dragdrop.js — consolidation still open)
-	// ======================================================================
-
-	var currentToast   = null;
-	var currentTimeout = null;
-
-	function rociShowBulkToast( opts ) {
-		if ( currentToast && currentToast.parentNode ) {
-			currentToast.parentNode.removeChild( currentToast );
-		}
-		if ( currentTimeout ) {
-			clearTimeout( currentTimeout );
-			currentTimeout = null;
-		}
-
-		var toast = document.createElement( 'div' );
-		toast.className = 'roci-toast';
-		toast.setAttribute( 'role', 'alert' );
-		toast.setAttribute( 'aria-live', 'polite' );
-
-		var msgEl = document.createElement( 'span' );
-		msgEl.className   = 'roci-toast__message';
-		msgEl.textContent = opts.message;
-		toast.appendChild( msgEl );
-
-		if ( opts.undoCallback ) {
-			var undoBtn = document.createElement( 'button' );
-			undoBtn.type        = 'button';
-			undoBtn.className   = 'roci-toast__undo';
-			undoBtn.textContent = rociFoldersBulk.i18n.undo;
-			undoBtn.addEventListener( 'click', function () {
-				dismiss();
-				opts.undoCallback();
-			} );
-			toast.appendChild( undoBtn );
-		}
-
-		var closeBtn = document.createElement( 'button' );
-		closeBtn.type      = 'button';
-		closeBtn.className = 'roci-toast__close';
-		closeBtn.setAttribute( 'aria-label', 'Dismiss' );
-		closeBtn.innerHTML = '&times;';
-		closeBtn.addEventListener( 'click', dismiss );
-		toast.appendChild( closeBtn );
-
-		function dismiss() {
-			if ( currentTimeout ) {
-				clearTimeout( currentTimeout );
-				currentTimeout = null;
-			}
-			toast.classList.remove( 'roci-toast--visible' );
-			toast.classList.add( 'roci-toast--hiding' );
-			setTimeout( function () {
-				if ( toast.parentNode ) {
-					toast.parentNode.removeChild( toast );
-				}
-				if ( currentToast === toast ) {
-					currentToast = null;
-				}
-			}, 220 );
-		}
-
-		document.body.appendChild( toast );
-		currentToast = toast;
-
-		requestAnimationFrame( function () {
-			requestAnimationFrame( function () {
-				toast.classList.add( 'roci-toast--visible' );
-			} );
-		} );
-
-		currentTimeout = setTimeout( dismiss, opts.duration || 8000 );
+		rociShowToast( { message: msg, duration: success ? 5000 : 8000 } );
 	}
 
 
