@@ -4,6 +4,56 @@ All notable changes to the El Rocinante parent theme are recorded here. Entries 
 
 ---
 
+## [6.12.0] — 2026-08-18
+
+Comments are now disabled network-wide from the parent. This **graduates the standalone "Disable Comments Clean" plugin (v3.14, JotaWorks)** — which ran on Fish Potrero only — into the parent theme, so every child inherits the behaviour without a per-site plugin install.
+
+### The new file
+
+`inc/comment-suppression.php` (**v1.0.0**), required from `functions.php` under a new `// COMMENT SUPPRESSION` banner, placed immediately after `// ARCHIVE SUPPRESSION` — the two are the same class of module and now sit as siblings at `inc/` root.
+
+### Five mechanisms, and why no subset would do
+
+| # | Mechanism | Hook | Covers |
+|---|---|---|---|
+| 1 | `remove_post_type_support()` for `comments` + `trackbacks` on every registered post type | `admin_init` | Discussion meta box, Comments column |
+| 2 | `comments_open` / `pings_open` → `false` | filters, priority 20 | Front end, regardless of stored `comment_status` |
+| 3 | `comments_array` → empty | filter, priority 20 | Comments **already in the database** |
+| 4 | `wp_dequeue_script` + `wp_deregister_script` on `comment-reply` | `wp_enqueue_scripts` @100 | The core reply script |
+| 5 | `cancel_comment_reply_link` → empty string | filter, priority 20 | The "cancel reply" link |
+
+⚠ **(1) and (2) are not redundant.** `comment_status` is stored per post and is **not** consulted against post type support on the front end, so stripping support alone leaves every existing post open. Conversely, closing comments stops new ones but renders the old ones — which is what (3) is for. All three are load-bearing.
+
+⚠ **(4) dequeues *and* deregisters.** `wp_deregister_script()` removes the handle from the registry but does **not** pull an already-queued handle out of the queue. A single call would still print the script if something enqueued it earlier in the request.
+
+⚠ **(5) is a filter, not a `remove_action()`.** `cancel_comment_reply_link` exists in core only as a filter (`wp-includes/comment-template.php`); core registers **no action** of that name. A `remove_action()` call against it would be a silent no-op. The source plugin's behaviour is preserved; only the mechanism is stated correctly.
+
+### BEHAVIORAL/CONTRACT CHANGE — no opt-out filter, deliberately
+
+This ships to every child with **no filter seam**, which is an intentional departure from `inc/archive-suppression.php`, whose three suppressions each dispatch a `roci_suppress_*` filter. Every site in the family wants comments gone — **including Fish Potrero, the only one with a blog.** If per-site re-enable is ever wanted, add the filter at that point; it was not added speculatively.
+
+### Blast radius
+
+**Front-end rendered output is unchanged on every site.** A pre-flight crawl of the parent and all three children (2026-08-18) found **zero** comment-handling code family-wide: no `comments_template()`, no `wp_list_comments()`, no `comment_form()`, and no `comments.php` in any theme. Nothing in the family rendered comments before this release, so nothing stops rendering them now.
+
+**No CPT opts back in.** All six `register_post_type()` calls in the family (Fish Potrero's `charter` / `tour` / `fish_species`, plus Coco ATV's two unhooked scaffolds) declare the identical `array( 'title', 'editor', 'thumbnail', 'excerpt' )` — `comments` appears in none of them.
+
+| Site | Effect |
+|---|---|
+| Fish Potrero | **None.** Already had the plugin. ⚠ Deactivate + delete it post-deploy — see below. |
+| Coco ATV Tours | Loses comment UI in `wp-admin`. Front end unchanged. |
+| 360 Splendor | Loses comment UI in `wp-admin`. Front end unchanged. |
+
+### What did NOT change
+
+`add_theme_support( 'html5', … )` in `functions.php` still lists `'comment-form'` and `'comment-list'`. Those select **markup format** for output that no longer happens — inert, and left in place rather than churned.
+
+### Also in this release
+
+`functions.php` → **v1.11.0** (new `require_once` + banner).
+
+---
+
 ## [6.11.0] — 2026-08-09
 Refactor — **no behavioural change on any surface.** The toast/notification block was duplicated across two Fauxlders scripts; it is now one shared utility that both depend on.
 

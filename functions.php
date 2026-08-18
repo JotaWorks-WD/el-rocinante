@@ -6,8 +6,8 @@
  * loads includes, and outputs analytics/integration scripts.
  *
  * File:    functions.php
- * Version: 1.10.0
- * Updated: 2026-08-08
+ * Version: 1.11.0
+ * Updated: 2026-08-18
  *
  * @package ElRocinante
  */
@@ -194,6 +194,13 @@ require_once get_template_directory() . '/inc/sitemap.php';
 // ============================================================
 
 require_once get_template_directory() . '/inc/archive-suppression.php';
+
+
+// ============================================================
+// COMMENT SUPPRESSION
+// ============================================================
+
+require_once get_template_directory() . '/inc/comment-suppression.php';
 
 
 // ============================================================
