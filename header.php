@@ -10,7 +10,7 @@
  * its @type resolves from roci_business_types() (inc/schema/business-types.php).
  *
  * File:    header.php
- * Version: 1.13.0
+ * Version: 1.14.0
  * Updated: 2026-09-04
  *
  * @package ElRocinante
@@ -458,6 +458,19 @@
     <?php wp_head(); ?>
 </head>
 <body <?php body_class(); ?>>
+<?php
+/*
+ * wp_body_open() — standard core hook, added at v1.14.0. It was missing
+ * entirely before that, which is a defect in its own right: plugins and
+ * children expect it as the first thing inside <body>.
+ *
+ * The loader overlay attaches here at priority 5 (el_rocinante_render_loader(),
+ * functions.php) rather than being called inline, so #loader is the FIRST
+ * element in the body — ahead of the fixed #site-header, which would
+ * otherwise paint over the overlay.
+ */
+wp_body_open();
+?>
 
 <header id="site-header" class="site-header">
     <?php do_action( 'roci_nav' ); ?>

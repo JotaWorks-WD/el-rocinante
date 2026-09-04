@@ -4,6 +4,51 @@ All notable changes to the El Rocinante parent theme are recorded here. Entries 
 
 ---
 
+## [6.17.0] — 2026-09-04
+
+A loading overlay, **opt-in and inert by default**. The parent owns the markup and the appearance; the child owns dismissal.
+
+### `wp_body_open()` was missing, and now exists
+
+`header.php` (**v1.14.0**) went straight from `<body>` to `<header>`. **The standard core hook was absent entirely** — a defect independent of this feature, since plugins and children expect `wp_body_open` as the first thing inside the body. It is now called immediately after `<body>`.
+
+### The gate
+
+```php
+add_theme_support( 'roci-loader' );
+```
+
+Declared by a child in its own `after_setup_theme` callback. `el_rocinante_render_loader()` (`functions.php` **v1.13.0**) checks `current_theme_supports()` and returns early otherwise, so **a site that does not opt in carries no trace of the feature** — no markup, nothing. This mirrors the `roci-tour-layout` bundle gate, which is the precedent for feature opt-in in this theme.
+
+It attaches at **priority 5, not the default 10**, so `#loader` is the first element in the body. The `#site-header` is `position: fixed`; anything rendering ahead of the overlay would paint over it.
+
+### The partial, rewritten
+
+`template-parts/loader.php` (**v1.1.0**):
+
+- **The logo source was broken and is fixed.** It read `get_theme_mod( 'loader_logo' )` — a theme mod **no control anywhere registers**, so the value was always empty and the partial rendered `<img src="">`. It now resolves the Site Identity `custom_logo` (with the `wp_get_attachment_url()` fallback for SVG, same two-step as the schema logo), and **omits the `<img>` entirely when no logo is set** rather than emitting a broken one.
+- A CSS-animated spinner replaces the hardcoded "LOADING..." text.
+- `alt` is escaped properly, and a `screen-reader-text` label carries the announcement — which works because v6.16.0 defined that class.
+- `role="status"` / `aria-live="polite"`.
+
+### Why the CSS is in the parent
+
+`components/_loader.scss` (**v1.0.0**) fills one of the seven 0-byte override slots. **This had to be parent-side.** The overlay is real markup at the very top of `<body>`; styled from a child sheet that loads later, the first frames would show the loading text as ordinary flow content above the header — a flash of unstyled content where none existed before. The parent's `dist/css/style.css` is enqueued first by every child, so styling it here is what makes the overlay safe.
+
+The palette is neutral and tokenised (`--color-surface`, `--color-action`, `--color-border`, `--z-tooltip`), every `var()` carrying a literal fallback, so the parent stays undesigned and a child's fills flow through.
+
+⚠ **`#loader[hidden] { display: none }` is load-bearing.** The dismissal sets `el.hidden = true`, but `[hidden]`'s default `display: none` **loses** to the rule's `display: flex` — same specificity, later wins. Without it the overlay would sit invisible at `opacity: 0` and swallow every click on the page.
+
+### ⚠ The parent ships no dismissal, and that is a real contract
+
+The parent has **zero front-end JavaScript by design** (§8), and this feature does not break that rule. So **a child that opts in without shipping dismissal JS gets an overlay that never goes away.** That is stated in `functions.php` at the gate and in the partial's docblock. Fish Potrero's dismissal lives in its own `dist/js/navigation.js`.
+
+### Also in this release
+
+`functions.php` gains a sixth `el_rocinante_`-prefixed callback, `el_rocinante_render_loader()`. CLAUDE.md §4 currently states there are "exactly five"; that count is now stale and wants updating.
+
+---
+
 ## [6.16.0] — 2026-09-04
 
 `.screen-reader-text` is now defined in the parent, so every child inherits it at runtime.

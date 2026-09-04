@@ -6,7 +6,7 @@
  * loads includes, and outputs analytics/integration scripts.
  *
  * File:    functions.php
- * Version: 1.12.0
+ * Version: 1.13.0
  * Updated: 2026-09-04
  *
  * @package ElRocinante
@@ -48,6 +48,42 @@ function el_rocinante_setup() {
 
 }
 add_action( 'after_setup_theme', 'el_rocinante_setup' );
+
+
+// ============================================================
+// LOADER OVERLAY
+// ============================================================
+//
+// OPT-IN, AND INERT BY DEFAULT. The parent ships the markup and the CSS;
+// a child turns the feature on with
+//
+//     add_theme_support( 'roci-loader' );
+//
+// in its own after_setup_theme callback. Without that call nothing renders
+// and nothing is enqueued — a site that does not want a loading screen
+// carries no trace of one. This mirrors the roci-tour-layout bundle gate
+// (inc/layout-bundles/), which is the precedent for feature opt-in here.
+//
+// PRIORITY 5, NOT THE DEFAULT 10. The overlay must be the first element in
+// the body so the fixed #site-header cannot paint over it, and priority 5
+// puts it ahead of anything a plugin or child hooks at 10.
+//
+// ⚠ THE PARENT SUPPLIES NO DISMISSAL. It renders the overlay and styles it;
+// removing it is the child's job, because the parent ships zero front-end
+// JavaScript by design (see §8 of CLAUDE.md) and that rule is not broken
+// for this feature. A child that opts in WITHOUT shipping dismissal JS gets
+// an overlay that never goes away. Fish Potrero's dismissal lives in its
+// own dist/js/navigation.js.
+
+function el_rocinante_render_loader() {
+
+    if ( ! current_theme_supports( 'roci-loader' ) ) {
+        return;
+    }
+
+    get_template_part( 'template-parts/loader' );
+}
+add_action( 'wp_body_open', 'el_rocinante_render_loader', 5 );
 
 
 // ============================================================
