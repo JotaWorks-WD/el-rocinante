@@ -4,6 +4,47 @@ All notable changes to the El Rocinante parent theme are recorded here. Entries 
 
 ---
 
+## [6.16.0] — 2026-09-04
+
+`.screen-reader-text` is now defined in the parent, so every child inherits it at runtime.
+
+### This fixes a live defect, not a hypothetical one
+
+**Nothing in the parent or in any child defined this class** — verified by grep across the parent's SCSS and confirmed against the compiled artifact, where the string was absent from all 2,911 bytes of `dist/css/style.css`.
+
+Meanwhile **the parent itself emits it.** `archive.php:59` and `search.php:50` both call `the_posts_pagination()`, and WordPress core wraps that output in:
+
+```html
+<h2 class="screen-reader-text">Posts navigation</h2>
+```
+
+An undefined visually-hidden class does nothing, so **that heading has been rendering as a visible stray "Posts navigation" line on every paginated archive and search page, on every child.** Core emits the same class from search-form and comment-form markup too.
+
+### Where it lives, and why it keeps its name
+
+Appended to `base/_utilities.scss` (**v1.3.0**) under its own `ACCESSIBILITY` banner, after the fourteen `u-` classes. It is counted separately from them and **carries no `u-` prefix on purpose**: `screen-reader-text` is a **contract name** WordPress core writes into markup, so it must match core rather than our prefix scheme. The file header now says so.
+
+The propagation path is the one `_utilities.scss` already documents for its own classes — `main.scss` → the parent's `dist/css/style.css` → enqueued by every child as `el-rocinante-style` and named as a dependency of the child's own sheet. **Nothing is copied into a child.**
+
+### The rule, and two deliberate departures from core
+
+Canonical WP recipe: `position: absolute`, 1px box, `overflow: hidden`, **both** `clip` (legacy) and `clip-path` (modern), `word-wrap: normal !important`. Plus the `:focus` reveal, for a hidden element that can take focus — a skip link being the canonical case, and a skip link that stays invisible when focused is the classic accessibility failure that half prevents.
+
+| Departure | Why |
+|---|---|
+| `:focus` uses `position: static`, not core's `absolute; top: 5px; left: 5px` | The site header is `position: fixed`. An absolute reveal pinned to the viewport top would land **underneath the nav** — reintroducing precisely the hidden-behind-the-header failure this class exists to avoid. |
+| No `background-color`, `color` or `font-size` | Core hardcodes `#eee` / `#444` / `1em`. The parent is deliberately undesigned and its palette slots are placeholders, so baking greys in would be a brand decision the parent has no business making. The revealed element inherits the child's palette and type. |
+
+⚠ **Never substitute `display: none` or `visibility: hidden`.** Both remove the text from the accessibility tree as well as from view, which defeats the entire purpose. The in-file comment says so at the declaration.
+
+**The `:focus` half has no consumer today** — neither the parent nor either child ships a skip link. It is included because it is half of the canonical rule, and because whoever eventually adds a skip link will assume the class already works rather than think to add it.
+
+### Follow-up, deliberately not in this release
+
+Fish Potrero carries a local copy of this rule, added during its 404/search build before the parent had one. It is now redundant. **Removing it is a separate child-side change**, sequenced after this deploys — parent first, so the class is never undefined mid-cutover. Until then the two definitions coexist harmlessly: they are equivalent, and the child's sheet loads after the parent's.
+
+---
+
 ## [6.15.0] — 2026-09-04
 
 The per-page schema field gains a **`{{home}}` authoring token** and **two validation layers**. Both rest on the same order of operations, and getting it backwards is the one way to break this feature.
