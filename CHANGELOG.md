@@ -4,6 +4,48 @@ All notable changes to the El Rocinante parent theme are recorded here. Entries 
 
 ---
 
+## [6.14.0] — 2026-09-04
+
+The site-level business JSON-LD now carries a **`logo`** property.
+
+### Additive — `image` is untouched
+
+`image` and `logo` emit **side by side** and assert different things:
+
+| Key | Means | Source |
+|---|---|---|
+| `image` | The business photo | Business tab → Schema Image (`roci_business['schema_image']`) |
+| `logo` | The brand mark | Site Identity → Site Icon (`get_option('site_icon')`) |
+
+The existing `image` block is unchanged in both source and behaviour. Nothing was replaced.
+
+### Why the Site Icon and not the Site Logo
+
+**The obvious source is the wrong one here.** Theme Settings → Site Identity offers two media fields, and this reads the *second* of them:
+
+- **`custom_logo`** (the "Site Logo" theme mod) holds an **SVG** on every site in this network — confirmed on staging. Two problems: a vector mark is the weaker choice for a `logo` a crawler has to rely on, and an SVG resolves unreliably through `wp_get_attachment_image_url()` because it carries no dimension metadata.
+- **`site_icon`** (the "Site Icon (Favicon)") is a **PNG**, and across this network the favicon and the logo are always the same mark. It is the dependable copy of the asset we actually want.
+
+So the source is `get_option( 'site_icon' )` — an attachment ID, resolved to an absolute URL with `wp_get_attachment_image_url( $id, 'full' )`.
+
+⚠ **A third logo field exists and is not this one.** Theme Settings → Footer has `roci_setting( 'footer', 'logo_url' )`, which stores a URL rather than an ID. Different tab, different storage, unrelated.
+
+### Guarded, per the file's existing idiom
+
+No Site Icon set → the id is `0` → **the key is omitted entirely.** It is never emitted empty or half-resolved, matching how `image`, `priceRange`, `address` and `description` already behave in this block. A site with no favicon emits byte-identical JSON-LD to before.
+
+Inserted **before** the `roci_schema_data` dispatch, so a child can still override the value or drop the key without forking `header.php`.
+
+### One schema note, recorded rather than acted on
+
+`logo` is an `Organization` property. `LocalBusiness`, `LodgingBusiness` and `Restaurant` all inherit from Organization; **`TouristAttraction` does not** — it descends from `Place` alone. The key therefore emits on a type that does not strictly declare it for the tourism vertical. This is **deliberate and matches existing precedent in the same block**: `priceRange` is likewise a LocalBusiness property emitted on every type, the node is already `@id → #organization`, and consumers read it without complaint. It is *not* gated the way `numberOfRooms` / `petsAllowed` are, because that gate is driven by each vertical's `fields` array — which also decides what the Business tab renders as an input, and `logo` is not a Business-tab field.
+
+### Also in this release
+
+`header.php` → **v1.12.0**. `inc/schema/business-types.php` is **not** touched — the type map is read, not changed.
+
+---
+
 ## [6.13.0] — 2026-09-04
 
 Optional **per-page OpenGraph overrides**. Two new fields let a page state a social-share title and description that differ from its search-result title and description, without introducing a second place to maintain the common case.

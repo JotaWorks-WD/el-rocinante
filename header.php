@@ -10,7 +10,7 @@
  * its @type resolves from roci_business_types() (inc/schema/business-types.php).
  *
  * File:    header.php
- * Version: 1.11.0
+ * Version: 1.12.0
  * Updated: 2026-09-04
  *
  * @package ElRocinante
@@ -262,6 +262,30 @@
             'email'     => $roci_biz_email,
             'sameAs'    => $roci_same_as,
         ];
+
+        /*
+         * LOGO — the brand mark, sourced from the Site Icon (favicon).
+         *
+         * ADDITIVE, NOT A REPLACEMENT FOR image. The two are different
+         * assertions and both belong here: image is the business photo,
+         * logo is the mark. They emit side by side.
+         *
+         * SOURCE IS site_icon, DELIBERATELY — NOT custom_logo. Every site in
+         * this network uses the same mark for both, and the Site Icon is a
+         * PNG while the Site Logo is an SVG. schema.org logo wants a raster
+         * the crawler can rely on, and an SVG also resolves unreliably
+         * through the image-size pipeline because it carries no dimension
+         * metadata. The favicon is the dependable copy of the same mark.
+         * The Footer tab's logo_url is a third, unrelated field — not this.
+         *
+         * Stored as an ATTACHMENT ID, so it resolves to an absolute URL
+         * here. No favicon set = id 0 = key omitted, per the idiom below.
+         */
+        $roci_logo_id  = (int) get_option( 'site_icon', 0 );
+        $roci_logo_url = $roci_logo_id ? wp_get_attachment_image_url( $roci_logo_id, 'full' ) : '';
+        if ( $roci_logo_url ) {
+            $roci_local_schema['logo'] = $roci_logo_url;
+        }
 
         // Only emit image when a Schema Image is set (blank = key omitted by design).
         if ( $roci_biz_schema_image ) {
