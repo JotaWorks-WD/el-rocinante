@@ -10,7 +10,7 @@
  * its @type resolves from roci_business_types() (inc/schema/business-types.php).
  *
  * File:    header.php
- * Version: 1.12.0
+ * Version: 1.13.0
  * Updated: 2026-09-04
  *
  * @package ElRocinante
@@ -114,9 +114,21 @@
     }
 
     // --------------------------------------------------------
-    // SCHEMA JSON-LD
+    // SCHEMA JSON-LD — per-page, author-pasted
+    //
+    // Resolved here, emitted below. The order is read → expand →
+    // validate, and it is load-bearing: the stored field may contain
+    // {{home}}, which is not valid JSON on its own, so the check runs on
+    // the EXPANDED string. Validating the raw field would reject every
+    // correctly tokenized paste.
+    //
+    // Both helpers live in inc/schema/schema-tokens.php — the same pair
+    // the SEO Health panel mirrors client-side.
     // --------------------------------------------------------
-    $roci_schema   = roci_get_field( 'roci_schema_json', $roci_post_id );
+    $roci_schema          = roci_get_field( 'roci_schema_json', $roci_post_id );
+    $roci_schema_expanded = roci_expand_schema_tokens( $roci_schema );
+    $roci_schema_valid    = roci_schema_json_is_valid( $roci_schema );
+
     $roci_hreflang = str_replace( '_', '-', get_locale() );
     ?>
 
@@ -154,10 +166,14 @@
     <?php endif; ?>
 
     <?php if ( $roci_schema ) : ?>
+        <?php if ( $roci_schema_valid ) : ?>
     <!-- Schema JSON-LD — Page Level (Metabox) -->
     <script type="application/ld+json">
-    <?php echo $roci_schema; ?>
+    <?php echo $roci_schema_expanded; ?>
     </script>
+        <?php else : ?>
+    <!-- schema-json invalid, skipped -->
+        <?php endif; ?>
     <?php endif; ?>
 
     <?php

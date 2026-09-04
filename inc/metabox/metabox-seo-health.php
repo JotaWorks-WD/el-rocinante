@@ -6,9 +6,14 @@
  * Watches meta title, description, schema, OG image, featured image,
  * and slug fields — updates in real time as the editor types.
  *
+ * Includes the live JSON validity check for the per-page schema field.
+ * That check is the PRIMARY error surface for a malformed paste: it
+ * renders inside the meta box, so it works identically in Gutenberg and
+ * the classic editor, and it reports before the save rather than after.
+ *
  * File:    inc/metabox/metabox-seo-health.php
- * Version: 1.1.1
- * Updated: 2026-06-27
+ * Version: 1.2.0
+ * Updated: 2026-09-04
  *
  * @package ElRocinante
  */
@@ -126,6 +131,10 @@ function roci_seo_health_html( $default_og_image ) {
                 var schema    = schemaEl ? schemaEl.value.trim() : "";
                 var slug      = cachedSlug;
 
+                // Mirrors roci_expand_schema_tokens() (inc/schema/schema-tokens.php).
+                // If the token syntax changes there, change it here too.
+                var rociHomeUrl = "' . esc_js( untrailingslashit( home_url() ) ) . '";
+
                 // OG Image data
                 var ogData = window.rociCurrentOgImageData || null;
 
@@ -224,6 +233,36 @@ function roci_seo_health_html( $default_og_image ) {
                 item( "Schema JSON-LD set", !!schema,
                     schema ? "Schema present" : "No schema set for this page"
                 );
+
+                /*
+                 * VALIDITY — the primary error surface for a bad paste.
+                 *
+                 * {{home}} IS EXPANDED BEFORE PARSING, and that is the whole
+                 * subtlety here: the token is not valid JSON on its own, so
+                 * parsing the raw textarea would flag every correctly
+                 * tokenized paste as broken — punishing the recommended
+                 * form. Same order the server uses: expand, then validate.
+                 */
+                if ( schema ) {
+                    var schemaProbe = schema.split("{{home}}").join( rociHomeUrl );
+                    var schemaValid = true;
+                    var schemaError = "";
+
+                    try {
+                        JSON.parse( schemaProbe );
+                    } catch ( err ) {
+                        schemaValid = false;
+                        schemaError = err.message || "Invalid JSON";
+                    }
+
+                    item( "Schema JSON-LD valid", schemaValid,
+                        schemaValid
+                            ? "Parses as valid JSON"
+                            : "Will NOT be emitted on the front end — " + schemaError
+                    );
+                } else {
+                    item( "Schema JSON-LD valid", null, "No schema to validate", "skip" );
+                }
 
                 // ---- OG IMAGE ----
                 section("OG Image");

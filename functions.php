@@ -6,8 +6,8 @@
  * loads includes, and outputs analytics/integration scripts.
  *
  * File:    functions.php
- * Version: 1.11.0
- * Updated: 2026-08-18
+ * Version: 1.12.0
+ * Updated: 2026-09-04
  *
  * @package ElRocinante
  */
@@ -138,6 +138,7 @@ add_filter( 'pre_get_document_title', function( $title ) {
 
 require_once get_template_directory() . '/inc/schema/business-types.php';
 require_once get_template_directory() . '/inc/schema/social-platforms.php';
+require_once get_template_directory() . '/inc/schema/schema-tokens.php';
 
 
 // ============================================================

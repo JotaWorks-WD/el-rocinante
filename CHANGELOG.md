@@ -4,6 +4,51 @@ All notable changes to the El Rocinante parent theme are recorded here. Entries 
 
 ---
 
+## [6.15.0] — 2026-09-04
+
+The per-page schema field gains a **`{{home}}` authoring token** and **two validation layers**. Both rest on the same order of operations, and getting it backwards is the one way to break this feature.
+
+### The new file — one source, two consumers
+
+`inc/schema/schema-tokens.php` (**v1.0.0**), required from `functions.php` under the existing `// BUSINESS SCHEMA SYSTEM` banner alongside `business-types.php` and `social-platforms.php`.
+
+| Function | Does |
+|---|---|
+| `roci_expand_schema_tokens( $json )` | `{{home}}` → `untrailingslashit( home_url() )` |
+| `roci_schema_json_is_valid( $json )` | Expands **first**, then `json_decode` + `json_last_error()` |
+
+Per the one-source-multi-consumer rule, `header.php` and the SEO Health panel both read these rather than keeping private copies. The panel's copy is client-side by necessity and carries an in-place comment saying so.
+
+### Why a token
+
+`roci_schema_json` is author-pasted free text echoed raw, with **no URL rewriting anywhere in the path**. A hardcoded domain therefore freezes into `wp_postmeta` and survives a launch. `{{home}}` resolves at render time instead, so one paste is correct on staging and on the live domain with no search-replace dependency. The trailing slash is stripped so `{{home}}/#organization` composes to `https://example.com/#organization` rather than doubling the slash.
+
+### ⚠ Expand before you validate — everywhere
+
+**`{{home}}` is not valid JSON on its own.** Validating the raw field would reject every correctly tokenized paste — punishing exactly the form the token exists to encourage. So the order is **read → expand → validate → emit**, in all three places that touch the value: the render path, the PHP validator, and the client-side check. `roci_schema_json_is_valid()` enforces it internally so a caller cannot get it wrong.
+
+### Two layers, and why there is no third
+
+**Primary — live, client-side, in the panel.** `metabox-seo-health.php` (**v1.2.0**) gains a `Schema JSON-LD valid` line: it expands the token, runs `JSON.parse`, and reports pass/fail with the parser's own message. It renders **inside the meta box**, so it behaves identically in Gutenberg and the classic editor, and it reports **as you type — before the save**, which is where an author can actually act on it.
+
+**Backstop — render-time failsafe.** `header.php` (**v1.13.0**) emits the **expanded** JSON when valid, and `<!-- schema-json invalid, skipped -->` when not. Unvalidated JSON can no longer reach a live page.
+
+**No save-time block, deliberately.** A field-isolated "reject this value, show an error, keep the paste" cycle is not cleanly available: WordPress's post-save path has no validation-error return channel the way the Settings API does, so refusing the value via `rwmb_{$field_id}_value` can only return `$old` — silently reverting the author's work. Keeping the paste visible would need a second holding meta key, and the error would be announced through `admin_notices`, **which Gutenberg suppresses** — returning the paste with no visible reason. A live check that fires before the save is strictly better UX than a block that cannot explain itself.
+
+### BEHAVIOUR CHANGE
+
+**A page whose stored schema is invalid JSON now emits nothing where it previously emitted broken markup.** Intended, and the reason the failsafe exists. Confirmed against live content before shipping: no page currently carries valid per-page schema, so this affects zero real pages.
+
+### What did NOT change
+
+`metabox-schema-fields.php` (**v1.3.0**) is a **description-only** edit documenting the token — no value filter, no `field_meta` filter, no notices, no holding key. The global `$roci_local_schema` block, `jw_faq_schema()` and the FAQ block are untouched. Per-page schema remains its own independent `<script>`: **no merge, no `@graph`.**
+
+### Also in this release
+
+`functions.php` → **v1.12.0** (one `require_once`).
+
+---
+
 ## [6.14.0] — 2026-09-04
 
 The site-level business JSON-LD now carries a **`logo`** property.
