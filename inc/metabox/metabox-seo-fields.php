@@ -4,11 +4,12 @@
  *
  * Registers the SEO Settings metabox on pages and posts.
  * Includes target query, meta title/description, canonical,
- * robots, OG image, and conditionally the preview/health panels.
+ * robots, OG image, OG title/description overrides, and
+ * conditionally the preview/health panels.
  *
  * File:    metabox-seo-fields.php
- * Version: 1.3.2
- * Updated: 2026-07-08
+ * Version: 1.4.0
+ * Updated: 2026-09-04
  *
  * @package ElRocinante
  */
@@ -119,6 +120,30 @@ add_filter( 'rwmb_meta_boxes', function( $meta_boxes ) {
             'size'       => 80,
             'attributes' => array(
                 'id' => 'roci_og_image_alt',
+            ),
+        ),
+
+        // OG Title
+        array(
+            'id'         => 'roci_og_title',
+            'name'       => __( 'OG Title', 'rocinante' ),
+            'type'       => 'text',
+            'desc'       => __( 'Social-share title override. Leave blank to use the Meta Title.', 'rocinante' ),
+            'size'       => 80,
+            'attributes' => array(
+                'id' => 'roci_og_title',
+            ),
+        ),
+
+        // OG Description
+        array(
+            'id'         => 'roci_og_description',
+            'name'       => __( 'OG Description', 'rocinante' ),
+            'type'       => 'textarea',
+            'desc'       => __( 'Social-share description override. Leave blank to use the Meta Description.', 'rocinante' ),
+            'rows'       => 3,
+            'attributes' => array(
+                'id' => 'roci_og_description',
             ),
         ),
 

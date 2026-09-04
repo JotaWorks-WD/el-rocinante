@@ -4,7 +4,7 @@ Theme URI: https://jota.works
 Author: JotaWorks
 Author URI: https://jota.works
 Description: A lean, professional WordPress base theme by JotaWorks. Built for service businesses, tourism, and property management — with a custom SEO layer, schema markup, and no page builder bloat.
-Version: 6.12.0
+Version: 6.13.0
 License: Private
 License URI: https://jota.works
 Text Domain: rocinante
@@ -14,11 +14,11 @@ GitHub Branch: main
 
 /*
 Changelog (newest first, rolling 6):
+v6.13.0 — 2026-09-04 — MINOR — Optional per-page OpenGraph overrides. Two new fields on the SEO Settings meta box (roci_og_title text, roci_og_description textarea), both blank by default and hide-when-blank so a page with nothing set inherits silently. header.php resolves og:title as roci_og_title → roci_meta_title → post title, and og:description as roci_og_description → roci_meta_description → roci_setting('seo','default_meta_description'); twitter:title and twitter:description read the resolved OG values, so there are no separate Twitter fields. NO BEHAVIOUR CHANGE where the new fields are blank — every existing page emits byte-identical head output. $roci_title and $roci_description are untouched, so <title>, <meta name="description"> and the OG-image-alt chain resolve exactly as before. The admin Facebook and Twitter preview tabs now mirror the same chain; the Google tab still reads the meta fields directly.
 v6.12.0 — 2026-08-18 — MINOR — Comments disabled network-wide from the parent (new inc/comment-suppression.php). Graduates the standalone "Disable Comments Clean" plugin (v3.14) off Fish Potrero into the parent so every child inherits it. Five mechanisms: remove_post_type_support for comments/trackbacks on admin_init; comments_open/pings_open forced false; comments_array emptied to hide existing comments; comment-reply script dequeued + deregistered; cancel_comment_reply_link emptied. BEHAVIORAL/CONTRACT CHANGE: this ships to every child with NO opt-out filter — deliberately unlike archive-suppression.php. Front-end output is unchanged everywhere (no theme in the family renders comments), but Coco ATV and 360 Splendor lose comment UI in wp-admin. Fish Potrero sees no change; its plugin must be deactivated post-deploy to avoid duplication.
 v6.11.0 — 2026-08-09 — MINOR — consolidate duplicated toast into shared dist/js/folders/folders-toast.js; both Fauxlders surfaces (bulk-select, drag-drop) now call one showToast; all behaviors preserved (Undo, per-scenario durations), only the i18n undo-label source unified to a parameter
 v6.10.3 — 2026-08-09 — PATCH — correct six drifted line references in folders comments (folders-bulk.js, branding.php, filters.php); comment-only, no behavior change
 v6.10.2 — 2026-08-09 — PATCH — retense stale roci_social_platforms comment in settings-sanitize.php (comment-only, no behavior change)
 v6.10.1 — 2026-08-09 — PATCH — remove dead newFolderLabel localization; add missing docblock versions (index.php, single.php, upload-picker.js format)
-v6.10.0 — 2026-08-08 — MINOR — Business schema now emits site-wide, not homepage-only. Removed the is_front_page() gate wrapping the site-level business JSON-LD in header.php; the inner $roci_biz_name guard is retained, so a site with no business name configured still emits nothing. BEHAVIORAL/CONTRACT CHANGE (invisible in diff): the roci_schema_data filter now fires on every page load where a business name is set, not once per homepage — child callbacks registered on it run per-request. No child currently registers it. Interior pages with a populated roci_schema_json field now emit two JSON-LD blocks (page-level + site-level), which is valid.
 */
 

@@ -4,6 +4,62 @@ All notable changes to the El Rocinante parent theme are recorded here. Entries 
 
 ---
 
+## [6.13.0] — 2026-09-04
+
+Optional **per-page OpenGraph overrides**. Two new fields let a page state a social-share title and description that differ from its search-result title and description, without introducing a second place to maintain the common case.
+
+### The two fields
+
+Both appended to the existing `roci_seo_fields` meta box in `inc/metabox/metabox-seo-fields.php`, after `roci_og_image_alt` so the OG cluster stays contiguous:
+
+| id | type | label |
+|---|---|---|
+| `roci_og_title` | `text`, size 80 | OG Title |
+| `roci_og_description` | `textarea`, rows 3 | OG Description |
+
+**Both are blank by default and hide-when-blank** — a page with nothing set inherits the SEO title and description silently, which is the intended state for almost every page. Neither carries an `rwmb_*_value` filter; the two filters in that file are specific to `roci_slug`'s config-array corruption (§13.1) and are not a general convention.
+
+### The resolution chains
+
+`header.php` resolves both immediately after the meta-description block, then feeds all four social tags:
+
+```
+og:title            → roci_og_title       → roci_meta_title       → get_the_title()
+og:description      → roci_og_description → roci_meta_description → roci_setting('seo','default_meta_description')
+twitter:title       → the resolved og:title       (same value)
+twitter:description → the resolved og:description (same value)
+```
+
+**There are no separate Twitter fields, deliberately.** Both Twitter tags already read the same variables as their OG counterparts, so pointing the OG pair at the new variables gives Twitter inheritance for free. A separate Twitter pair would be two more fields that are blank on every page and drift the day one is filled.
+
+### No behaviour change where the fields are blank
+
+Every existing page emits **byte-identical `<head>` output** — an empty field falls straight through to the value that was already being emitted.
+
+**`$roci_title` and `$roci_description` are untouched**, and that is load-bearing rather than incidental: they are also consumed by the `pre_get_document_title` filter (`functions.php:118-123`), by `<meta name="description">`, and by the OG-image-alt fallback chain (`header.php:96-101`). The override is a **new pair of variables**, not a mutation of the existing two, so all three of those consumers resolve exactly as before.
+
+Deliberately **not** changed, each considered and declined:
+
+- **No excerpt fallback.** The description chain ends at the site default, as it always has.
+- **`roci_og_image_alt` still falls back to `$roci_description` / `$roci_title`**, not to the OG-resolved values.
+- **No SEO Health rule for either field.** Blank means inherit, which is correct — flagging it would report the normal case as a defect.
+
+### The preview panel had to move with it
+
+`inc/metabox/metabox-seo-preview.php` renders four tabs, and its **Facebook and Twitter tabs read the meta title/description inputs directly**. Left alone, they would have shown the SEO values while the live page emitted the OG override — the panel would have been actively wrong about the feature it exists to preview.
+
+Both social tabs now mirror the header's chain (OG field first, falling back to what the Google tab resolved). **The Google tab is unchanged** and still reads `roci_meta_title` / `roci_meta_description` directly, because that is what a search result actually shows.
+
+### Reaches every child with no child-side work
+
+Both mechanisms are parent-owned. `header.php` is the sole emitter of these four tags family-wide and a child may not ship one (§5b); the meta box attaches through `roci_get_seo_post_types()`, which each child already extends by filter for its CPTs. Both fields and the new resolution appear everywhere on the next parent deploy.
+
+### Also in this release
+
+`inc/metabox/metabox-seo-fields.php` → **v1.4.0** · `header.php` → **v1.11.0** · `inc/metabox/metabox-seo-preview.php` → **v1.2.0**.
+
+---
+
 ## [6.12.0] — 2026-08-18
 
 Comments are now disabled network-wide from the parent. This **graduates the standalone "Disable Comments Clean" plugin (v3.14, JotaWorks)** — which ran on Fish Potrero only — into the parent theme, so every child inherits the behaviour without a per-site plugin install.

@@ -10,8 +10,8 @@
  * its @type resolves from roci_business_types() (inc/schema/business-types.php).
  *
  * File:    header.php
- * Version: 1.10.0
- * Updated: 2026-08-08
+ * Version: 1.11.0
+ * Updated: 2026-09-04
  *
  * @package ElRocinante
  */
@@ -41,6 +41,19 @@
     $roci_meta_desc    = roci_get_field( 'roci_meta_description', $roci_post_id );
     $roci_default_desc = roci_setting( 'seo', 'default_meta_description' );
     $roci_description  = $roci_meta_desc ? $roci_meta_desc : $roci_default_desc;
+
+    // --------------------------------------------------------
+    // OG TITLE / DESCRIPTION
+    // Per-page social-share overrides. Both fields are blank by
+    // default, so a page with nothing set inherits the SEO title
+    // and description silently.
+    // Twitter inherits these — there are no separate Twitter fields.
+    // --------------------------------------------------------
+    $roci_og_title_field = roci_get_field( 'roci_og_title', $roci_post_id );
+    $roci_og_title       = $roci_og_title_field ? $roci_og_title_field : $roci_title;
+
+    $roci_og_desc_field  = roci_get_field( 'roci_og_description', $roci_post_id );
+    $roci_og_description = $roci_og_desc_field ? $roci_og_desc_field : $roci_description;
 
     // --------------------------------------------------------
     // CANONICAL
@@ -118,8 +131,8 @@
 
     <!-- Open Graph -->
     <meta property="og:type" content="<?php echo is_single() ? 'article' : 'website'; ?>">
-    <meta property="og:title" content="<?php echo esc_attr( $roci_title ); ?>">
-    <meta property="og:description" content="<?php echo esc_attr( $roci_description ); ?>">
+    <meta property="og:title" content="<?php echo esc_attr( $roci_og_title ); ?>">
+    <meta property="og:description" content="<?php echo esc_attr( $roci_og_description ); ?>">
     <meta property="og:url" content="<?php echo esc_url( $roci_canonical ); ?>">
     <meta property="og:site_name" content="<?php echo esc_attr( $roci_site_name ); ?>">
     <meta property="og:locale" content="<?php echo esc_attr( get_locale() ); ?>">
@@ -133,8 +146,8 @@
 
     <!-- Twitter Card -->
     <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:title" content="<?php echo esc_attr( $roci_title ); ?>">
-    <meta name="twitter:description" content="<?php echo esc_attr( $roci_description ); ?>">
+    <meta name="twitter:title" content="<?php echo esc_attr( $roci_og_title ); ?>">
+    <meta name="twitter:description" content="<?php echo esc_attr( $roci_og_description ); ?>">
     <meta property="twitter:url" content="<?php echo esc_url( $roci_canonical ); ?>">
     <?php if ( $roci_og_image_url ) : ?>
     <meta name="twitter:image" content="<?php echo esc_url( $roci_og_image_url ); ?>">

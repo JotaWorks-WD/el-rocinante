@@ -6,9 +6,13 @@
  * Tabs: Google Preview, Facebook Preview, Twitter Preview, SEO Health.
  * Updates in real time as the editor types — no save required.
  *
+ * The Facebook and Twitter tabs mirror header.php's OG resolution
+ * chain (roci_og_title/roci_og_description falling back to the meta
+ * title/description); the Google tab reads the meta fields directly.
+ *
  * File:    inc/metabox/metabox-seo-preview.php
- * Version: 1.1.1
- * Updated: 2026-06-27
+ * Version: 1.2.0
+ * Updated: 2026-09-04
  *
  * @package ElRocinante
  */
@@ -163,6 +167,8 @@ function roci_seo_preview_html( $default_og_image ) {
 
             var titleField   = document.getElementById("roci_meta_title");
             var descField    = document.getElementById("roci_meta_description");
+            var ogTitleField = document.getElementById("roci_og_title");
+            var ogDescField  = document.getElementById("roci_og_description");
             var siteUrl      = window.location.hostname;
             var defaultOgImg = "' . esc_js( $default_og_image ) . '";
 
@@ -203,6 +209,14 @@ function roci_seo_preview_html( $default_og_image ) {
                 }
                 if ( !desc ) desc = "No meta description set.";
 
+                // Social tabs follow header.php: the OG override first,
+                // then whatever the Google tab already resolved to.
+                var ogTitle = ogTitleField ? ogTitleField.value.trim() : "";
+                var ogDesc  = ogDescField  ? ogDescField.value.trim()  : "";
+
+                var socialTitle = ogTitle ? ogTitle : title;
+                var socialDesc  = ogDesc  ? ogDesc  : desc;
+
                 var imageData = getActiveImage();
 
                 // Google
@@ -225,14 +239,14 @@ function roci_seo_preview_html( $default_og_image ) {
                 setImageInElement("roci-google-img-wrap", "roci-google-img-source", imageData);
 
                 // Facebook
-                if (el("roci-fb-title"))  el("roci-fb-title").textContent  = title;
-                if (el("roci-fb-desc"))   el("roci-fb-desc").textContent   = desc;
+                if (el("roci-fb-title"))  el("roci-fb-title").textContent  = socialTitle;
+                if (el("roci-fb-desc"))   el("roci-fb-desc").textContent   = socialDesc;
                 if (el("roci-fb-domain")) el("roci-fb-domain").textContent = siteUrl;
                 setImageInElement("roci-fb-image-wrap", "roci-fb-img-source", imageData);
 
                 // Twitter
-                if (el("roci-tw-title"))  el("roci-tw-title").textContent  = title;
-                if (el("roci-tw-desc"))   el("roci-tw-desc").textContent   = desc;
+                if (el("roci-tw-title"))  el("roci-tw-title").textContent  = socialTitle;
+                if (el("roci-tw-desc"))   el("roci-tw-desc").textContent   = socialDesc;
                 if (el("roci-tw-domain")) el("roci-tw-domain").textContent = siteUrl;
                 setImageInElement("roci-tw-image-wrap", "roci-tw-img-source", imageData);
 
@@ -322,8 +336,10 @@ function roci_seo_preview_html( $default_og_image ) {
             });
 
             // Init
-            if (titleField) titleField.addEventListener("input", window.rociUpdatePreviews);
-            if (descField)  descField.addEventListener("input", window.rociUpdatePreviews);
+            if (titleField)   titleField.addEventListener("input", window.rociUpdatePreviews);
+            if (descField)    descField.addEventListener("input", window.rociUpdatePreviews);
+            if (ogTitleField) ogTitleField.addEventListener("input", window.rociUpdatePreviews);
+            if (ogDescField)  ogDescField.addEventListener("input", window.rociUpdatePreviews);
 
             watchOgImageField();
             watchFeaturedImage();
