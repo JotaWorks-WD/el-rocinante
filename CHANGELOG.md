@@ -4,6 +4,47 @@ All notable changes to the El Rocinante parent theme are recorded here. Entries 
 
 ---
 
+## [6.21.0] — 2026-09-11
+
+The Fauxlders **upload picker** ("Upload to fauxlder") now renders parent/child hierarchy.
+
+### ⚠ A deliberate reversal, not a drift
+
+`roci_get_upload_picker_folders()` was **flat by design**, and its previous docblock said so. Hierarchy is reintroduced per owner decision (**bug #16**): parent folders **are** valid assignment targets, so the picker has to show which folder sits under which. This reverses the flattening half of archive **#R4/#5** — do not "restore" the flat form later as a consistency fix.
+
+### What changed — `inc/folders/upload.php` (**v2.10.0**)
+
+The projection at the old `:110-113` copied `{ id, name }` and dropped `->parent`. It now:
+
+1. Buckets terms by `$term->parent`
+2. Sorts each sibling bucket A-Z on the **decoded** name via `roci_sort_folder_children_alphabetically()`
+3. Walks depth-first, prefixing `str_repeat( "\u{2014} ", $depth )`
+
+This is the recipe already proven twice on this site — `roci_render_folder_select_dropdown()` (`filters.php:56`) and `roci_get_folder_terms_for_js()` (`filters.php:392`). **The prefix expression is byte-identical to all three existing builders.** The one departure: those call `roci_format_folder_option_label()` and append a `" (N)"` count, which this picker has never shown and does not gain here.
+
+### Nesting only — the A-Z sort is retained
+
+That is precisely why this does **not** adopt `roci_get_folder_terms_with_depth()` (`filters.php:517`), which would otherwise look like the obvious consolidation. That helper carries `roci_get_folder_order_query_args()`, so it orders by the sidebar's hand-sorted **drag order** — adopting it would silently undo v5.8.0. It also keys on `term_id` where this array's consumer reads `f.id`. Consolidating the two is a separate decision.
+
+### Four constraints, and how each is met
+
+| Constraint | How |
+|---|---|
+| No `<optgroup>` | Its labels are not selectable; parents must stay selectable. Flat `<option>` list with an indent prefix is the only native form that keeps every row a valid target. |
+| Literal U+2014, never `&mdash;` | The chain is `roci_folder_display_name()` decode → `escapeHtml()` in JS → `innerHTML`. An entity would survive PHP, then be escaped into visible literal text, **and** re-break archive #R1's `&`-decode. `str_repeat()` is applied **after** the decode for the same reason. |
+| Parents at depth 0, no prefix | Free — `str_repeat( …, 0 )` returns `''`, no special-casing. |
+| A-Z siblings preserved | The sort runs per bucket, not over the flat list. Sorting the flat list would scatter children away from their parents once the walk imposes depth-first order. |
+
+### No JavaScript change
+
+`dist/js/folders/upload-picker.js` is **untouched**. The prefix arrives inside the `name` it already renders, `escapeHtml()` leaves a non-ASCII em-dash alone, and `create.php:322`'s post-create AJAX refresh picks up the new shape automatically because it calls the same function. `"— No fauxlder —"` is still first.
+
+### Known, and shared with both reference dropdowns
+
+A term whose `parent` names a **missing** term is unreachable by the walk and will not render. Both reference builders have the identical exposure, so this matches them rather than diverging; WordPress reparents children on term delete, so it should not arise in practice.
+
+---
+
 ## [6.20.0] — 2026-09-11
 
 `searchform.php` is **promoted from Fish Potrero to the parent** (child v1.0.0 → parent **v1.1.0**), and the child copy is deleted in the same cutover.
