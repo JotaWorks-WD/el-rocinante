@@ -4,6 +4,44 @@ All notable changes to the El Rocinante parent theme are recorded here. Entries 
 
 ---
 
+## [6.20.0] — 2026-09-11
+
+`searchform.php` is **promoted from Fish Potrero to the parent** (child v1.0.0 → parent **v1.1.0**), and the child copy is deleted in the same cutover.
+
+### Why it belongs here
+
+WordPress resolves `get_search_form()` through the template hierarchy, so one file in the parent serves every child *and* the parent itself. That last part is the real gap this closes: **the parent's own `search.php:30` was falling through to core's default markup**, which carries none of the theme's classes. Both of Fish Potrero's call sites (`404.php:39`, `search.php:78`) resolve to the parent's copy now with no child-side change — nothing references the file by path, only through `get_search_form()`.
+
+### ⚠ The markup moved; the styling did not
+
+`.form__input`, `.btn`, `.btn--secondary` are named for kits **children** build. The parent ships no form styling and no button component by design (§8), and a grep confirms `.form__*` exists only in Fish Potrero's `Build/scss/components/_forms.scss` — nowhere in the parent.
+
+So on a child with neither kit this renders as **semantically correct but unstyled** markup. That is still an improvement on core's form, which is unstyled *and* unclassed — but do not read those class names as a promise the parent keeps.
+
+`.screen-reader-text` is the exception: it **is** the parent's (`base/_utilities.scss`, v6.16.0), so the label hides correctly everywhere with no child CSS at all.
+
+### Three things changed on promotion, all forced by parent rules
+
+| Change | Rule |
+|---|---|
+| Text domain `fishpotrero` → `rocinante` | The file is parent-owned now. |
+| `$fpp_search_id` → `$roci_search_id` | §4 — theme-local template variables take `$roci_`. |
+| Placeholder "Search boats, tours, species…" → "Search this site…" | §12.4 — **zero content-specific identifiers in the parent**, no business verticals, with a pre-commit grep that expects no matches. "boats, tours, species" is exactly what that grep exists to catch. |
+
+### New filter: `roci_search_placeholder`
+
+The placeholder change would otherwise be a silent regression on a live site, so the template dispatches a filter rather than hardcoding:
+
+```php
+add_filter( 'roci_search_placeholder', function () {
+    return __( 'Search boats, tours, species…', 'fishpotrero' );
+} );
+```
+
+⚠ **Fish Potrero loses its tailored placeholder until it registers that filter.** The one-line `add_filter` is **not** shipped in this release — it is a child-side change, and FP currently renders the generic default.
+
+---
+
 ## [6.19.0] — 2026-09-11
 
 New helper: **`jw_wysiwyg_body( $html )`** in `inc/helpers.php` (**v1.4.0**) — the seventh `jw_` helper.
@@ -213,9 +251,11 @@ Canonical WP recipe: `position: absolute`, 1px box, `overflow: hidden`, **both**
 
 **The `:focus` half has no consumer today** — neither the parent nor either child ships a skip link. It is included because it is half of the canonical rule, and because whoever eventually adds a skip link will assume the class already works rather than think to add it.
 
-### Follow-up, deliberately not in this release
+### Follow-up, deliberately not in this release — ✅ since completed
 
-Fish Potrero carries a local copy of this rule, added during its 404/search build before the parent had one. It is now redundant. **Removing it is a separate child-side change**, sequenced after this deploys — parent first, so the class is never undefined mid-cutover. Until then the two definitions coexist harmlessly: they are equivalent, and the child's sheet loads after the parent's.
+Fish Potrero carried a local copy of this rule, added during its 404/search build before the parent had one. It was redundant once this shipped. **Removing it was a separate child-side change**, sequenced after this deployed — parent first, so the class was never undefined mid-cutover. Until then the two definitions coexisted harmlessly: they were equivalent, and the child's sheet loads after the parent's.
+
+⚠ **That removal has since happened, and this entry is kept only as the record of why it was deferred.** Verified 2026-09-11: a recursive grep of `Clients/Fish Potrero/Build/scss/` returns exactly one `screen-reader-text` hit — `sections/charter/_contact.scss:250`, a Gravity Forms combinator (`.ginput_container_date .screen-reader-text + label`), not a declaration — and FP's compiled `dist/css/style.css` contains **zero** `.screen-reader-text{` rules. **`base/_utilities.scss` is now the only definition network-wide.**
 
 ---
 
