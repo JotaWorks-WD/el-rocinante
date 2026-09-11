@@ -7,9 +7,13 @@
  * robots, OG image, OG title/description overrides, and
  * conditionally the preview/health panels.
  *
+ * Also carries the storage guards for the fields whose stored value
+ * MB Pro mangles on its own: the slug field's config-array write, and
+ * the HTML-entity encoding on both description textareas.
+ *
  * File:    metabox-seo-fields.php
- * Version: 1.4.0
- * Updated: 2026-09-04
+ * Version: 1.5.1
+ * Updated: 2026-09-11
  *
  * @package ElRocinante
  */
@@ -283,3 +287,151 @@ function roci_save_slug_field( $post_id, $post ) {
 }
 
 add_action( 'save_post', 'roci_save_slug_field', 20, 2 );
+
+
+// ============================================================
+// DESCRIPTION TEXTAREAS — store RAW, escape on OUTPUT
+// ============================================================
+//
+// BOTH DESCRIPTION FIELDS ARE COVERED — roci_meta_description and
+// roci_og_description. They are the same field type declared the same
+// way, so they carry the same defect; og_description was added at
+// v1.5.1 after the meta_description fix at v1.5.0 proved out. The two
+// registrations below are deliberately identical line-for-line, and a
+// third textarea added to this meta box later wants the same trio.
+//
+// THE ENCODING IS NOT OURS. Nothing in this theme entity-encodes a
+// stored value: a grep of every .php in the parent and both children
+// returns zero hits for esc_html(), htmlentities() and
+// htmlspecialchars(), neither field carries a sanitize_callback, and no
+// rwmb_*_value filter touched either before these. The encoding happens
+// inside MB Pro's own save/render pipeline for a textarea — which is
+// third-party source we do not patch (CLAUDE.md 14.3), so the fix
+// compensates on our side of the boundary.
+//
+// The symptom: every save adds four characters per ampersand, and the
+// growth compounds.
+//
+//   typed:      Rods & Reels          (12 chars)
+//   1st save:   Rods &amp; Reels      (16)
+//   2nd save:   Rods &amp;amp; Reels  (20)
+//
+// A description written near the 160-char cap therefore creeps over it
+// and the field stops accepting a re-save. THE FRONT END NEVER SHOWED
+// IT: header.php escapes both values with esc_attr() — :136 for
+// <meta name="description">, :147 for og:description, which twitter
+// inherits — and the browser decodes the entity back, so the rendered
+// markup read correctly the whole time while the stored value drifted.
+// Output is already correct and is deliberately left alone —
+// escape-on-output is the half of the pattern that was never broken.
+//
+// Three hooks, because the value has to be clean at three moments and
+// no single one of them covers the others:
+//
+//   *_field_meta  — the admin edit form. This is the one that unblocks
+//                   the reported symptom: the textarea shows a raw &,
+//                   the meta description's 160-char counter in the
+//                   health panel counts what the editor actually typed,
+//                   and the next save writes the collapsed value back.
+//                   It also heals rows already in the DB without waiting
+//                   for a migration.
+//   *_get_value   — the data layer, so roci_get_field() hands header.php
+//                   (and any future consumer) the raw string.
+//   *_value       — the save path, so the raw & reaches wp_postmeta.
+//
+// Registered with one accepted arg where the arity is not verified
+// against the Meta Box docs; *_value and *_field_meta keep the arities
+// the slug filters above already prove.
+
+/**
+ * Decode HTML entities until the string stops changing.
+ *
+ * ONE PASS IS NOT ENOUGH. html_entity_decode() turns &amp;amp; into
+ * &amp;, not into &, so a value that was saved three times still reads
+ * back encoded after a single decode. Rows in the wild carry one layer
+ * per save, which is why this runs to a fixed point rather than once.
+ *
+ * The pass cap is a runaway guard, not a limit anyone should reach —
+ * ten layers of encoding is far beyond anything observed, and the loop
+ * exits on the first unchanged pass in every real case. A value with
+ * no entities in it returns after a single no-op pass.
+ */
+function roci_seo_decode_entities( $value ) {
+    if ( ! is_string( $value ) || '' === $value ) {
+        return $value;
+    }
+
+    $passes = 0;
+
+    do {
+        $previous = $value;
+        $value    = html_entity_decode( $previous, ENT_QUOTES | ENT_HTML5, 'UTF-8' );
+        $passes++;
+    } while ( $value !== $previous && $passes < 10 );
+
+    return $value;
+}
+
+// ---- Meta Description ----
+
+// Admin edit form — show the editor what is actually stored.
+add_filter( 'rwmb_roci_meta_description_field_meta', function( $value, $field, $saved ) {
+    return roci_seo_decode_entities( $value );
+}, 10, 3 );
+
+// Data layer — roci_get_field() / rwmb_meta() reads.
+add_filter( 'rwmb_roci_meta_description_get_value', function( $value ) {
+    return roci_seo_decode_entities( $value );
+}, 10, 1 );
+
+// Save path — the raw ampersand must survive to wp_postmeta.
+add_filter( 'rwmb_roci_meta_description_value', function( $new, $field, $old, $object_id ) {
+    // Same guard the slug field carries above: on REST/Gutenberg saves
+    // where the input is absent, MB Pro passes the $field CONFIG ARRAY
+    // as the value. Reject anything that is not a real scalar string so
+    // the serialized config can never persist to meta.
+    if ( ! is_string( $new ) ) {
+        return is_string( $old ) ? $old : '';
+    }
+
+    // DECODE FIRST, SANITIZE SECOND. sanitize_text_field() leaves a bare
+    // & alone, which is exactly what this fix depends on — so decoding
+    // ahead of it lets the raw ampersand reach the DB. Reversing the two
+    // would sanitize an already-encoded string and store the encoding.
+    return sanitize_text_field( roci_seo_decode_entities( $new ) );
+}, 10, 4 );
+
+
+// ---- OG Description ----
+//
+// Identical to the trio above, field name swapped. Kept as a separate
+// registration rather than a loop over both ids because that is how the
+// slug guards in this file read, and because a loop would hide which
+// fields are actually covered from anyone grepping for a field name.
+
+// Admin edit form — show the editor what is actually stored.
+add_filter( 'rwmb_roci_og_description_field_meta', function( $value, $field, $saved ) {
+    return roci_seo_decode_entities( $value );
+}, 10, 3 );
+
+// Data layer — roci_get_field() / rwmb_meta() reads.
+add_filter( 'rwmb_roci_og_description_get_value', function( $value ) {
+    return roci_seo_decode_entities( $value );
+}, 10, 1 );
+
+// Save path — the raw ampersand must survive to wp_postmeta.
+add_filter( 'rwmb_roci_og_description_value', function( $new, $field, $old, $object_id ) {
+    // Same guard the slug field carries above: on REST/Gutenberg saves
+    // where the input is absent, MB Pro passes the $field CONFIG ARRAY
+    // as the value. Reject anything that is not a real scalar string so
+    // the serialized config can never persist to meta.
+    if ( ! is_string( $new ) ) {
+        return is_string( $old ) ? $old : '';
+    }
+
+    // DECODE FIRST, SANITIZE SECOND. sanitize_text_field() leaves a bare
+    // & alone, which is exactly what this fix depends on — so decoding
+    // ahead of it lets the raw ampersand reach the DB. Reversing the two
+    // would sanitize an already-encoded string and store the encoding.
+    return sanitize_text_field( roci_seo_decode_entities( $new ) );
+}, 10, 4 );

@@ -4,6 +4,90 @@ All notable changes to the El Rocinante parent theme are recorded here. Entries 
 
 ---
 
+## [6.18.1] — 2026-09-11
+
+Extends the v6.18.0 entity-decode guard to **`roci_og_description`**, the identical sibling textarea.
+
+### Same defect, same file
+
+`roci_og_description` was declared alongside `roci_meta_description` in v6.13.0 as the same field type with the same shape, so it inherited the same MB Pro encoding defect — and the same consequence: four characters per ampersand per save, compounding, against the field's own character budget. v6.18.0 fixed only the field named in the report; this closes the pair.
+
+`metabox-seo-fields.php` (**v1.5.1**) registers the same three hooks against the new field id:
+
+| Hook | Covers |
+|---|---|
+| `rwmb_roci_og_description_field_meta` | Admin form; heals existing DB rows on read |
+| `rwmb_roci_og_description_get_value` | Data layer, single accepted arg |
+| `rwmb_roci_og_description_value` | Save path — decode **then** `sanitize_text_field()`, with the `is_string()` config-array guard |
+
+### `roci_seo_decode_entities()` is unchanged
+
+The helper was written field-agnostic and stays that way — **no change to its logic and no change to the ten-pass cap.** This release adds registrations, not behaviour.
+
+The two trios are written out separately rather than looped over a list of field ids. That is deliberate: it matches how the slug guards in this file read, and it keeps a grep for a field name landing on that field's guard. A third textarea added to this meta box later wants the same three lines.
+
+### No output change
+
+`header.php:147` already escaped `og:description` with `esc_attr()`, and `twitter:description` inherits the resolved OG value — so, exactly as with v6.18.0, **nothing rendered was ever wrong.** This is a storage fix; the character-budget pressure it relieves was the only visible symptom.
+
+### Scope, now closed
+
+Both description textareas on the SEO Settings meta box are covered. `roci_meta_title` and `roci_og_title` are `text` fields, not textareas, and do not carry this defect.
+
+---
+
+## [6.18.0] — 2026-09-11
+
+The SEO meta description now **stores raw and escapes on output**, which is the pattern it should always have followed.
+
+### The defect
+
+Every save added four characters per ampersand, and the growth compounded:
+
+```
+typed:      Rods & Reels          (12 chars)
+1st save:   Rods &amp; Reels      (16)
+2nd save:   Rods &amp;amp; Reels  (20)
+```
+
+A description written near the **160-character cap therefore crept over it**, and the field stopped accepting a re-save. That was the whole of the damage — and it is a storage defect, not a rendering one.
+
+### There was never a front-end symptom, and the output path is untouched
+
+`header.php:136` escapes with `esc_attr()` and the browser decodes the entity back, so the rendered `<meta name="description">` read correctly the entire time the stored value was drifting. **The escape-on-output half of the pattern was never broken**, so nothing in `header.php` changed. Anyone looking for the bug in view-source would not have found it.
+
+### The encoding was never ours
+
+Worth stating plainly, because the obvious first suspect is our own save handler:
+
+- **Zero** hits for `esc_html()`, `htmlentities()` or `htmlspecialchars()` across every `.php` in the parent and both children.
+- The field carries **no `sanitize_callback`**.
+- **No `rwmb_*_value` filter** touched it before this release.
+
+The encoding happens inside **MB Pro's own textarea pipeline**. That is third-party source we do not patch (CLAUDE.md §14.3), so the fix compensates on our side of the boundary — the same shape as §13.1's slug guard, which lives in the same file.
+
+### The fix — `metabox-seo-fields.php` (**v1.5.0**)
+
+New `roci_seo_decode_entities()` decodes to a **fixed point**, not once. ⚠ **One pass is not enough:** `html_entity_decode()` turns `&amp;amp;` into `&amp;`, *not* into `&`. Rows in the wild carry one layer of encoding per save, so only a loop collapses them. The ten-pass cap is a runaway guard; the loop exits on the first unchanged pass in every real case.
+
+It is wired at three moments, because no one of them covers the others:
+
+| Hook | What it fixes |
+|---|---|
+| `rwmb_roci_meta_description_field_meta` | The admin form. **This is the one that unblocks the reported symptom** — the textarea shows a raw `&`, the health panel's 160-char counter counts what was actually typed, and the next save writes the collapsed value back. It also **heals rows already in the database on read**, with no migration required. |
+| `rwmb_roci_meta_description_get_value` | The data layer, so `roci_get_field()` hands `header.php` (and any future consumer) the raw string. |
+| `rwmb_roci_meta_description_value` | The save path, so the raw `&` reaches `wp_postmeta`. |
+
+**Decode first, sanitize second.** `sanitize_text_field()` leaves a bare `&` alone — that is precisely what the fix depends on. Reversing the order would sanitize an already-encoded string and store the encoding.
+
+The `is_string()` guard on the save filter mirrors the slug field's: on REST/Gutenberg saves with no input, MB Pro passes the `$field` config array as the value.
+
+### Scope
+
+`roci_og_description` is the **identical sibling textarea** and carries the same defect. It is deliberately **not** included here pending a scope call.
+
+---
+
 ## [6.17.0] — 2026-09-04
 
 A loading overlay, **opt-in and inert by default**. The parent owns the markup and the appearance; the child owns dismissal.
