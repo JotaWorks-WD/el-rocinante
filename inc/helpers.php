@@ -7,8 +7,8 @@
  * and template parts throughout El Rocinante and child themes.
  *
  * File:    inc/helpers.php
- * Version: 1.3.0
- * Updated: 2026-07-09
+ * Version: 1.4.0
+ * Updated: 2026-09-11
  *
  * @package ElRocinante
  *
@@ -19,6 +19,7 @@
  *   jw_bunny_video()               — Clean Bunny Stream iframe embed
  *   jw_faq_schema()                — FAQPage JSON-LD schema output from jw_faq_items field
  *   jw_link_atts()                 — Returns target + rel attribute string for external links
+ *   jw_wysiwyg_body()              — Expands shortcodes + targets external links inside stored wysiwyg HTML
  *   roci_sanitize_object_position() — Whitelists a CSS object-position value (strict)
  *   roci_get_hero_focus()          — Resolves the sanitized hero focal point for a post
  *
@@ -419,6 +420,134 @@ function jw_link_atts( $url ) {
     }
 
     return '';
+}
+
+
+// ============================================================
+// WYSIWYG BODY OUTPUT
+// ============================================================
+
+/**
+ * jw_wysiwyg_body()
+ *
+ * Prepares a stored wysiwyg field for output: expands shortcodes, then adds
+ * new-tab attributes to EXTERNAL links inside the markup. Returns the HTML;
+ * the caller echoes it.
+ *
+ * THE COMPANION TO jw_link_atts(), FOR THE CASE IT CANNOT REACH. That helper
+ * takes one URL the theme owns and returns attributes for one anchor the
+ * theme is writing. This one takes a blob of author-written HTML and fixes
+ * the anchors INSIDE it, which is the only way to reach a link an editor
+ * pasted into a wysiwyg field. Same external test, same output attributes —
+ * deliberately, so a hand-written link and a pasted one behave identically.
+ *
+ * ⚠ THIS IS NOT A GLOBAL FILTER, AND MUST NOT BECOME ONE. It is called
+ * explicitly at the output site, matching how jw_link_atts() is used
+ * everywhere in this network. Hooking `the_content` or `wp_targeted_link_rel`
+ * would silently change every link on every site the parent touches — a far
+ * larger blast radius than the field this was written for.
+ *
+ * WHY NOT core's wp_targeted_link_rel(): it only adds `rel` to anchors that
+ * ALREADY carry a target, which is the opposite problem. The links this fixes
+ * have neither.
+ *
+ * NO wpautop(). The field is a wysiwyg — TinyMCE stores <p> tags in the value
+ * — so wpautop() would find paragraphs already there and change nothing.
+ * (A TEXTAREA field is the opposite case and does need it; see Fish Potrero's
+ * template-parts/tour/specs.php and tour/pricing.php, where the pairing is
+ * wpautop( esc_html() ) and both halves are load-bearing.)
+ *
+ * Regex rather than DOMDocument is deliberate: this rewrites opening <a> tags
+ * only and never reads structure, DOMDocument would need mangling guards for
+ * a fragment, and it is the same approach core takes in wp_targeted_link_rel().
+ *
+ * Three cases are left exactly as authored:
+ *   - Anchors that already declare a target — the author made a choice.
+ *   - Non-http(s) hrefs — relative, fragment, mailto:, tel:. Same reasoning
+ *     jw_link_atts() documents: these open a client, not a navigable page.
+ *   - Same-host http(s) links.
+ *
+ * An existing rel is MERGED, not replaced — `rel="nofollow"` becomes
+ * `rel="nofollow noopener noreferrer"`. Emitting a second rel attribute
+ * instead would produce a duplicate the browser resolves by taking the first,
+ * silently dropping whichever one mattered.
+ *
+ * Usage:
+ *   echo jw_wysiwyg_body( $body );
+ *
+ * @param  string $html  Raw stored wysiwyg HTML.
+ * @return string        Shortcode-expanded HTML with external links targeted.
+ */
+function jw_wysiwyg_body( $html ) {
+
+    if ( ! is_string( $html ) || '' === trim( $html ) ) {
+        return '';
+    }
+
+    $html = do_shortcode( $html );
+
+    // Nothing to rewrite — skip the regex entirely on the common case.
+    if ( false === stripos( $html, '<a ' ) ) {
+        return $html;
+    }
+
+    $home_host = wp_parse_url( home_url(), PHP_URL_HOST );
+
+    if ( ! $home_host ) {
+        return $html;
+    }
+
+    return preg_replace_callback(
+        '#<a\s[^>]*>#i',
+        function ( $matches ) use ( $home_host ) {
+
+            $tag = $matches[0];
+
+            // Author already chose a target — leave the anchor alone.
+            if ( preg_match( '#\starget\s*=#i', $tag ) ) {
+                return $tag;
+            }
+
+            if ( ! preg_match( '#\shref\s*=\s*("|\')(.*?)\1#i', $tag, $href ) ) {
+                return $tag;
+            }
+
+            // The stored href is entity-encoded (&amp; in query strings);
+            // decode before parsing so the host reads correctly.
+            $url = trim( html_entity_decode( $href[2], ENT_QUOTES, 'UTF-8' ) );
+
+            if ( ! preg_match( '#^https?://#i', $url ) ) {
+                return $tag;
+            }
+
+            $link_host = wp_parse_url( $url, PHP_URL_HOST );
+
+            if ( ! $link_host || $link_host === $home_host ) {
+                return $tag;
+            }
+
+            // Merge into an existing rel rather than emitting a second one.
+            if ( preg_match( '#\srel\s*=\s*("|\')(.*?)\1#i', $tag, $rel ) ) {
+
+                $tokens = preg_split( '#\s+#', trim( $rel[2] ), -1, PREG_SPLIT_NO_EMPTY );
+                $tokens = array_unique( array_merge( (array) $tokens, array( 'noopener', 'noreferrer' ) ) );
+
+                $tag    = str_replace(
+                    $rel[0],
+                    ' rel="' . esc_attr( implode( ' ', $tokens ) ) . '"',
+                    $tag
+                );
+                $inject = ' target="_blank"';
+
+            } else {
+                $inject = ' target="_blank" rel="noopener noreferrer"';
+            }
+
+            // Insert before the closing bracket, preserving a self-closing slash.
+            return preg_replace( '#\s*(/?)>$#', $inject . '$1>', $tag, 1 );
+        },
+        $html
+    );
 }
 
 

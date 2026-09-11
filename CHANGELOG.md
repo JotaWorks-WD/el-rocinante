@@ -4,6 +4,51 @@ All notable changes to the El Rocinante parent theme are recorded here. Entries 
 
 ---
 
+## [6.19.0] — 2026-09-11
+
+New helper: **`jw_wysiwyg_body( $html )`** in `inc/helpers.php` (**v1.4.0**) — the seventh `jw_` helper.
+
+### What it does
+
+Prepares a stored wysiwyg field for output, in two steps:
+
+1. `do_shortcode()`
+2. `target="_blank" rel="noopener noreferrer"` on **external** anchors inside the markup
+
+### It is the companion to `jw_link_atts()`, for the case that helper cannot reach
+
+`jw_link_atts()` takes **one URL the theme owns** and returns attributes for **one anchor the theme is writing**. This takes a blob of **author-written HTML** and fixes the anchors *inside* it — which is the only way to reach a link an editor pasted into a wysiwyg field.
+
+Same external test (`wp_parse_url` host vs `home_url()`), same output attributes. That symmetry is the point: **a hand-written link and a pasted one now behave identically.** Before, a venue's H3 link opened in a new tab while a link in its body copy opened in the same one.
+
+### ⚠ Not a global filter, and it must not become one
+
+No `the_content` hook. No `wp_targeted_link_rel` hook. It is called explicitly at the output site, like every other `jw_` helper. Hooking either would change **every link on every site the parent touches** — a blast radius wildly out of proportion to the field this was written for.
+
+Core's `wp_targeted_link_rel()` is not usable here: it only adds `rel` to anchors that **already carry a target**, which is the opposite problem. The links this fixes have neither attribute.
+
+### What passes through untouched
+
+| Case | Why |
+|---|---|
+| Anchor already declares a `target` | The author made a choice; don't second-guess it, and don't double-apply. |
+| Non-`http(s)` href — relative, fragment, `mailto:`, `tel:` | Same reasoning `jw_link_atts()` documents: these open a client, not a navigable page. |
+| Same-host `http(s)` link | Internal navigation stays in-tab. |
+
+### Two details that are decisions, not defaults
+
+**An existing `rel` is MERGED, not replaced.** `rel="nofollow"` becomes `rel="nofollow noopener noreferrer"`. Emitting a second `rel` attribute instead would leave a duplicate that the browser resolves by taking the first — silently dropping whichever one mattered.
+
+**No `wpautop()`.** The field is a wysiwyg, so TinyMCE already stores `<p>` tags and `wpautop()` would find paragraphs in place and change nothing. ⚠ This is **not** a general rule about body copy: a **textarea** field is the opposite case, and the `wpautop( esc_html() )` pairing in Fish Potrero's `template-parts/tour/specs.php` and `tour/pricing.php` is load-bearing in both halves. Do not carry this omission across to one of those.
+
+Regex over opening `<a>` tags rather than `DOMDocument` — it rewrites tags without reading structure, `DOMDocument` would need fragment-mangling guards, and it is the approach core itself takes in `wp_targeted_link_rel()`.
+
+### Scope
+
+**Parent-side only, and nothing in the parent calls it yet.** No existing output changes. Fish Potrero's four `venues.php` templates are the first consumers, shipping separately in the child.
+
+---
+
 ## [6.18.1] — 2026-09-11
 
 Extends the v6.18.0 entity-decode guard to **`roci_og_description`**, the identical sibling textarea.
