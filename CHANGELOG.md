@@ -4,6 +4,46 @@ All notable changes to the El Rocinante parent theme are recorded here. Entries 
 
 ---
 
+## [6.22.0] — 2026-09-11
+
+A **parent-level positioning backstop** for child mega-menu panels, defeating a third-party rule that collapses them.
+
+### The collision
+
+Popup Maker's `style.min.css` ships a blanket `[role=region]{position:relative}`. A child mega panel's own `.mega-menu{position:absolute}` has **identical specificity — both `(0,1,0)`** — so the two **tie**, and the plugin wins on **source order** because its sheet loads after both theme sheets.
+
+The panel computes to `position:relative` and drops out of its anchored position. Dramatic with the admin bar present, barely visible without it — which is why this read as an admin-bar bug across two recon passes before the real cause surfaced.
+
+⚠ **Discover-style dropdowns carry `role="list"` and were never affected.** That asymmetry was the tell: the two panels are positioned by byte-identical CSS off the same offset parent, so the discriminator was never the positioning — it was the `role` attribute.
+
+### The rule
+
+`Build/scss/layout/_navigation.scss` (**v1.0.0**):
+
+```scss
+#site-header .mega-menu[role="region"] {
+  position: absolute;
+}
+```
+
+Specificity **`(1,2,0)`** against Popup Maker's `(0,1,0)`. It wins on **weight, not order** — the only thing that works against a later-loading sheet. **No `!important`.**
+
+`#site-header` is the parent's own id (`header.php:475`), so the scoping adds no coupling the parent did not already own. `.mega-menu` is a child-defined class the parent references but does not style — the same engine/skin split `searchform.php` already carries.
+
+⚠ **Scoped to `.mega-menu` deliberately.** A blanket `#site-header [role="region"]` would force absolute positioning onto any future child region inside the header. Narrow is correct.
+
+### ⚠ Contract change: one of the seven empty slots is no longer empty
+
+`layout/_navigation.scss` was one of the **seven 0-byte child-override slots** described in §8 — *"structural reminders of where a child is expected to supply its own layer, not dead code."* **Six remain.** Anyone auditing that list should know this one has graduated.
+
+**What did not change: the parent still ships zero nav design.** No layout, no colour, no typography, no component. Every visual decision about a navigation is still the child's. What lives here is one defensive declaration re-asserting a child's *own* positioning against a plugin rule that defeats it. If this file ever grows a rule deciding how a nav *looks*, that is the line being crossed.
+
+### Children should still fix their markup
+
+`role="group"` removes the collision at source — `[role=region]` cannot match it — and is the better a11y choice for a hover-revealed panel, which should not be a landmark. See `CONVENTIONS.md`. **This rule protects the children that have not made that change yet**, including any new site built before its nav markup is corrected.
+
+---
+
 ## [6.21.0] — 2026-09-11
 
 The Fauxlders **upload picker** ("Upload to fauxlder") now renders parent/child hierarchy.
