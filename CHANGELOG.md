@@ -4,6 +4,45 @@ All notable changes to the El Rocinante parent theme are recorded here. Entries 
 
 ---
 
+## [6.23.0] — 2026-09-13
+
+The XML sitemap's post-type allowlist is now **filterable** instead of hardcoded.
+
+### The bug
+
+`inc/sitemap.php` has always narrowed `wp_sitemaps_post_types` to a hardcoded `array( 'post', 'page' )`, `unset()`ing every other key. That is network-wide code with a per-client symptom: on Fish Potrero, `charter`, `tour` and `fish_species` were stripped from `/wp-sitemap.xml` despite all three being `public => true` and `show_in_rest => true`. The site's money pages were absent from the sitemap submitted to Google Search Console.
+
+⚠ **The child could not fix this on its own.** The filter is registered as an **anonymous closure**, so there is no callable reference to `remove_filter()` and no way to re-add a post type after the fact — the only reachable fix was parent-side.
+
+### The change
+
+`inc/sitemap.php` (**v1.1.0**):
+
+```php
+$allowed = apply_filters( 'roci_sitemap_post_types', array( 'post', 'page' ) );
+```
+
+Everything else in the filter is unchanged. **The default stays `array( 'post', 'page' )`, so no site that does not hook the new filter changes behaviour.**
+
+A child declares its own:
+
+```php
+add_filter( 'roci_sitemap_post_types', function( $types ) {
+    return array_merge( $types, array( 'charter', 'tour' ) );
+} );
+```
+
+### Two things worth knowing
+
+- **This filter can only narrow, never widen.** Core builds the provider list from `get_post_types( array( 'public' => true ) )` before our filter runs, so a post type that is not public cannot be added back by naming it here — it is a silent no-op, not an error.
+- **Nothing here is statically cached**, which is the one deliberate difference from the `roci_get_seo_post_types()` / `roci_get_schema_post_types()` / `roci_get_faq_post_types()` family this otherwise mirrors. Those cache in a `static $types` and fire once per request, so a late `add_filter()` on them is a silent no-op. This filter fires on each sitemap request, so the register-early rule does **not** apply.
+
+⚠ **Do not hardcode a client's CPTs into the default array.** It ships to every site on the network; that is the bug this release fixes, not a pattern to repeat. The docblock says so in place.
+
+**Parent-side only.** Fish Potrero's three CPTs ship in its own `functions.php` and must deploy **after** this — the child hooks a filter the parent has to expose first.
+
+---
+
 ## [6.22.0] — 2026-09-11
 
 A **parent-level positioning backstop** for child mega-menu panels, defeating a third-party rule that collapses them.
