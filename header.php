@@ -8,10 +8,12 @@
  * Nav output is controlled per child theme via do_action('roci_nav').
  * Site-level business JSON-LD is filterable via apply_filters('roci_schema_data');
  * its @type resolves from roci_business_types() (inc/schema/business-types.php).
+ * hreflang alternates are filterable via apply_filters('roci_hreflang_alternates')
+ * for children that opt into multilingual output with add_theme_support('roci-i18n').
  *
  * File:    header.php
- * Version: 1.14.0
- * Updated: 2026-09-04
+ * Version: 2.0.0
+ * Updated: 2026-09-19
  *
  * @package ElRocinante
  */
@@ -129,7 +131,40 @@
     $roci_schema_expanded = roci_expand_schema_tokens( $roci_schema );
     $roci_schema_valid    = roci_schema_json_is_valid( $roci_schema );
 
-    $roci_hreflang = str_replace( '_', '-', get_locale() );
+    // --------------------------------------------------------
+    // HREFLANG — self-referential default, filterable for i18n children
+    //
+    // roci-i18n is OPT-IN. A child that does not call
+    // add_theme_support('roci-i18n') gets exactly today's output: the two
+    // self-referential alternates below, unchanged.
+    //
+    // The gate is the FLAG, never plugin-presence — installing a multilingual
+    // plugin (e.g. Polylang) for any unrelated reason must never alter a
+    // non-opted child's <head>. Only an explicit opt-in reaches the filter.
+    //
+    // An opted-in child hooks roci_hreflang_alternates and returns the real
+    // per-language alternates — guarding on the plugin actually being present
+    // (e.g. function_exists('pll_the_languages')) so a misconfigured opt-in
+    // with the plugin absent falls back to this safe self-referential stub
+    // rather than emitting nothing. Returning an empty array defers hreflang
+    // entirely to whatever the plugin emits via wp_head().
+    // --------------------------------------------------------
+    $roci_hreflang_default = array(
+        array(
+            'hreflang' => str_replace( '_', '-', get_locale() ),
+            'href'     => $roci_canonical,
+        ),
+        array(
+            'hreflang' => 'x-default',
+            'href'     => $roci_canonical,
+        ),
+    );
+
+    if ( current_theme_supports( 'roci-i18n' ) ) {
+        $roci_hreflang_alternates = apply_filters( 'roci_hreflang_alternates', $roci_hreflang_default );
+    } else {
+        $roci_hreflang_alternates = $roci_hreflang_default;
+    }
     ?>
 
     <!-- Meta -->
@@ -138,8 +173,9 @@
     <link rel="canonical" href="<?php echo esc_url( $roci_canonical ); ?>">
 
     <!-- hreflang -->
-    <link rel="alternate" hreflang="<?php echo esc_attr( $roci_hreflang ); ?>" href="<?php echo esc_url( $roci_canonical ); ?>">
-    <link rel="alternate" hreflang="x-default" href="<?php echo esc_url( $roci_canonical ); ?>">
+<?php foreach ( $roci_hreflang_alternates as $roci_alt ) : ?>
+    <link rel="alternate" hreflang="<?php echo esc_attr( $roci_alt['hreflang'] ); ?>" href="<?php echo esc_url( $roci_alt['href'] ); ?>">
+<?php endforeach; ?>
 
     <!-- Open Graph -->
     <meta property="og:type" content="<?php echo is_single() ? 'article' : 'website'; ?>">
