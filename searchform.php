@@ -4,7 +4,7 @@
  *
  * WordPress picks this file up automatically for every get_search_form()
  * call, so it is the single source for the search markup across the parent
- * and every child. Before it lived here, the parent's own search.php:30 fell
+ * and every child. Before it lived here, the parent's own search template fell
  * through to core's default markup, which carries none of the theme's
  * classes — promoted from a child theme (v1.0.0) so every child inherits one
  * form instead of each shipping its own.

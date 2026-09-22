@@ -252,7 +252,7 @@ function roci_brand_palette() {
  * Reads the PRIMARY slot of roci_brand_palette(), which defaults to Theme
  * Settings → Design → Primary and can be supplied in code by a child. That slot
  * is empty until something fills it, so on an unconfigured install this falls
- * back to '#000' — the exact value abstracts/_variables.scss:84 compiles into
+ * back to '#000' — the exact value $color-primary compiles into
  * both --folders-highlight (admin) and --color-action (front end). An unfilled
  * palette therefore renders identically to a pre-bridge install.
  *

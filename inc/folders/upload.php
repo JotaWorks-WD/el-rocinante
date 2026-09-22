@@ -75,14 +75,14 @@ add_action( 'add_attachment', 'roci_assign_upload_folder' );
  *
  * SIBLINGS STILL SORT A-Z. That half of #R4/#5 is retained and is the reason
  * this still does NOT adopt roci_get_folder_terms_with_depth()
- * (filters.php:517): that helper carries roci_get_folder_order_query_args(),
+ * roci_get_folder_terms_with_depth(): that helper carries roci_get_folder_order_query_args(),
  * so it orders by the sidebar's hand-sorted drag order, and switching to it
  * would silently undo v5.8.0. It also keys on term_id where this array's
  * consumer reads f.id. Consolidating the two is a separate decision.
  *
  * The recipe is the one already proven twice on this site — the list-view
- * filter (roci_render_folder_select_dropdown, filters.php:56) and the grid
- * filter (roci_get_folder_terms_for_js, filters.php:392): bucket by parent,
+ * filter (roci_render_folder_select_dropdown) and the grid
+ * filter (roci_get_folder_terms_for_js): bucket by parent,
  * sort each sibling bucket A-Z on the DECODED name, then walk depth-first
  * prefixing one em-dash per level. The one departure is the label: those two
  * call roci_format_folder_option_label() and append a " (N)" count, which

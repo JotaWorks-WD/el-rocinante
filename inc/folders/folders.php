@@ -235,7 +235,7 @@ function roci_get_post_type_for_folder_taxonomy( $taxonomy_slug ) {
  * Media system and is deliberately not in the CPT registry.
  *
  * The same merge expression is currently inlined at five call sites
- * (counts.php:171-174, create.php:251-254, order.php:65-68, :121-124, :252-255).
+ * (the counts, create and order modules each carry their own).
  * Those are deliberately left alone for now — converging them is its own change.
  * New callers should use this helper.
  *

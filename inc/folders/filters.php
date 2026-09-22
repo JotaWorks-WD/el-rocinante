@@ -443,7 +443,7 @@ function roci_get_folder_terms_for_js() {
  * wp_script_is( 'media-views', 'enqueued' ) is the signal instead. It is true
  * on exactly the screens where a media modal can be opened, whoever opened
  * it, with no screen detection to maintain — the same self-gating idiom
- * branding.php:69 already uses against the style handle. media-views is also
+ * the brand-accent bridge already uses against the style handle. media-views is also
  * this script's declared dependency, so the test doubles as a guarantee that
  * the dependency is genuinely present rather than being dragged in by us.
  *
@@ -458,7 +458,7 @@ function roci_get_folder_terms_for_js() {
  * media.view is absent, and the list-view dropdown is rendered server-side by
  * roci_media_folder_filter_dropdown() on restrict_manage_posts, not by this
  * script. The admin stylesheet still reaches list mode via
- * roci_enqueue_sidebar_assets() (sidebar.php:463), which gates on the screen
+ * roci_enqueue_sidebar_assets(), which gates on the screen
  * base rather than on media.
  *
  * @param string $hook_suffix  Current admin page hook suffix. Unused — the

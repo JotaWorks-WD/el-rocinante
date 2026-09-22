@@ -173,7 +173,7 @@ function roci_page_asset_slug() {
  *
  * THE CHILD DIRECTORY, NOT THE PARENT'S. The path is built from
  * get_stylesheet_directory() — the active CHILD — because that is where the
- * real bundles live. This is the same rule inc/admin/brand-scheme.php:162-164
+ * real bundles live. This is the same rule the admin brand-scheme file
  * states for the inverse case: pick the directory function by where the FILE
  * ships, never by where the CODE lives. That file ships in the parent and so
  * uses get_template_directory_uri(); these ship in the child, so this uses
