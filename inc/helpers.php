@@ -7,8 +7,8 @@
  * and template parts throughout El Rocinante and child themes.
  *
  * File:    inc/helpers.php
- * Version: 1.4.0
- * Updated: 2026-09-11
+ * Version: 1.5.0
+ * Updated: 2026-09-23
  *
  * @package ElRocinante
  *
@@ -102,6 +102,13 @@ function jw_get_webp_url( $attachment_id, $size = 'full' ) {
  *                                jw_hero_picture() already defaults to 'eager' — this
  *                                function intentionally keeps 'lazy' as default since most
  *                                callers use it for content images below the fold.
+ *                                'eager' ALSO adds fetchpriority="high" and
+ *                                data-no-lazy="1" to the <img>, so the LCP image is
+ *                                fetched first and skipped by plugin lazy-loaders
+ *                                (LiteSpeed et al.). 'lazy' output is unchanged.
+ *                                ⚠ So pass 'eager' for the ONE above-the-fold image
+ *                                per page only — several fetchpriority="high" images
+ *                                compete with each other and cancel the benefit.
  * @return string                 HTML output.
  */
 function jw_picture( $attachment_id, $size = 'full', $alt = null, $class = '', $loading = 'lazy' ) {
@@ -142,6 +149,17 @@ function jw_picture( $attachment_id, $size = 'full', $alt = null, $class = '', $
     $loading = in_array( $loading, [ 'lazy', 'eager' ], true ) ? $loading : 'lazy';
     $dims    = ( $width && $height ) ? ' width="' . $width . '" height="' . $height . '"' : '';
 
+    // Eager means LCP: raise its fetch priority and opt it out of plugin
+    // lazy-loaders. '' for lazy, so lazy output stays byte-identical.
+    //
+    // ⚠ IT RIDES ON THE $dims ECHO, NOT THE loading LINE, DELIBERATELY. That
+    // line already ends in `?>`, whose trailing newline PHP swallows either
+    // way, so appending '' there cannot move a byte. Echoing it after
+    // loading="…" instead would put a new `?>` where a literal `"` ended the
+    // line, PHP would eat that newline, and the `>` would jump up onto the
+    // loading line on every lazy image in the network.
+    $priority = ( 'eager' === $loading ) ? ' fetchpriority="high" data-no-lazy="1"' : '';
+
     ob_start();
     ?>
     <picture>
@@ -152,7 +170,7 @@ function jw_picture( $attachment_id, $size = 'full', $alt = null, $class = '', $
             src="<?php echo esc_url( $img_src ); ?>"
             alt="<?php echo $alt; ?>"
             <?php echo $class; ?>
-            <?php echo $dims; ?>
+            <?php echo $dims . $priority; ?>
             loading="<?php echo esc_attr( $loading ); ?>"
         >
     </picture>
@@ -181,6 +199,8 @@ function jw_picture( $attachment_id, $size = 'full', $alt = null, $class = '', $
  *                              for decorative images (intentional empty alt).
  * @param  string $class       CSS class on the <img> tag. Default: ''.
  * @param  string $loading     'lazy' or 'eager'. Default: 'eager' (heroes are LCP).
+ *                             'eager' adds fetchpriority="high" + data-no-lazy="1",
+ *                             exactly as jw_picture() does.
  * @return string              HTML output.
  */
 function jw_hero_picture( $desktop_id, $mobile_id, $alt = null, $class = '', $loading = 'eager' ) {
@@ -211,6 +231,11 @@ function jw_hero_picture( $desktop_id, $mobile_id, $alt = null, $class = '', $lo
     $loading = in_array( $loading, [ 'lazy', 'eager' ], true ) ? $loading : 'eager';
     $dims    = ( $width && $height ) ? ' width="' . $width . '" height="' . $height . '"' : '';
 
+    // Same rule as jw_picture(): eager gains fetchpriority + data-no-lazy,
+    // lazy stays byte-identical. Rides on the $dims echo for the reason given
+    // in jw_picture().
+    $priority = ( 'eager' === $loading ) ? ' fetchpriority="high" data-no-lazy="1"' : '';
+
     ob_start();
     ?>
     <picture>
@@ -225,7 +250,7 @@ function jw_hero_picture( $desktop_id, $mobile_id, $alt = null, $class = '', $lo
             src="<?php echo esc_url( $mobile_src ); ?>"
             alt="<?php echo $alt; ?>"
             <?php echo $class; ?>
-            <?php echo $dims; ?>
+            <?php echo $dims . $priority; ?>
             loading="<?php echo esc_attr( $loading ); ?>"
         >
     </picture>

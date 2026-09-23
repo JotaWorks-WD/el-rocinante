@@ -4,6 +4,76 @@ All notable changes to the El Rocinante parent theme are recorded here. Entries 
 
 ---
 
+## [6.25.0] — 2026-09-23
+
+**Network-wide:** eager images now carry `fetchpriority="high"` and `data-no-lazy="1"`.
+
+### The change
+
+`inc/helpers.php` (**v1.4.0 → v1.5.0**). In both `jw_picture()` and `jw_hero_picture()`, when the resolved `$loading` is `'eager'`, the `<img>` gains two attributes:
+
+```php
+$priority = ( 'eager' === $loading ) ? ' fetchpriority="high" data-no-lazy="1"' : '';
+// …
+<?php echo $dims . $priority; ?>
+```
+
+**No signature change and no call-site change.** Every child that already passes `'eager'` for its hero picks this up on deploy.
+
+### Lazy output is byte-identical
+
+For `'lazy'`, `$priority` is `''`, so the `$dims` echo emits exactly what it did before. The attribute string is a literal with no dynamic input, so it needs no escaping, the same way `$dims` and `$class` are prebuilt and echoed.
+
+⚠ **It rides on the `$dims` echo deliberately, not after `loading="…"`.** The `$dims` line already ends in `?>`, and PHP swallows the newline after a closing tag either way, so appending `''` there cannot move a byte. The obvious placement, `loading="…"<?php echo $priority; ?>`, puts a new `?>` where a literal `"` used to end the line. PHP then eats that newline and the `>` jumps up onto the `loading` line, a rendered diff on every lazy image in the network. That placement was written first and caught in review. The same trap is documented under v6.24.0 for the hreflang `foreach`. The docblock in `jw_picture()` says so in place.
+
+### Why the helpers, not a filter
+
+Both helpers build their `<img>` by hand. Core's automatic `fetchpriority` (`wp_get_loading_optimization_attributes`, applied through `wp_get_attachment_image()` and content filtering) never sees them. Plugin lazy-loaders such as LiteSpeed can also still rewrite an eager hero to a `data-src` placeholder. `fetchpriority="high"` moves the LCP image to the front of the fetch queue, and `data-no-lazy` is the opt-out marker lazy-load plugins honour. Only the helpers can emit both, because only the helpers write the tag.
+
+### Two things worth knowing
+
+- ⚠ **`'eager'` now means "the LCP image", not merely "not lazy".** Several `fetchpriority="high"` images on one page compete with each other and cancel the benefit. Pass `'eager'` for the single above-the-fold image per page. The `jw_picture()` docblock says so in place.
+- **`jw_hero_picture()` defaults to `'eager'`**, so a call that omits `$loading` also gets both attributes. That is intended: the function exists for heroes.
+
+**Parent-side only.** The parent itself makes no eager call. `[roci_image]` and the two-up shortcode use the `'lazy'` default and are unchanged.
+
+---
+
+## [6.24.0] — 2026-09-19
+
+The first multilingual seam in the parent: a new **`roci-i18n`** opt-in flag and a new **`roci_hreflang_alternates`** filter, both in `header.php` (**v1.14.0 → v2.0.0**).
+
+*Backfilled 2026-09-23 from commit `decf5e1`. The release shipped without a `CHANGELOG.md` entry. This entry records only what that commit's message and diff state.*
+
+### The bug
+
+The hreflang block was a self-referential stub: two `<link rel="alternate">` tags, the current locale and `x-default`, **both pointing at the same `$roci_canonical`**. That is correct on a single-language site. It goes wrong the moment a multilingual plugin is installed: Polylang emits its own alternate set through `wp_head()`, and this block contradicts it by claiming `x-default` for every translated URL.
+
+### The change
+
+The scalar `$roci_hreflang` is gone. It is replaced by `$roci_hreflang_default`, an array of two `{ hreflang, href }` rows carrying the same values in the same order, emitted through one `foreach`:
+
+```php
+if ( current_theme_supports( 'roci-i18n' ) ) {
+    $roci_hreflang_alternates = apply_filters( 'roci_hreflang_alternates', $roci_hreflang_default );
+} else {
+    $roci_hreflang_alternates = $roci_hreflang_default;
+}
+```
+
+An opted-in child hooks `roci_hreflang_alternates` and returns the real per-language rows. It should guard on the plugin actually being loaded (e.g. `function_exists( 'pll_the_languages' )`), so a misconfigured opt-in with the plugin absent falls back to the self-referential stub rather than emitting nothing. **Returning an empty array defers hreflang wholly to the plugin.**
+
+### Two things worth knowing
+
+- ⚠ **The gate is the flag, never plugin-presence.** Installing a multilingual plugin for an unrelated reason must never alter a non-opted child's `<head>`. A child that does not call `add_theme_support( 'roci-i18n' )` never reaches the filter and renders **byte-identical output to v6.23.0**.
+- ⚠ **The `foreach` / `endforeach` control tags sit at column 0 and must stay there.** Indented, they emit their own leading whitespace as inline HTML. PHP's closing tag eats the following newline, not the next line's indentation, so indenting would double-indent both `<link>` tags and leave trailing spaces on the blank line: a rendered diff on every non-opted site.
+
+This mirrors `roci_schema_data`: a child gets its own hreflang without overriding `header.php` and silently dropping the whole `<head>` with it (CLAUDE.md §5b).
+
+**Parent-side only.** There is no `functions.php` change, no child is touched, and there is no `/languages` directory yet. `load_theme_textdomain()` still points at a path that does not exist, and no child calls `load_child_theme_textdomain()`, so nothing is translated yet. This opens the seam; it does not fill it.
+
+---
+
 ## [6.23.0] — 2026-09-13
 
 The XML sitemap's post-type allowlist is now **filterable** instead of hardcoded.
