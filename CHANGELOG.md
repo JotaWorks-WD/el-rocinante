@@ -4,6 +4,38 @@ All notable changes to the El Rocinante parent theme are recorded here. Entries 
 
 ---
 
+## [6.26.0] — 2026-09-23
+
+**NETWORK-WIDE: responsive images.** Mobile stops downloading full-size heroes.
+
+`inc/helpers.php` (**v1.5.1 → v1.6.0**). No signature change and no call-site change, but **every image `jw_picture()` or `jw_hero_picture()` renders, on every child, changes output on deploy.**
+
+### The change
+
+- **`<img>`** gains `srcset` and `sizes`, built from the sizes WordPress generated: `wp_get_attachment_image_srcset( $id, $size )` and, for lazy images, `wp_get_attachment_image_sizes( $id, $size )`.
+- **`sizes` is `100vw` for eager images** (heroes span the viewport) and **WordPress's default for lazy ones**.
+- **WebP `<source>`** gains the matching candidates, **kept only where the `.webp` sibling exists**. It uses the same extension-swap and `file_exists()` test `jw_get_webp_url()` applies to the single URL. If no candidates survive, the `<source>` keeps today's single WebP URL.
+- **Unchanged:** `src`, `width`, `height`, `alt`, `class`, `loading`, `fetchpriority` and `data-no-lazy`. A browser that ignores `srcset` behaves exactly as before. When WordPress has nothing to offer (a single size, an SVG), no `srcset` / `sizes` attribute is emitted at all.
+
+`jw_hero_picture()` applies the same rules per crop:
+- the mobile `<img>` takes the **mobile** attachment's candidates;
+- the desktop `<source media="(min-width: 768px)">` takes the **desktop** attachment's WebP candidates.
+
+### Three things that are decisions, not defaults
+
+- ⚠ **The WebP list is built only when the requested size's `.webp` exists.** That is the same condition that renders the `<source>` at all, so the list always contains that size. It can never offer the browser only small candidates, which would render blurry on desktop. The hero's desktop `<source>` follows the same rule against the full-size desktop `.webp`, and otherwise keeps today's single URL.
+- ⚠ **`sizes` is repeated on the `<source>`.** A `<source>` with width descriptors and no `sizes` of its own defaults to `100vw`. Without it, lazy images would choose from the WebP list as if they were full-width and undo the saving. A single-URL fallback carries no descriptor and takes no `sizes`.
+- **The upload-path mapping is scheme-agnostic.** `srcset` URLs can be forced to `https` while the upload `baseurl` is not, and a mismatch would silently drop every WebP candidate.
+
+⚠ **The v6.25.0 trap was avoided deliberately.** Every new attribute is echoed on a line that ends in a literal character, or on a line that already ended in a closing tag. No `//` comment contains a literal closing tag. The hero `<source>` puts `type="image/webp"` on the `srcset` line for exactly this reason, and says so in place.
+
+### Worth knowing
+
+- **Lazy cards still size against the requested image.** WordPress's default `sizes` for `'large'` is `(max-width: 1024px) 100vw, 1024px`. A card rendered around 350px wide on desktop will therefore still pick a ~1024px candidate there. Per-call `sizes` would need a new parameter; this release keeps the signatures unchanged.
+- **Hero mobile crops that are JPEG with WebP siblings** now get a right-sized JPEG from the `<img>` `srcset` rather than the full-size WebP they got as `src` before. That is usually far smaller, but it is no longer WebP. Mobile crops uploaded as WebP (the documented convention) are unaffected.
+
+---
+
 ## [6.25.1] — 2026-09-23
 
 **Fix undefined `$priority` in `jw_picture()` (6.25.0 regression).** Hotfix, network-wide.

@@ -7,7 +7,7 @@
  * and template parts throughout El Rocinante and child themes.
  *
  * File:    inc/helpers.php
- * Version: 1.5.1
+ * Version: 1.6.0
  * Updated: 2026-09-23
  *
  * @package ElRocinante
@@ -82,9 +82,16 @@ function jw_get_webp_url( $attachment_id, $size = 'full' ) {
 /**
  * jw_picture()
  *
- * Outputs a <picture> tag for a standard content image (single WebP,
- * no art direction). Width and height attributes are pulled from attachment
- * metadata automatically to prevent Cumulative Layout Shift (CLS).
+ * Outputs a <picture> tag for a standard content image (no art direction).
+ * Width and height attributes are pulled from attachment metadata
+ * automatically to prevent Cumulative Layout Shift (CLS).
+ *
+ * RESPONSIVE (v1.6.0): the <img> carries srcset + sizes built from the sizes
+ * WordPress generated, and the WebP <source> carries the matching candidates
+ * whose .webp sibling exists (falling back to the single WebP URL when none
+ * do). sizes is "100vw" for eager images and WordPress's default for lazy
+ * ones. src / width / height are unchanged, so srcset-unaware browsers
+ * behave exactly as before.
  *
  * Usage:
  *   echo jw_picture( $attachment_id, 'large', 'Alt text', 'venue__image', 'lazy' );
@@ -167,17 +174,76 @@ function jw_picture( $attachment_id, $size = 'full', $alt = null, $class = '', $
     // text into the page. Spell it out in words.
     $priority = ( 'eager' === $loading ) ? ' fetchpriority="high" data-no-lazy="1"' : '';
 
+    // RESPONSIVE CANDIDATES, from the sizes WordPress generated. Eager images
+    // are heroes that span the viewport, so they declare 100vw; lazy images
+    // take WordPress's own sizes value for the requested size. src, width and
+    // height are untouched, so a browser that ignores srcset behaves as before.
+    // Both helpers return false when there is nothing to offer (a single size,
+    // an SVG), and then no srcset or sizes attribute is emitted at all.
+    $srcset     = wp_get_attachment_image_srcset( $attachment_id, $size );
+    $sizes      = ( 'eager' === $loading ) ? '100vw' : wp_get_attachment_image_sizes( $attachment_id, $size );
+    $sizes_attr = $sizes ? ' sizes="' . esc_attr( $sizes ) . '"' : '';
+    $responsive = $srcset ? ' srcset="' . esc_attr( $srcset ) . '"' . $sizes_attr : '';
+
+    // WEBP SOURCE: the same candidates, keeping only those whose .webp sibling
+    // exists on disk — the same extension swap and file_exists() test
+    // jw_get_webp_url() applies to the single URL. Built only when the
+    // REQUESTED size has a .webp (the condition that renders the <source> at
+    // all), so the list always contains that size and can never offer the
+    // browser nothing but small candidates. No survivors -> today's single URL.
+    $webp_srcset = '';
+
+    if ( $webp_src && $srcset ) {
+        $upload_dir = wp_upload_dir();
+        // Scheme-agnostic, because srcset URLs can be forced to https while the
+        // upload baseurl is not; a scheme mismatch would drop every candidate.
+        $base_url   = preg_replace( '#^https?:#i', '', $upload_dir['baseurl'] );
+        $kept       = [];
+
+        foreach ( explode( ', ', $srcset ) as $candidate ) {
+            $parts = preg_split( '/\s+/', trim( $candidate ) );
+
+            if ( 2 !== count( $parts ) ) {
+                continue;
+            }
+
+            list( $candidate_url, $descriptor ) = $parts;
+            $candidate_webp = preg_replace( '/\.(jpe?g|png|gif)$/i', '.webp', $candidate_url );
+
+            // Unchanged means the candidate is already .webp — keep it, as
+            // jw_get_webp_url() returns an already-WebP original as-is.
+            if ( $candidate_webp !== $candidate_url ) {
+                $webp_path = str_replace( $base_url, $upload_dir['basedir'], preg_replace( '#^https?:#i', '', $candidate_webp ) );
+
+                if ( ! file_exists( $webp_path ) ) {
+                    continue;
+                }
+            }
+
+            $kept[] = $candidate_webp . ' ' . $descriptor;
+        }
+
+        $webp_srcset = implode( ', ', $kept );
+    }
+
+    // sizes rides on the <source> too: a <source> with width descriptors and
+    // no sizes of its own defaults to 100vw, which would undo the saving on
+    // every lazy image. A single-URL fallback carries no descriptor and so
+    // takes no sizes.
+    $webp_srcset_attr = $webp_srcset ? esc_attr( $webp_srcset ) : esc_url( (string) $webp_src );
+    $webp_sizes_attr  = $webp_srcset ? $sizes_attr : '';
+
     ob_start();
     ?>
     <picture>
         <?php if ( $webp_src ) : ?>
-            <source type="image/webp" srcset="<?php echo esc_url( $webp_src ); ?>">
+            <source type="image/webp" srcset="<?php echo $webp_srcset_attr; ?>"<?php echo $webp_sizes_attr; ?>>
         <?php endif; ?>
         <img
             src="<?php echo esc_url( $img_src ); ?>"
             alt="<?php echo $alt; ?>"
             <?php echo $class; ?>
-            <?php echo $dims . $priority; ?>
+            <?php echo $dims . $responsive . $priority; ?>
             loading="<?php echo esc_attr( $loading ); ?>"
         >
     </picture>
@@ -195,6 +261,13 @@ function jw_picture( $attachment_id, $size = 'full', $alt = null, $class = '', $
  *
  * Both uploads should be WebP. Falls back to standard URL if WebP
  * is not found for either source.
+ *
+ * RESPONSIVE (v1.6.0): the mobile <img> carries srcset + sizes from the
+ * mobile attachment's generated sizes; the desktop <source> carries the
+ * desktop attachment's candidates whose .webp sibling exists (single URL
+ * when none do, or when the full-size desktop .webp is missing). sizes is
+ * "100vw" for eager, WordPress's default for lazy — same rules as
+ * jw_picture().
  *
  * Usage:
  *   echo jw_hero_picture( $desktop_id, $mobile_id, 'Hero alt text', 'hero__img' );
@@ -216,9 +289,12 @@ function jw_hero_picture( $desktop_id, $mobile_id, $alt = null, $class = '', $lo
         return '';
     }
 
-    // Prefer WebP, fall back to standard URL for each crop.
-    $desktop_src = jw_get_webp_url( $desktop_id, 'full' ) ?: wp_get_attachment_image_url( $desktop_id, 'full' );
-    $mobile_src  = jw_get_webp_url( $mobile_id, 'full' )  ?: wp_get_attachment_image_url( $mobile_id, 'full' );
+    // Prefer WebP, fall back to standard URL for each crop. $desktop_webp is
+    // kept separately because the desktop srcset below is only built when
+    // the full-size .webp exists.
+    $desktop_webp = jw_get_webp_url( $desktop_id, 'full' );
+    $desktop_src  = $desktop_webp ?: wp_get_attachment_image_url( $desktop_id, 'full' );
+    $mobile_src   = jw_get_webp_url( $mobile_id, 'full' )  ?: wp_get_attachment_image_url( $mobile_id, 'full' );
 
     if ( ! $desktop_src || ! $mobile_src ) {
         return '';
@@ -243,21 +319,72 @@ function jw_hero_picture( $desktop_id, $mobile_id, $alt = null, $class = '', $lo
     // in jw_picture().
     $priority = ( 'eager' === $loading ) ? ' fetchpriority="high" data-no-lazy="1"' : '';
 
+    // RESPONSIVE CANDIDATES — same rules as jw_picture(), applied per crop.
+    // The <img> is the MOBILE crop, so its srcset and sizes come from the
+    // mobile attachment. Eager declares 100vw; lazy takes WordPress's sizes.
+    $srcset     = wp_get_attachment_image_srcset( $mobile_id, 'full' );
+    $sizes      = ( 'eager' === $loading ) ? '100vw' : wp_get_attachment_image_sizes( $mobile_id, 'full' );
+    $sizes_attr = $sizes ? ' sizes="' . esc_attr( $sizes ) . '"' : '';
+    $responsive = $srcset ? ' srcset="' . esc_attr( $srcset ) . '"' . $sizes_attr : '';
+
+    // The desktop <source> offers the DESKTOP attachment's candidates, kept
+    // only where the .webp sibling exists (same test as jw_picture()). Built
+    // only when the full-size desktop .webp exists, so the list always holds
+    // the full size; otherwise the <source> keeps today's single URL, WebP or
+    // not, exactly as before.
+    $desktop_srcset      = wp_get_attachment_image_srcset( $desktop_id, 'full' );
+    $desktop_sizes       = ( 'eager' === $loading ) ? '100vw' : wp_get_attachment_image_sizes( $desktop_id, 'full' );
+    $desktop_webp_srcset = '';
+
+    if ( $desktop_webp && $desktop_srcset ) {
+        $upload_dir = wp_upload_dir();
+        $base_url   = preg_replace( '#^https?:#i', '', $upload_dir['baseurl'] );
+        $kept       = [];
+
+        foreach ( explode( ', ', $desktop_srcset ) as $candidate ) {
+            $parts = preg_split( '/\s+/', trim( $candidate ) );
+
+            if ( 2 !== count( $parts ) ) {
+                continue;
+            }
+
+            list( $candidate_url, $descriptor ) = $parts;
+            $candidate_webp = preg_replace( '/\.(jpe?g|png|gif)$/i', '.webp', $candidate_url );
+
+            if ( $candidate_webp !== $candidate_url ) {
+                $webp_path = str_replace( $base_url, $upload_dir['basedir'], preg_replace( '#^https?:#i', '', $candidate_webp ) );
+
+                if ( ! file_exists( $webp_path ) ) {
+                    continue;
+                }
+            }
+
+            $kept[] = $candidate_webp . ' ' . $descriptor;
+        }
+
+        $desktop_webp_srcset = implode( ', ', $kept );
+    }
+
+    // type="image/webp" shares the srcset line on purpose: the line must end
+    // in a literal character, not in a closing tag, or PHP swallows the
+    // newline after the sizes echo (the trap documented in jw_picture()).
+    $desktop_srcset_attr = $desktop_webp_srcset ? esc_attr( $desktop_webp_srcset ) : esc_url( $desktop_src );
+    $desktop_sizes_attr  = ( $desktop_webp_srcset && $desktop_sizes ) ? ' sizes="' . esc_attr( $desktop_sizes ) . '"' : '';
+
     ob_start();
     ?>
     <picture>
         <!-- Desktop crop: activates at 768px and above -->
         <source
             media="(min-width: 768px)"
-            srcset="<?php echo esc_url( $desktop_src ); ?>"
-            type="image/webp"
+            srcset="<?php echo $desktop_srcset_attr; ?>"<?php echo $desktop_sizes_attr; ?> type="image/webp"
         >
         <!-- Mobile crop: default source, no media query -->
         <img
             src="<?php echo esc_url( $mobile_src ); ?>"
             alt="<?php echo $alt; ?>"
             <?php echo $class; ?>
-            <?php echo $dims . $priority; ?>
+            <?php echo $dims . $responsive . $priority; ?>
             loading="<?php echo esc_attr( $loading ); ?>"
         >
     </picture>
