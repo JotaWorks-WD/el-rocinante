@@ -7,7 +7,7 @@
  * and template parts throughout El Rocinante and child themes.
  *
  * File:    inc/helpers.php
- * Version: 1.5.0
+ * Version: 1.5.1
  * Updated: 2026-09-23
  *
  * @package ElRocinante
@@ -153,11 +153,18 @@ function jw_picture( $attachment_id, $size = 'full', $alt = null, $class = '', $
     // lazy-loaders. '' for lazy, so lazy output stays byte-identical.
     //
     // ⚠ IT RIDES ON THE $dims ECHO, NOT THE loading LINE, DELIBERATELY. That
-    // line already ends in `?>`, whose trailing newline PHP swallows either
-    // way, so appending '' there cannot move a byte. Echoing it after
-    // loading="…" instead would put a new `?>` where a literal `"` ended the
-    // line, PHP would eat that newline, and the `>` would jump up onto the
-    // loading line on every lazy image in the network.
+    // line already ends in a PHP closing tag, whose trailing newline PHP
+    // swallows either way, so appending '' there cannot move a byte. Echoing
+    // it after loading="…" instead would put a new closing tag where a literal
+    // double quote ended the line, PHP would eat that newline, and the `>`
+    // would jump up onto the loading line on every lazy image in the network.
+    //
+    // ⚠ NEVER WRITE A LITERAL PHP CLOSING TAG INSIDE A // COMMENT HERE. A
+    // single-line comment ends at the closing tag as well as at a newline, so
+    // PHP drops out of code mode mid-comment and prints the rest of the
+    // function as raw text. v6.25.0 did exactly that in this comment: this
+    // assignment and ob_start() never ran, and every jw_picture() call leaked
+    // text into the page. Spell it out in words.
     $priority = ( 'eager' === $loading ) ? ' fetchpriority="high" data-no-lazy="1"' : '';
 
     ob_start();

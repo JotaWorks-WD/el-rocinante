@@ -4,6 +4,36 @@ All notable changes to the El Rocinante parent theme are recorded here. Entries 
 
 ---
 
+## [6.25.1] — 2026-09-23
+
+**Fix undefined `$priority` in `jw_picture()` (6.25.0 regression).** Hotfix, network-wide.
+
+`inc/helpers.php` (**v1.5.0 → v1.5.1**). Comment-only change: no code line was touched.
+
+### Symptom
+
+Production logged `Warning: Undefined variable $priority` in `jw_picture()`, and eager heroes rendered with no `fetchpriority` / `data-no-lazy`.
+
+### Root cause
+
+The explanatory `//` comment above the `$priority` assignment contained a **literal PHP closing tag written as prose** (describing the `$dims` line). ⚠ **A single-line `//` comment ends at a closing tag as well as at a newline.** PHP left code mode partway through the comment. Everything up to the next opening tag (the rest of the comment, the `$priority` assignment and `ob_start()`) was then printed as raw text on **every** `jw_picture()` call, lazy images included. So:
+
+- `$priority` was never assigned, hence the warning, and the attributes never rendered;
+- with no `ob_start()`, the markup was echoed directly, and `return ob_get_clean()` ran against no buffer of its own;
+- stray comment and code text leaked into the page before every image.
+
+**The file parsed cleanly.** `php -l` cannot catch this; it fails only at runtime. `jw_hero_picture()` was never affected, because its comment carried no closing tag.
+
+### The fix
+
+The comment now says "closing tag" in words, and carries a standing warning never to write a literal one inside a `//` comment in that function. `$priority` is assigned from each function's own resolved `$loading`, before `ob_start()`, in both `jw_picture()` and `jw_hero_picture()`. It is referenced only in its own function scope.
+
+With this in place, 6.25.0's intent holds: **lazy output is byte-identical to v6.24.0**, and eager images gain `fetchpriority="high" data-no-lazy="1"`.
+
+⚠ **Every site on 6.25.0 should take this immediately.**
+
+---
+
 ## [6.25.0] — 2026-09-23
 
 **Network-wide:** eager images now carry `fetchpriority="high"` and `data-no-lazy="1"`.
