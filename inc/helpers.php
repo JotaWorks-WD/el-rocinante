@@ -7,7 +7,7 @@
  * and template parts throughout El Rocinante and child themes.
  *
  * File:    inc/helpers.php
- * Version: 1.7.1
+ * Version: 1.8.0
  * Updated: 2026-09-23
  *
  * @package ElRocinante
@@ -117,9 +117,18 @@ function jw_get_webp_url( $attachment_id, $size = 'full' ) {
  *                                ⚠ So pass 'eager' for the ONE above-the-fold image
  *                                per page only — several fetchpriority="high" images
  *                                compete with each other and cancel the benefit.
+ * @param  string|null $sizes     OPTIONAL (v1.8.0). A `sizes` value describing how
+ *                                wide the image actually renders, e.g.
+ *                                "(min-width: 48em) calc((100vw - 184px) / 3), calc(100vw - 40px)".
+ *                                Used for BOTH the <img> and the WebP <source>.
+ *                                Omit or pass null (or '') and the computed default
+ *                                applies exactly as before: "100vw" for eager, WP's
+ *                                default for lazy. WP's default assumes the image
+ *                                renders at its full intrinsic width, which is wrong
+ *                                for any card in a grid — pass this there.
  * @return string                 HTML output.
  */
-function jw_picture( $attachment_id, $size = 'full', $alt = null, $class = '', $loading = 'lazy' ) {
+function jw_picture( $attachment_id, $size = 'full', $alt = null, $class = '', $loading = 'lazy', $sizes = null ) {
 
     if ( ! $attachment_id ) {
         return '';
@@ -181,8 +190,16 @@ function jw_picture( $attachment_id, $size = 'full', $alt = null, $class = '', $
     // height are untouched, so a browser that ignores srcset behaves as before.
     // Both helpers return false when there is nothing to offer (a single size,
     // an SVG), and then no srcset or sizes attribute is emitted at all.
+    //
+    // A CALLER-SUPPLIED $sizes WINS (v1.8.0), because only the template knows
+    // the grid the image sits in. null or an empty string falls through to the
+    // computed default, which is exactly the pre-1.8.0 value, so every existing
+    // call renders byte-identical markup. The same value then feeds the WebP
+    // <source> below via $sizes_attr, so the two can never disagree.
     $srcset     = wp_get_attachment_image_srcset( $attachment_id, $size );
-    $sizes      = ( 'eager' === $loading ) ? '100vw' : wp_get_attachment_image_sizes( $attachment_id, $size );
+    $sizes      = ( is_string( $sizes ) && '' !== trim( $sizes ) )
+        ? trim( $sizes )
+        : ( ( 'eager' === $loading ) ? '100vw' : wp_get_attachment_image_sizes( $attachment_id, $size ) );
     $sizes_attr = $sizes ? ' sizes="' . esc_attr( $sizes ) . '"' : '';
     $responsive = $srcset ? ' srcset="' . esc_attr( $srcset ) . '"' . $sizes_attr : '';
 

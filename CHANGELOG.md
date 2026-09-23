@@ -4,6 +4,30 @@ All notable changes to the El Rocinante parent theme are recorded here. Entries 
 
 ---
 
+## [6.29.0] — 2026-09-23
+
+**NETWORK-WIDE (API only):** `jw_picture()` accepts a caller-supplied `sizes`.
+
+### The change
+
+`inc/helpers.php` (**v1.7.1 → v1.8.0**): `jw_picture()` gains an optional 6th parameter, **`$sizes = null`**, appended last so every existing call is unchanged.
+
+```php
+jw_picture( $attachment_id, $size, $alt, $class, $loading, $sizes = null )
+```
+
+- A non-empty string is used for **both** the `<img>` `sizes` and the WebP `<source>` `sizes`, so the two can never disagree.
+- `null` or `''` falls through to the computed default exactly as 6.28.0 did: `100vw` for eager, WordPress's default for lazy. **Every existing call renders byte-identical markup.**
+- `jw_hero_picture()` is unchanged.
+
+### Why
+
+WordPress's default `sizes` for a lazy image assumes it renders at its full intrinsic width. For `'large'` that's `(max-width: 1024px) 100vw, 1024px`, which is wrong for any card in a grid, so browsers pick an oversized `srcset` candidate. Only the template knows the grid the image sits in, so the caller now supplies it.
+
+**No output changes until a child passes the new argument.**
+
+---
+
 ## [6.28.0] — 2026-09-23
 
 **NETWORK-WIDE:** per-page JSON-LD now carries a literal `&`, not `&amp;`.
