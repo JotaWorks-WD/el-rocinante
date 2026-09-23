@@ -4,6 +4,42 @@ All notable changes to the El Rocinante parent theme are recorded here. Entries 
 
 ---
 
+## [6.27.0] — 2026-09-23
+
+**NETWORK-WIDE:** the loader logo is now sized and eager, backed by a new helper, **`jw_logo_dimensions()`**.
+
+### The problem
+
+The site logo on the network's sites is an **SVG**, and WordPress stores width/height metadata for raster images only. The `.roci-loader__logo` `<img>` therefore rendered with no `width`/`height`, which caused three problems:
+- Lighthouse flagged it as an unsized image.
+- It popped in after the spinner had painted and pushed the spinner down.
+- LiteSpeed lazy-loaded it (`data-src`), even though it's the only image visible until the loader is dismissed.
+
+### The helper
+
+`inc/helpers.php` (**v1.6.0 → v1.7.0**) adds **`jw_logo_dimensions( $attachment_id )`**, the eighth `jw_` helper. It returns `[ width, height ]` as ints:
+
+1. `wp_get_attachment_metadata()` `width`/`height`, when both are present (raster logos);
+2. for a `.svg`: the root `<svg>` element's `width` and `height` attributes, when both are plain numbers (unitless or `px`);
+3. otherwise that element's `viewBox`, using its 3rd and 4th values.
+
+- Values are rounded to ints.
+- **Any failure returns `[]`** (no attachment, unreadable file, `.svgz`, no usable attribute), so callers print no `width`/`height` rather than a wrong one.
+- Only the first 8 KB of an SVG is read, since the root tag is at the top.
+- Results are cached per request in a static.
+- The `width` and `height` regexes require a leading space, so `stroke-width` and the like can't match.
+
+### The loader
+
+`template-parts/loader.php` (**v1.1.0 → v1.2.0**): the logo `<img>` now carries `width`/`height` from the helper, plus `data-no-lazy="1" loading="eager" decoding="async"`. It deliberately has **no `fetchpriority`**, because the page's hero image keeps that slot.
+
+- **Why this reserves the box:** `.roci-loader__logo` sets `max-width: 18rem; height: auto` but no CSS `width`. The `width` attribute therefore becomes the used width (still capped by `max-width`), and the height follows the ratio before the file has loaded. The spinner no longer moves.
+- **Rendered size is unchanged**, with one edge case: an SVG with **no** `width`/`height` attributes whose `viewBox` is narrower than 18rem now renders at the `viewBox` width instead of the browser's 300px default capped to 18rem.
+- The new attributes follow the `alt` value on the same line, which ends in a literal quote, so no closing-tag newline is swallowed. No `//` comment contains a literal closing tag.
+- **Sites without `add_theme_support( 'roci-loader' )`** never render this partial and are unaffected.
+
+---
+
 ## [6.26.0] — 2026-09-23
 
 **NETWORK-WIDE: responsive images.** Mobile stops downloading full-size heroes.

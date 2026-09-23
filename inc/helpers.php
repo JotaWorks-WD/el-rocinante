@@ -7,7 +7,7 @@
  * and template parts throughout El Rocinante and child themes.
  *
  * File:    inc/helpers.php
- * Version: 1.6.0
+ * Version: 1.7.0
  * Updated: 2026-09-23
  *
  * @package ElRocinante
@@ -16,6 +16,7 @@
  *   jw_get_webp_url()              — Resolves WebP URL for a given attachment ID + size
  *   jw_picture()                   — Standard content image as <picture> tag
  *   jw_hero_picture()              — Art-directed hero <picture> (desktop + mobile crop)
+ *   jw_logo_dimensions()           — Intrinsic [w, h] of a logo attachment, SVG-aware
  *   jw_bunny_video()               — Clean Bunny Stream iframe embed
  *   jw_faq_schema()                — FAQPage JSON-LD schema output from jw_faq_items field
  *   jw_link_atts()                 — Returns target + rel attribute string for external links
@@ -390,6 +391,100 @@ function jw_hero_picture( $desktop_id, $mobile_id, $alt = null, $class = '', $lo
     </picture>
     <?php
     return ob_get_clean();
+}
+
+
+/**
+ * jw_logo_dimensions()
+ *
+ * Returns the intrinsic [ width, height ] of a logo attachment as ints, so a
+ * hand-built <img> can carry width/height attributes even when the logo is an
+ * SVG. WordPress stores width/height metadata for raster images only; an SVG
+ * upload has none, which is why logos were rendering unsized.
+ *
+ * Resolution order:
+ *   1. wp_get_attachment_metadata() width/height, when both are present.
+ *   2. For a .svg file: the root <svg> element's width and height attributes,
+ *      when both are plain numbers (unitless or px).
+ *   3. Otherwise the root <svg>'s viewBox, using its 3rd and 4th values.
+ *
+ * Values are rounded to ints. Any failure (no attachment, unreadable file,
+ * .svgz, no usable attribute) returns an empty array, and callers then emit
+ * no width/height at all rather than a wrong one.
+ *
+ * Only the first 8 KB of an SVG is read: the root <svg> tag always sits at the
+ * top of the file, and a full read of a large logo on every request buys
+ * nothing. Cached per request in a static, because the same logo is typically
+ * asked for twice per page (loader + nav).
+ *
+ * Usage:
+ *   $dims = jw_logo_dimensions( (int) get_theme_mod( 'custom_logo' ) );
+ *   if ( $dims ) { list( $w, $h ) = $dims; }
+ *
+ * @param  int   $attachment_id  Attachment ID of the logo.
+ * @return int[]                 [ width, height ], or [] on failure.
+ */
+function jw_logo_dimensions( $attachment_id ) {
+
+    static $cache = [];
+
+    $attachment_id = (int) $attachment_id;
+
+    if ( ! $attachment_id ) {
+        return [];
+    }
+
+    if ( isset( $cache[ $attachment_id ] ) ) {
+        return $cache[ $attachment_id ];
+    }
+
+    $dims     = [];
+    $metadata = wp_get_attachment_metadata( $attachment_id );
+
+    if ( is_array( $metadata ) && ! empty( $metadata['width'] ) && ! empty( $metadata['height'] ) ) {
+        $dims = [ (int) round( $metadata['width'] ), (int) round( $metadata['height'] ) ];
+    } else {
+        $file = get_attached_file( $attachment_id );
+
+        // .svg only: .svgz is gzipped and would need decoding first.
+        if ( $file && preg_match( '/\.svg$/i', $file ) && is_readable( $file ) ) {
+            $svg = file_get_contents( $file, false, null, 0, 8192 );
+
+            if ( $svg && preg_match( '/<svg\b[^>]*>/i', $svg, $tag ) ) {
+                // Leading \s keeps these from matching stroke-width and the like.
+                $num = '\s*=\s*["\']\s*([0-9]*\.?[0-9]+)\s*(?:px)?\s*["\']';
+                $w   = preg_match( '/\swidth' . $num . '/i', $tag[0], $wm ) ? (float) $wm[1] : 0;
+                $h   = preg_match( '/\sheight' . $num . '/i', $tag[0], $hm ) ? (float) $hm[1] : 0;
+
+                if ( $w <= 0 || $h <= 0 ) {
+                    $w = 0;
+                    $h = 0;
+
+                    if ( preg_match( '/\sviewBox\s*=\s*["\']([^"\']+)["\']/i', $tag[0], $vb ) ) {
+                        $parts = preg_split( '/[\s,]+/', trim( $vb[1] ) );
+
+                        if ( 4 === count( $parts ) ) {
+                            $w = (float) $parts[2];
+                            $h = (float) $parts[3];
+                        }
+                    }
+                }
+
+                if ( $w > 0 && $h > 0 ) {
+                    $dims = [ (int) round( $w ), (int) round( $h ) ];
+                }
+            }
+        }
+    }
+
+    // A result that rounds to zero is no result.
+    if ( $dims && ( $dims[0] < 1 || $dims[1] < 1 ) ) {
+        $dims = [];
+    }
+
+    $cache[ $attachment_id ] = $dims;
+
+    return $dims;
 }
 
 

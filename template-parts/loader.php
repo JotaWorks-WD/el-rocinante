@@ -22,8 +22,8 @@
  * overlay rather than a broken image.
  *
  * File:    template-parts/loader.php
- * Version: 1.1.0
- * Updated: 2026-09-04
+ * Version: 1.2.0
+ * Updated: 2026-09-23
  *
  * @package ElRocinante
  */
@@ -43,6 +43,23 @@ if ( $roci_loader_logo_id ) {
 		$roci_loader_logo_url = wp_get_attachment_url( $roci_loader_logo_id );
 	}
 }
+
+// WIDTH/HEIGHT RESERVE THE LOGO'S BOX, which stops the spinner being pushed
+// down when the logo lands. .roci-loader__logo (components/_loader.scss) sets
+// max-width and height:auto but no CSS width, so the width attribute is the
+// used width (capped by max-width) and the height follows its ratio even
+// before the file has loaded. jw_logo_dimensions() reads raster metadata or,
+// for an SVG, the file's own width/height or viewBox. Empty on failure, in
+// which case no width/height is printed rather than a wrong one.
+$roci_loader_logo_dims = $roci_loader_logo_id ? jw_logo_dimensions( $roci_loader_logo_id ) : array();
+$roci_loader_logo_size = $roci_loader_logo_dims
+	? ' width="' . (int) $roci_loader_logo_dims[0] . '" height="' . (int) $roci_loader_logo_dims[1] . '"'
+	: '';
+
+// ABOVE THE FOLD BY DEFINITION: it is the only image visible until the loader
+// is dismissed. loading="eager" plus data-no-lazy="1" keeps plugin lazy-loaders
+// (LiteSpeed et al.) from swapping it for a placeholder. No fetchpriority —
+// the page's hero image keeps the high-priority slot.
 ?>
 <div id="loader" class="roci-loader" role="status" aria-live="polite">
 
@@ -50,7 +67,7 @@ if ( $roci_loader_logo_id ) {
 		<img
 			class="roci-loader__logo"
 			src="<?php echo esc_url( $roci_loader_logo_url ); ?>"
-			alt="<?php echo esc_attr( get_bloginfo( 'name' ) ); ?>"
+			alt="<?php echo esc_attr( get_bloginfo( 'name' ) ); ?>"<?php echo $roci_loader_logo_size; ?> data-no-lazy="1" loading="eager" decoding="async"
 		>
 	<?php endif; ?>
 
