@@ -6,7 +6,7 @@
  * loads includes, and outputs analytics/integration scripts.
  *
  * File:    functions.php
- * Version: 1.14.0
+ * Version: 1.15.0
  * Updated: 2026-09-23
  *
  * @package ElRocinante
@@ -260,6 +260,17 @@ require_once get_template_directory() . '/inc/comment-suppression.php';
 // ============================================================
 
 require_once get_template_directory() . '/inc/helpers.php';
+
+
+// ============================================================
+// LCP PRELOAD — <link rel="preload"> for the page's hero image
+// ============================================================
+//
+// Inert unless a child hooks roci_lcp_image. Must load after helpers.php: it
+// builds the preload from jw_picture_sources() / jw_hero_picture_sources(), the
+// same functions the hero markup uses, so the two can never disagree.
+
+require_once get_template_directory() . '/inc/lcp-preload.php';
 
 
 // ============================================================

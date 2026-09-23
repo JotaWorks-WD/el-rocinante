@@ -4,6 +4,53 @@ All notable changes to the El Rocinante parent theme are recorded here. Entries 
 
 ---
 
+## [6.31.0] — 2026-09-23
+
+**NETWORK-WIDE:** the LCP hero image is now preloaded in `<head>`.
+
+### The problem
+
+Lighthouse (mobile homepage) put **~870 ms of resource load delay** on the hero `<img>`. It carried `fetchpriority="high"` and was eager, but the browser couldn't discover it until it had parsed the head, the loader and the nav markup above it.
+
+### The change
+
+New **`inc/lcp-preload.php`**. **`roci_hero_preload()`**, on `wp_head` priority 0, emits:
+
+```html
+<link rel="preload" as="image" fetchpriority="high" type="image/webp" imagesrcset="…" imagesizes="…">
+```
+
+for the current page's hero, so the fetch starts with the first bytes of HTML.
+
+**Which hero:** new filter **`roci_lcp_image`**:
+
+```php
+apply_filters( 'roci_lcp_image', null, array( 'object_id' => get_queried_object_id() ) );
+```
+
+A child returns `array( 'id' => …, 'size' => … )` for a `jw_picture()` hero, `array( 'id' => …, 'mobile_id' => … )` for a `jw_hero_picture()` hero, or `null`. The parent renders no hero itself, so its default is `null`, and **a child that doesn't hook the filter emits nothing.**
+
+### Byte-identical by construction
+
+`inc/helpers.php` (**v1.8.0 → v1.9.0**) extracts two new functions:
+
+- **`jw_picture_sources()`**
+- **`jw_hero_picture_sources()`**
+
+The URL, `srcset`, `sizes` and WebP-candidate code moved **verbatim** out of `jw_picture()` and `jw_hero_picture()`, which now call them, so their output is unchanged. The preload is built from the same two functions and escaped the same way. That matters because an `imagesrcset` differing by one byte counts as a different resource, and the browser would download the hero twice.
+
+### Three things that are decisions, not defaults
+
+- **Which variant is preloaded.** When `jw_picture()` renders a `<source type="image/webp">`, as it does for native-WebP originals, a WebP-capable browser uses the source. So the preload mirrors it, with `type="image/webp"`. With native WebP, its `srcset` is the same string as the `<img>`'s. Otherwise the preload mirrors the `<img>`.
+- **The art-directed hero emits two preloads.** `jw_hero_picture()` gets one link gated by `media="(min-width: 768px)"` for the desktop source, and one gated by its exact complement `not all and (min-width: 768px)` for the mobile `<img>`. Only one ever downloads.
+- **No `href` beside `imagesrcset`.** A browser without `imagesrcset` support would fetch the `href`, then pick a different `srcset` candidate for the image: two downloads. Without an `href` it ignores the preload and loads the image normally.
+
+**Priority 0, not 1:** a child's `functions.php` loads before the parent's. At the same priority the parent hook would run after, and land below, a child's font preload.
+
+`functions.php` **v1.14.0 → v1.15.0** requires the new file.
+
+---
+
 ## [6.30.0] — 2026-09-23
 
 **NETWORK-WIDE (roci-loader sites only):** the loader's critical CSS is now inlined, so the first paint no longer waits for the stylesheet.
