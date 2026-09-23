@@ -4,6 +4,39 @@ All notable changes to the El Rocinante parent theme are recorded here. Entries 
 
 ---
 
+## [6.30.0] — 2026-09-23
+
+**NETWORK-WIDE (roci-loader sites only):** the loader's critical CSS is now inlined, so the first paint no longer waits for the stylesheet.
+
+### The problem
+
+Under LiteSpeed Guest Optimization, the external stylesheet can arrive after first paint. Since 6.27.0 the logo carries its real `width`/`height` (2508 × 2100 on Fish Potrero). It therefore painted at intrinsic size until `max-width: 18rem` arrived, then snapped. Lighthouse mobile attributed **CLS 0.067** to `.roci-loader__logo`.
+
+### The change
+
+`template-parts/loader.php` (**v1.2.0 → v1.3.0**) now emits `<style id="roci-loader-critical">` immediately before the `#loader` markup. It contains the compiled loader rules from `dist/css/style.css`, with **identical values**:
+
+- the fixed full-screen cover, `z-index`, background (`var(--color-surface,#fff)`) and flex centring;
+- the `[hidden]` and `.is-dismissed` states, and the opacity transition;
+- `.roci-loader__logo` `max-width` / `height`;
+- the spinner and `@keyframes roci-loader-spin`;
+- the `prefers-reduced-motion` rule.
+
+It's minified with no comments inside the `<style>`. The SCSS source is unchanged and still ships in the external sheet.
+
+### Two things that are decisions, not defaults
+
+- ⚠ **Every selector is wrapped in `:where()`, which has zero specificity.** The block sits in the body, after the head stylesheets, so at equal specificity it would beat them, including any child theme's loader override. `:where()` makes it a first-paint fallback only: once the external rules load (same values), they and any override win. A browser without `:where()` drops the rules and behaves exactly as before.
+- ⚠ **`:where(html){font-size:62.5%}` is included on purpose.** The loader sizes are in rem, and the 10px root also comes from the external sheet. Without it, `18rem` is 288px on first paint and 180px after, which is still a shift. It's the parent's own root value, at zero specificity.
+
+### Worth knowing
+
+- **This is a hand-maintained copy** of `components/_loader.scss` (plus the root size from `base/_base.scss`), and nothing warns when they drift. The partial says so in place.
+- **A `<style>` element in `<body>` isn't strictly valid HTML** (the spec expects it in `<head>`), though every browser applies it. The loader renders on `wp_body_open`, so this is the earliest point the partial can reach without moving it into `<head>`.
+- **Sites without `add_theme_support( 'roci-loader' )`** never render the partial and are unaffected.
+
+---
+
 ## [6.29.0] — 2026-09-23
 
 **NETWORK-WIDE (API only):** `jw_picture()` accepts a caller-supplied `sizes`.
