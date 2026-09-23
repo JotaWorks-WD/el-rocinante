@@ -4,6 +4,62 @@ All notable changes to the El Rocinante parent theme are recorded here. Entries 
 
 ---
 
+## [6.28.0] — 2026-09-23
+
+**NETWORK-WIDE:** per-page JSON-LD now carries a literal `&`, not `&amp;`.
+
+### Where the `&amp;` came from
+
+**It's stored in post meta, not introduced at output.** `roci_schema_json` is a Meta Box `textarea`, and Meta Box sanitises textareas with `wp_kses_post()` on save. kses normalises entities, so every bare `&` an author types is **saved** as `&amp;`. `header.php` echoed the field raw, so live pages shipped `"Charters &amp; Tours"`. The echo never escaped anything, and the only token (`{{home}}`) is a URL, so neither of those is the cause. JSON-LD is read literally, so the entity is simply wrong data.
+
+### The fix: output only, in the parent
+
+New **`roci_schema_json_for_output()`** in `inc/schema/schema-tokens.php` (**v1.0.0 → v1.1.0**). It runs after the existing expand and validate steps:
+
+1. `json_decode()` the expanded string, keeping objects as objects so an empty `{}` stays `{}`;
+2. `html_entity_decode( …, ENT_QUOTES | ENT_HTML5, 'UTF-8' )` on **every string value**;
+3. re-encode with `wp_json_encode()` (pretty-printed, slashes and Unicode unescaped);
+4. rewrite every `</` to `<\/`, so a decoded `</script>` can never close the tag (`<\/` is a valid JSON escape);
+5. `json_decode()` the final string as a last check.
+
+Any failure returns `''`. `header.php` (**v2.0.0 → v2.1.0**) then skips the block with the same `<!-- schema-json invalid, skipped -->` comment an invalid paste gets.
+
+### Two things that are decisions, not defaults
+
+- ⚠ **Entities are decoded per value, not across the raw text.** Decoding the whole string would turn an `&quot;` inside a JSON string into a bare `"` and break a paste that is valid today. Decoding each value and letting the encoder re-escape avoids that.
+- **Nothing an editor sees changes.** The stored field is untouched, and so are the validity rules. The SEO Health panel still mirrors expand + validate; the new step has no client-side mirror because it never changes whether a paste is valid.
+
+The re-encode normalises the block's formatting. Keys, order and values are otherwise identical.
+
+### Checked and unchanged
+
+- **Site-level LocalBusiness block:** already clean. Its values are saved with `sanitize_text_field()` / `sanitize_textarea_field()`, which don't encode `&` and do strip tags, and it's emitted with `wp_json_encode()`.
+### FAQPage JSON-LD: the same decode
+
+`jw_faq_schema()` in `inc/helpers.php` (**v1.7.0 → v1.7.1**) had the same problem. `faq_answer` is also a Meta Box `textarea`, so an `&` in an answer was published as `&amp;`.
+
+- Each question and answer string is now `html_entity_decode()`d **before** it's placed in the array, so `wp_json_encode()` escapes whatever the decode produces. The structure and output path are unchanged.
+- The encoded output also gets `</` → `<\/`, because a decoded answer could now contain a literal `</script>` and `JSON_UNESCAPED_SLASHES` would otherwise leave it as-is.
+- A failed encode now emits nothing, rather than an empty script tag.
+
+### The posts page resolves its own ID
+
+`header.php` and the `pre_get_document_title` filter (`functions.php` **v1.13.0 → v1.14.0**) both used `get_the_ID()`. On the posts page that's the **first post in the loop**, so the archive published that post's `<title>`, title, canonical, robots, OG and schema as its own. Both now resolve the ID as follows:
+
+| Route | ID used |
+|---|---|
+| Posts page (`is_home() && ! is_front_page()`, `page_for_posts` set) | `get_option( 'page_for_posts' )` |
+| Singular, including a static front page | `get_queried_object_id()` |
+| Everything else (term / date / author archives, search, 404, a posts-on-front homepage) | `get_the_ID()`, **unchanged** |
+
+- The unchanged branch matters: on those routes the queried object can be a term, and a term ID must never reach a post-meta lookup.
+- The `get_the_title()` and `get_permalink()` fallbacks in `header.php` now take the resolved ID. On every route except the posts page they resolve to the same post as before (passing `false` falls back to the global exactly as no argument did).
+- **Singular pages and a static front page are unaffected:** the queried object and the global post are the same post there.
+- ⚠ The branch logic is written out in both files, with a note in each to keep them in step. A shared helper would remove the duplicate, but it would be a new function name, which needs sign-off.
+- **Paginated posts pages:** `/blog-archive/page/2/` and later pages now canonicalise to the posts page itself, not to an unrelated post. The page stays noindexed by the child's `fpp_blog_index_noindex()`.
+
+---
+
 ## [6.27.0] — 2026-09-23
 
 **NETWORK-WIDE:** the loader logo is now sized and eager, backed by a new helper, **`jw_logo_dimensions()`**.

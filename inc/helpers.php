@@ -7,7 +7,7 @@
  * and template parts throughout El Rocinante and child themes.
  *
  * File:    inc/helpers.php
- * Version: 1.7.0
+ * Version: 1.7.1
  * Updated: 2026-09-23
  *
  * @package ElRocinante
@@ -593,9 +593,16 @@ function jw_faq_schema( $post_id = null ) {
 
     $entities = array();
 
+    // ⚠ DECODE BEFORE ENCODING. faq_answer is a Meta Box textarea, which Meta
+    // Box sanitises with wp_kses_post() on save, so every bare & is STORED as
+    // &amp; — and wp_json_encode() would publish the entity literally. Each
+    // string is decoded here, before it is placed in the array, so the encoder
+    // escapes whatever the decode produces. Same per-value rule as
+    // roci_schema_json_for_output() in inc/schema/schema-tokens.php. The
+    // stored values, and what editors see, are unchanged.
     foreach ( $items as $item ) {
-        $question = isset( $item['faq_question'] ) ? trim( $item['faq_question'] ) : '';
-        $answer   = isset( $item['faq_answer'] )   ? trim( $item['faq_answer'] )   : '';
+        $question = isset( $item['faq_question'] ) ? trim( html_entity_decode( (string) $item['faq_question'], ENT_QUOTES | ENT_HTML5, 'UTF-8' ) ) : '';
+        $answer   = isset( $item['faq_answer'] )   ? trim( html_entity_decode( (string) $item['faq_answer'],   ENT_QUOTES | ENT_HTML5, 'UTF-8' ) ) : '';
 
         if ( ! $question || ! $answer ) {
             continue;
@@ -621,7 +628,18 @@ function jw_faq_schema( $post_id = null ) {
         'mainEntity' => $entities,
     );
 
-    echo '<script type="application/ld+json">' . wp_json_encode( $schema, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE ) . '</script>' . "\n";
+    // SCRIPT-SAFE. JSON_UNESCAPED_SLASHES leaves "</" as-is, and a decoded
+    // answer can now contain a literal </script>, which would close the tag
+    // early. "<\/" is a valid JSON escape that parses back to the same string.
+    // wp_json_encode() returns false on failure; that case emits nothing,
+    // rather than an empty script tag.
+    $json = wp_json_encode( $schema, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
+
+    if ( ! is_string( $json ) || '' === $json ) {
+        return;
+    }
+
+    echo '<script type="application/ld+json">' . str_replace( '</', '<\/', $json ) . '</script>' . "\n";
 }
 
 

@@ -12,8 +12,8 @@
  * for children that opt into multilingual output with add_theme_support('roci-i18n').
  *
  * File:    header.php
- * Version: 2.0.0
- * Updated: 2026-09-19
+ * Version: 2.1.0
+ * Updated: 2026-09-23
  *
  * @package ElRocinante
  */
@@ -28,14 +28,51 @@
     // SEO — META, OG, TWITTER, SCHEMA
     // ============================================================
 
-    $roci_post_id = get_the_ID();
+    // --------------------------------------------------------
+    // WHICH POST OWNS THIS <head>
+    //
+    // Every per-post read below (title, description, canonical, robots, OG,
+    // schema) is keyed to $roci_post_id, so it must name the post the URL is
+    // actually about.
+    //
+    // ⚠ get_the_ID() IS WRONG ON THE POSTS PAGE. There the global post is the
+    // FIRST POST IN THE LOOP, so the archive used to publish that post's title,
+    // canonical and schema as its own. The posts page is a real Page whose ID
+    // lives in page_for_posts, so that is what it reads now.
+    //
+    //   posts page (is_home && ! is_front_page) -> page_for_posts
+    //   singular (incl. a static front page)    -> get_queried_object_id()
+    //   everything else                         -> get_the_ID(), unchanged
+    //
+    // "Everything else" (term, date and author archives, search, 404, a
+    // front page that lists posts) keeps today's behaviour exactly. The
+    // queried object there can be a TERM, and a term ID must never reach a
+    // post-meta lookup. The page_for_posts branch also requires the option to
+    // be set, so a site without a posts page falls through unchanged.
+    //
+    // ⚠ The pre_get_document_title filter in functions.php resolves its ID the
+    // same way for the <title> tag. Change one, change both.
+    // --------------------------------------------------------
+    $roci_posts_page_id = (int) get_option( 'page_for_posts' );
+
+    if ( is_home() && ! is_front_page() && $roci_posts_page_id ) {
+        $roci_post_id = $roci_posts_page_id;
+    } elseif ( is_singular() ) {
+        $roci_post_id = get_queried_object_id();
+    } else {
+        $roci_post_id = get_the_ID();
+    }
 
     // --------------------------------------------------------
     // META TITLE
     // --------------------------------------------------------
     $roci_meta_title = roci_get_field( 'roci_meta_title', $roci_post_id );
     $roci_site_name  = roci_setting( 'business', 'name', get_bloginfo( 'name' ) );
-    $roci_title      = $roci_meta_title ? $roci_meta_title : get_the_title();
+    // Keyed to $roci_post_id, not the global post: on the posts page the global
+    // is the first post. Everywhere else the two name the same post (or both
+    // fall back to the global when $roci_post_id is false), so output there is
+    // unchanged.
+    $roci_title      = $roci_meta_title ? $roci_meta_title : get_the_title( $roci_post_id );
 
     // --------------------------------------------------------
     // META DESCRIPTION
@@ -61,7 +98,7 @@
     // CANONICAL
     // --------------------------------------------------------
     $roci_canonical_field = roci_get_field( 'roci_canonical', $roci_post_id );
-    $roci_canonical       = $roci_canonical_field ? $roci_canonical_field : get_permalink();
+    $roci_canonical       = $roci_canonical_field ? $roci_canonical_field : get_permalink( $roci_post_id );
 
     // --------------------------------------------------------
     // ROBOTS
@@ -126,10 +163,17 @@
     //
     // Both helpers live in inc/schema/schema-tokens.php — the same pair
     // the SEO Health panel mirrors client-side.
+    //
+    // A FOURTH STEP, OUTPUT: roci_schema_json_for_output() decodes the HTML
+    // entities kses stores in the field (every & is saved as &amp;), so the
+    // JSON-LD carries a literal "&", and rewrites "</" to "<\/" so no value
+    // can close the script tag. It returns '' on any failure, which is
+    // emitted exactly like an invalid paste: skipped with the comment below.
     // --------------------------------------------------------
     $roci_schema          = roci_get_field( 'roci_schema_json', $roci_post_id );
     $roci_schema_expanded = roci_expand_schema_tokens( $roci_schema );
     $roci_schema_valid    = roci_schema_json_is_valid( $roci_schema );
+    $roci_schema_output   = $roci_schema_valid ? roci_schema_json_for_output( $roci_schema_expanded ) : '';
 
     // --------------------------------------------------------
     // HREFLANG — self-referential default, filterable for i18n children
@@ -202,10 +246,10 @@
     <?php endif; ?>
 
     <?php if ( $roci_schema ) : ?>
-        <?php if ( $roci_schema_valid ) : ?>
+        <?php if ( '' !== $roci_schema_output ) : ?>
     <!-- Schema JSON-LD — Page Level (Metabox) -->
     <script type="application/ld+json">
-    <?php echo $roci_schema_expanded; ?>
+    <?php echo $roci_schema_output; ?>
     </script>
         <?php else : ?>
     <!-- schema-json invalid, skipped -->

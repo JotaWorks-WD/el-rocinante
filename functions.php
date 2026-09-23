@@ -6,8 +6,8 @@
  * loads includes, and outputs analytics/integration scripts.
  *
  * File:    functions.php
- * Version: 1.13.0
- * Updated: 2026-09-04
+ * Version: 1.14.0
+ * Updated: 2026-09-23
  *
  * @package ElRocinante
  */
@@ -151,8 +151,23 @@ remove_action( 'wp_head', 'wp_robots', 1 );
 // DOCUMENT <title> — override with custom meta title field
 // ============================================================
 
+// ⚠ THE POST ID IS RESOLVED EXACTLY AS header.php RESOLVES $roci_post_id (see
+// "WHICH POST OWNS THIS <head>" there), and the two must stay in step. With a
+// bare get_the_ID() the posts page took the FIRST POST'S meta title as its
+// <title>. Posts page -> page_for_posts; singular -> get_queried_object_id();
+// everything else -> get_the_ID(), unchanged, so a term ID never reaches a
+// post-meta lookup.
 add_filter( 'pre_get_document_title', function( $title ) {
-    $post_id = get_the_ID();
+    $posts_page_id = (int) get_option( 'page_for_posts' );
+
+    if ( is_home() && ! is_front_page() && $posts_page_id ) {
+        $post_id = $posts_page_id;
+    } elseif ( is_singular() ) {
+        $post_id = get_queried_object_id();
+    } else {
+        $post_id = get_the_ID();
+    }
+
     if ( ! $post_id ) {
         return $title;
     }

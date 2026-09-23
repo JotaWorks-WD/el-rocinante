@@ -11,6 +11,11 @@
  * emitting the block, and the SEO Health panel mirrors the same expansion
  * client-side before parsing. Neither keeps its own copy of the rule.
  *
+ * A THIRD STEP, OUTPUT-ONLY (v1.1.0): roci_schema_json_for_output() decodes
+ * the HTML entities kses stores in the field (& saved as &amp;) and makes the
+ * JSON script-safe. It runs after validation and has no client-side mirror,
+ * because it never changes whether a paste is valid.
+ *
  * WHY A TOKEN AT ALL. The field is echoed raw, with no URL rewriting
  * anywhere in the path, so a hardcoded domain freezes into the database
  * and survives a launch. {{home}} resolves at render time instead, which
@@ -18,8 +23,8 @@
  * without a search-replace.
  *
  * File:    inc/schema/schema-tokens.php
- * Version: 1.0.0
- * Updated: 2026-09-04
+ * Version: 1.1.0
+ * Updated: 2026-09-23
  *
  * @package ElRocinante
  */
@@ -74,4 +79,91 @@ function roci_schema_json_is_valid( $json ) {
     json_decode( roci_expand_schema_tokens( $json ) );
 
     return JSON_ERROR_NONE === json_last_error();
+}
+
+
+/**
+ * Make an EXPANDED, VALID per-page schema string safe and literal for output.
+ *
+ * WHY THIS EXISTS. roci_schema_json is a Meta Box textarea, and Meta Box
+ * sanitises textareas with wp_kses_post() on save. kses normalises entities,
+ * so every bare & an author types is STORED as &amp; — and header.php echoes
+ * the field raw, so JSON-LD shipped "Charters &amp; Tours". JSON-LD is read
+ * literally; the entity is wrong data. The stored value (what editors see in
+ * the field) is deliberately left alone; this runs at output only.
+ *
+ * ⚠ ENTITIES ARE DECODED PER STRING VALUE, NOT ACROSS THE RAW TEXT. Decoding
+ * the whole string would turn an &quot; inside a JSON string into a bare " and
+ * break the JSON, silently dropping a paste that is valid today. Instead the
+ * JSON is parsed, each string value is decoded, and the result is re-encoded,
+ * so the encoder escapes any decoded quote correctly. Objects are decoded as
+ * objects (not assoc arrays) so an empty {} stays {} rather than becoming [].
+ *
+ * SCRIPT-SAFE. Output sits inside <script type="application/ld+json">. A
+ * decoded value could now contain a literal </script>, which would close the
+ * tag early. Every "</" is rewritten to "<\/" — a valid JSON escape that
+ * parses back to the same string.
+ *
+ * Re-encoding normalises formatting (pretty-printed, slashes and Unicode
+ * unescaped); keys, order and values are otherwise unchanged. The final
+ * string is re-checked with json_decode(); any failure returns '', and the
+ * caller treats '' exactly like an invalid paste — skipped, as before.
+ *
+ * @param  string $json Expanded schema string (tokens already replaced).
+ * @return string       Output-ready JSON, or '' if it cannot be produced.
+ */
+function roci_schema_json_for_output( $json ) {
+
+    if ( ! is_string( $json ) || '' === trim( $json ) ) {
+        return '';
+    }
+
+    $data = json_decode( $json );
+
+    if ( JSON_ERROR_NONE !== json_last_error() ) {
+        return '';
+    }
+
+    // Recursive walk as a closure, so no second function name is added.
+    $decode = function ( $value ) use ( &$decode ) {
+        if ( is_string( $value ) ) {
+            return html_entity_decode( $value, ENT_QUOTES | ENT_HTML5, 'UTF-8' );
+        }
+
+        if ( is_array( $value ) ) {
+            foreach ( $value as $key => $item ) {
+                $value[ $key ] = $decode( $item );
+            }
+            return $value;
+        }
+
+        if ( is_object( $value ) ) {
+            foreach ( get_object_vars( $value ) as $key => $item ) {
+                // An empty-string key cannot be written back as a property.
+                if ( '' === $key ) {
+                    continue;
+                }
+                $value->$key = $decode( $item );
+            }
+            return $value;
+        }
+
+        return $value;
+    };
+
+    $output = wp_json_encode( $decode( $data ), JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
+
+    if ( ! is_string( $output ) || '' === $output ) {
+        return '';
+    }
+
+    $output = str_replace( '</', '<\/', $output );
+
+    json_decode( $output );
+
+    if ( JSON_ERROR_NONE !== json_last_error() ) {
+        return '';
+    }
+
+    return $output;
 }
