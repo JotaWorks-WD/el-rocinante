@@ -4,6 +4,14 @@ All notable changes to the El Rocinante parent theme are recorded here. Entries 
 
 ---
 
+## [6.31.1] — 2026-09-27
+
+**BUILD TOOLING — no visible change.**
+
+cleanCSS zeroUnits fix — admin-folders.css zero-unit restored (0 → 0px); render-identical, admin-only, no visible change.
+
+The Build repo gulpfile now passes `compatibility: { properties: { zeroUnits: false } }` to `cleanCSS()`. clean-css's default rewrites every zero-with-unit to a bare `0`, which is invalid for %-required descriptors such as `line-gap-override:0%` — the browser drops the declaration silently. Rebuilding with the option changed one declaration in the compiled output, `top:var(--wp-admin--admin-bar--height,0)` → `…,0px)` in `dist/css/admin-folders.css`; `style.css` and the page bundles recompile byte-identical.
+
 ## [6.31.0] — 2026-09-23
 
 **NETWORK-WIDE:** the LCP hero image is now preloaded in `<head>`.
