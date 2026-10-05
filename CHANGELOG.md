@@ -4,6 +4,55 @@ All notable changes to the El Rocinante parent theme are recorded here. Entries 
 
 ---
 
+## [6.33.0] — 2026-10-05
+
+**NETWORK-WIDE, ADDITIVE A11Y:** focus-visible baseline with `--color-focus` token; forced-colors/high-contrast support.
+
+CSS only. **No front-end JavaScript**, and no outline removal anywhere.
+
+### The token
+
+`base/_tokens.scss` **v1.3.0 → v1.4.0** adds an **optional** semantic slot:
+
+```css
+--color-focus: currentColor;
+```
+
+It is **not** one of the twelve required semantic slots, and a child that never declares it is correct. `currentColor` is the default because it is right on every surface: an unregistered custom property substitutes the keyword where it is used, so each element's ring takes that element's own text colour, which already has to contrast with its background. A child sets a brand focus colour by redeclaring the token on `:root`, and should check it against every surface it lands on.
+
+### The focus ring
+
+`base/_base.scss` **v1.1.0 → v1.2.0**:
+
+```css
+:focus-visible { outline: 2px solid var(--color-focus); outline-offset: 2px; }
+```
+
+Before this, every site relied on browser-default rings. `:focus-visible` matches keyboard focus (and text inputs), not a mouse click on a link or button.
+
+**A child's own focus rule wins.** The selector is specificity (0,1,0) in the sheet that loads first, so any child rule naming a class outranks it, and an equal-weight child rule wins on load order. It fills the gap where a child has no rule; it overrides nothing.
+
+### Forced colors (Windows High Contrast)
+
+```css
+@media (forced-colors: active) {
+  :focus-visible { outline-color: Highlight; }
+  button, input:where(:not([type=checkbox],[type=radio],[type=range],[type=image])), select, textarea {
+    border: 1px solid ButtonText;
+  }
+}
+```
+
+The ring is repainted in the system's focus colour, and native controls keep a visible border, since this mode drops box-shadows and author backgrounds. The control rule is element weight (the `:where()` keeps the type exclusions from adding specificity), so a child's class-level `border: none` still wins. A child that wants borderless buttons to survive this mode uses `border: 1px solid transparent` instead.
+
+### The convention
+
+**Never `outline: 0` or `outline: none`.** To replace the ring with a custom one, write `outline-color: transparent` and add a visible replacement. A transparent outline is redrawn in forced-colors mode; `none` and `0` are not, so a box-shadow-only focus state disappears entirely for a high-contrast user. Documented in place in `base/_base.scss`.
+
+### Purely additive
+
+The compiled `dist/css/style.css` is the 6.32.0 output plus exactly two insertions: `--color-focus:currentColor;` in the `:root` block, and the new rules after `body`. Removing those two strings gives back the previous file byte for byte.
+
 ## [6.32.0] — 2026-10-05
 
 **NETWORK-WIDE, ADDITIVE A11Y:** skip-to-content link; fix screen-reader-text focus reveal to sit above fixed header; scroll-margin on #main-content.
