@@ -4,7 +4,7 @@ All notable changes to the El Rocinante parent theme are recorded here. Entries 
 
 ---
 
-## [6.31.2] — 2026-10-05
+## [6.32.0] — 2026-10-05
 
 **NETWORK-WIDE, ADDITIVE A11Y:** skip-to-content link; fix screen-reader-text focus reveal to sit above fixed header; scroll-margin on #main-content.
 
