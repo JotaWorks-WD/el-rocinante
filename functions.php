@@ -6,8 +6,8 @@
  * loads includes, and outputs analytics/integration scripts.
  *
  * File:    functions.php
- * Version: 1.15.0
- * Updated: 2026-09-23
+ * Version: 1.16.0
+ * Updated: 2026-10-05
  *
  * @package ElRocinante
  */
@@ -84,6 +84,33 @@ function el_rocinante_render_loader() {
     get_template_part( 'template-parts/loader' );
 }
 add_action( 'wp_body_open', 'el_rocinante_render_loader', 5 );
+
+
+// ============================================================
+// SKIP LINK
+// ============================================================
+//
+// The first focusable element on every page, on every child: header.php is
+// the parent's and a child never overrides it. Targets #main-content, the id
+// every <main> in the parent and its children carries.
+//
+// PRIORITY 1 — AHEAD OF THE LOADER (5) AND OF ANY PLUGIN OR CHILD (10). It
+// cannot be written inline after wp_body_open() in header.php: the loader
+// attaches INSIDE that call, so inline markup would land after it, and after
+// any focusable plugin output (a consent banner, say). The link is visually
+// hidden and out of flow until focused, so sitting ahead of the overlay
+// changes nothing the loader's own priority note protects.
+//
+// HTML ONLY. The visibility comes from .screen-reader-text and its :focus
+// reveal in base/_utilities.scss; no JavaScript is involved, so the
+// zero-front-end-JS rule stands.
+
+function el_rocinante_render_skip_link() {
+    ?>
+<a class="screen-reader-text" href="#main-content"><?php esc_html_e( 'Skip to content', 'rocinante' ); ?></a>
+    <?php
+}
+add_action( 'wp_body_open', 'el_rocinante_render_skip_link', 1 );
 
 
 // ============================================================

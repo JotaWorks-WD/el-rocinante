@@ -4,6 +4,40 @@ All notable changes to the El Rocinante parent theme are recorded here. Entries 
 
 ---
 
+## [6.31.2] — 2026-10-05
+
+**NETWORK-WIDE, ADDITIVE A11Y:** skip-to-content link; fix screen-reader-text focus reveal to sit above fixed header; scroll-margin on #main-content.
+
+HTML + CSS only. **No front-end JavaScript** — the parent's zero-front-end-JS rule stands.
+
+### The skip link
+
+New **`el_rocinante_render_skip_link()`** (`functions.php` **v1.15.0 → v1.16.0**), on `wp_body_open` at **priority 1**:
+
+```html
+<a class="screen-reader-text" href="#main-content">Skip to content</a>
+```
+
+The label is gettext-wrapped (`'rocinante'`). `#main-content` is the id every `<main>` in the parent and its children already carries, so every child gets a working skip link with no change of its own.
+
+**Why a priority-1 hook, not inline markup after `wp_body_open()`:** the loader attaches *inside* that call (priority 5), so inline markup written after it would follow the loader and any focusable plugin output hooked at 10 (a consent banner, say). Priority 1 makes the link the first focusable element on the page. It is visually hidden and out of flow until focused, so sitting ahead of the overlay changes nothing about how the loader paints. `header.php` **v2.1.0 → v2.1.1** documents this beside the call (comment only).
+
+### The focus-reveal fix (latent bug)
+
+`base/_utilities.scss` **v1.3.0 → v1.4.0**. `.screen-reader-text:focus` used `position: static`, meant to keep the reveal out from under the fixed header. It did the opposite: a static link at the top of the body sits in flow *behind* a `position: fixed` child header, and `z-index` has no effect on a static element, so the rule's `z-index: 100000` was inert. The rule had no consumer until now, which is why it never showed.
+
+It is now `position: fixed; top: 0; left: 0`, so the z-index applies and the link paints above the child's header, the loader (700) and the admin bar (99999). It also gains a **minimal** opaque box — `background-color: var(--color-surface)`, `color: var(--color-heading)` and the existing padding — so it is never transparent text over a hero. Those are semantic roles each child fills from its own palette; **children style the colours.**
+
+**The visually-hidden base rule is unchanged**, byte for byte in the compiled output. Its other consumers (the loader's "Loading…" text, the search-form label, core's pagination heading) are not focusable, never match `:focus`, and still hide.
+
+### scroll-margin on #main-content
+
+```css
+#main-content { scroll-margin-top: var(--site-header-h, 12rem); }
+```
+
+So the skip jump does not park the top of `<main>` under a fixed header. `--site-header-h` is used when a child publishes its measured header height (Fish Potrero does). The parent ships no header styles, so it has no height of its own; the **12rem** fallback is deliberately generous, because the error is one-sided: `<main>` follows the header directly, so an oversized margin only stops the scroll at the page top, while an undersized one leaves content under the header.
+
 ## [6.31.1] — 2026-09-27
 
 **BUILD TOOLING — no visible change.**

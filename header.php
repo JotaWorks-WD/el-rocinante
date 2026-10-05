@@ -12,8 +12,8 @@
  * for children that opt into multilingual output with add_theme_support('roci-i18n').
  *
  * File:    header.php
- * Version: 2.1.0
- * Updated: 2026-09-23
+ * Version: 2.1.1
+ * Updated: 2026-10-05
  *
  * @package ElRocinante
  */
@@ -545,9 +545,13 @@
  * children expect it as the first thing inside <body>.
  *
  * The loader overlay attaches here at priority 5 (el_rocinante_render_loader(),
- * functions.php) rather than being called inline, so #loader is the FIRST
- * element in the body — ahead of the fixed #site-header, which would
- * otherwise paint over the overlay.
+ * functions.php) rather than being called inline, so #loader comes ahead of
+ * the fixed #site-header, which would otherwise paint over the overlay.
+ *
+ * The skip link attaches here too, at priority 1 (el_rocinante_render_skip_link(),
+ * functions.php), so it is the FIRST focusable element on the page — ahead of
+ * the loader and of anything a plugin or child hooks at 10. Do not move it
+ * inline below this call: the loader and plugin output would then precede it.
  */
 wp_body_open();
 ?>
