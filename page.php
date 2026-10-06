@@ -19,9 +19,11 @@
  * A child that wants a designed default overrides this file; a child that
  * ships one template per real page never needs to.
  *
+ * `.entry-content` is the prose contract: the parent's base typography restores list markers and link underlines inside it.
+ *
  * File:    page.php
- * Version: 1.0.0
- * Updated: 2026-08-07
+ * Version: 1.1.0
+ * Updated: 2026-10-06
  *
  * @package ElRocinante
  */
@@ -33,7 +35,11 @@ get_header(); ?>
     <?php
     if ( have_posts() ) :
         while ( have_posts() ) : the_post();
-            the_content();
+            ?>
+            <div class="entry-content">
+                <?php the_content(); ?>
+            </div>
+            <?php
         endwhile;
     endif;
     ?>

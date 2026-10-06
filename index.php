@@ -10,9 +10,11 @@
  * loop — so that terminating an unassigned Page's fallthrough one step earlier
  * changes no rendered output. See page.php's docblock.
  *
+ * `.entry-content` is the prose contract: the parent's base typography restores list markers and link underlines inside it.
+ *
  * File:    index.php
- * Version: 1.0.0
- * Updated: 2026-08-09
+ * Version: 1.1.0
+ * Updated: 2026-10-06
  *
  * @package ElRocinante
  */
@@ -24,7 +26,11 @@ get_header(); ?>
     <?php
     if ( have_posts() ) :
         while ( have_posts() ) : the_post();
-            the_content();
+            ?>
+            <div class="entry-content">
+                <?php the_content(); ?>
+            </div>
+            <?php
         endwhile;
     endif;
     ?>

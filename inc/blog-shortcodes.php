@@ -9,8 +9,8 @@
  * so the functions are available, but registration is left to the child.
  *
  * File:    inc/blog-shortcodes.php
- * Version: 1.0.0
- * Updated: 2026-06-14
+ * Version: 1.0.1
+ * Updated: 2026-10-06
  *
  * @package ElRocinante
  *
@@ -336,7 +336,7 @@ function roci_sc_expect( $atts, $content = '' ) {
     ?>
     <div class="roci-expect">
         <h3 class="roci-expect__heading"><?php echo esc_html( $label ); ?></h3>
-        <ul>
+        <ul class="roci-expect__list">
             <?php foreach ( $lines as $line ) : ?>
                 <li class="roci-expect__item">
                     <span class="roci-expect__icon" aria-hidden="true"><?php echo $icon; ?></span>

@@ -4,6 +4,65 @@ All notable changes to the El Rocinante parent theme are recorded here. Entries 
 
 ---
 
+## [6.35.0] — 2026-10-06
+
+**NETWORK-WIDE, ADDITIVE A11Y:** `.entry-content` prose contract — prose lists regain markers (#2, WCAG 1.3.1) and prose links regain underlines (#1, WCAG 1.4.1).
+
+HTML + CSS only. **No front-end JavaScript**, and no `!important`.
+
+### The wrapper
+
+`page.php`, `index.php` and `single.php` (each **v1.0.0 → v1.1.0**) now wrap `the_content()` in `<div class="entry-content">`, **inside the loop**, so a multi-post `index.php` route gets one wrapper per post. These are the only three parent templates that print `the_content()`. Archive and search print excerpts, and 404 prints none. The `<div>` carries no box styling, so it changes nothing visually until the prose rules below match. Each docblock now names the contract.
+
+### The prose rules
+
+`base/_typography.scss` **v1.1.0 → v1.2.0** appends them **below** the `a` and `ul, ol` globals they counter:
+
+```css
+:where(.entry-content) :is(ul,ol):where(:not([class]),.wp-block-list) { padding-inline-start: 1.5em }
+:where(.entry-content) ul:where(:not([class]),.wp-block-list)        { list-style-type: disc }
+:where(.entry-content) ol:where(:not([class]),.wp-block-list)        { list-style-type: decimal }
+:where(.entry-content) a:where(:not([class])) {
+  text-decoration-line: underline;
+  text-decoration-thickness: max(1px, .0625em);
+  text-underline-offset: .15em;
+}
+:where(.entry-content) a:where(:not([class])):hover,
+:where(.entry-content) a:where(:not([class])):focus-visible { text-decoration-thickness: max(2px, .125em) }
+```
+
+- **Lists:** markers come back (`disc` / `decimal`), with `1.5em` of inline-start room after the global `* { padding: 0 }`. It is em-based, so it scales with a child's prose size, and it is a logical property, so RTL is correct. Nested-list markers, list margins and `li` spacing are design and are left to children.
+- **Links:** an underline at rest. On hover **and** keyboard focus the underline **thickens**, a cue that doesn't rely on colour. The rules never touch `outline`, so the 6.33.0 `:focus-visible` ring still draws, and the thicker underline adds to it. In forced-colours mode the underline is preserved and recoloured by the system.
+
+### Why zero specificity, and classless only
+
+Every selector is **(0,0,1)**, and the `:hover` / `:focus-visible` variants are **(0,1,1)**. Everything except the type selector sits in `:where()`. The `:is(ul,ol)` contributes a single type selector. So these rules beat the (0,0,1) globals **only on source order** (same file, below them) and **lose to any class-based rule** a child or component writes.
+
+Classed elements are **not matched at all**, so they need no override. The `:not([class])` filter excludes:
+
+- the block editor's **Buttons** links (`wp-block-button__link`) and the File block's download button;
+- the parent's **`[roci_related]` card links** (`a.roci-related__card`);
+- any classed component list or link a child places inside content.
+
+**`.wp-block-list` is admitted explicitly.** Recent WordPress versions put that class on every list-block `<ul>`/`<ol>`, so a pure `:not([class])` filter would have skipped exactly the prose lists this is meant to fix. Classic-editor and older lists are classless and match anyway. Links inside editor content in `[roci_quote]` and `[roci_notes]` are prose, so they are underlined deliberately.
+
+⚠ **Keep the prose block below the globals.** Moving it above them, or into a partial that compiles earlier, makes the globals win the tie and silently undoes it. The file says so in place.
+
+### `[roci_expect]` gains a list class
+
+`inc/blog-shortcodes.php` **v1.0.0 → v1.0.1**: `roci_sc_expect()` now prints `<ul class="roci-expect__list">`. It was the one classless component list in the parent's shortcodes, so the prose rule would have put a disc beside its icons on any child that registers the shortcodes without styling them. It is now excluded by the classless filter. This is backwards-compatible: a child rule written as `.roci-expect ul` still matches.
+
+### Child impact
+
+- **Fish Potrero:** its blog posts are **unaffected**, because they render through FP's own `single.php` (`.single-post__body`), not the parent's. Only a Page left on the default template changes. ⚠ FP's post lists have no markers today: FP's own body rule restores padding but not `list-style`. That is fixed FP-side in a later child batch, preferably by adding `entry-content` to its body wrapper so this contract applies.
+- **360 Splendor:** only unassigned Pages, or a stray post or attachment single. Its own `index.php` is unchanged.
+- **Coco and the Boilerplate:** their existing `.entry-content` rule (disc/decimal, `padding-left: var(--space-20)`, `li + li` spacing) **now applies on Pages too**, because the parent's `page.php` carries the class. Previously only their own `single.php` did. The values agree with the parent's, and their (0,1,1) rule outranks the parent's (0,0,1), so their padding and spacing win where both apply. Their "no page template carries it yet" naming TODO is answered.
+- **Header, footer and nav** sit outside `.entry-content` and are untouched.
+
+### Purely additive
+
+The compiled `dist/css/style.css` is the 6.34.0 output plus exactly one insertion: the prose rules, directly after `ol,ul{list-style:none}`. Removing them gives back the previous file byte for byte. The `!important` count is unchanged (5), and the reduced-motion `0.01ms` still appears twice.
+
 ## [6.34.0] — 2026-10-06
 
 **NETWORK-WIDE, ADDITIVE A11Y:** global `prefers-reduced-motion` reset, parent-owned.
