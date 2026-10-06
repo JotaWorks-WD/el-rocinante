@@ -7,7 +7,7 @@
  * and template parts throughout El Rocinante and child themes.
  *
  * File:    inc/helpers.php
- * Version: 1.10.0
+ * Version: 1.11.0
  * Updated: 2026-10-06
  *
  * @package ElRocinante
@@ -19,7 +19,8 @@
  *   jw_hero_picture()              — Art-directed hero <picture> (desktop + mobile crop)
  *   jw_hero_picture_sources()      — jw_hero_picture()'s URLs/srcset/sizes, shared with the LCP preload
  *   jw_logo_dimensions()           — Intrinsic [w, h] of a logo attachment, SVG-aware
- *   jw_bunny_video()               — Clean Bunny Stream iframe embed
+ *   jw_bunny_video()               — Clean Bunny Stream iframe embed (always titled)
+ *   jw_debug_comment()             — WP_DEBUG-only HTML comment flagging a content problem
  *   jw_faq_schema()                — FAQPage JSON-LD schema output from jw_faq_items field
  *   jw_link_atts()                 — Returns target + rel attribute string for external links
  *   jw_wysiwyg_body()              — Expands shortcodes + targets external links inside stored wysiwyg HTML
@@ -105,6 +106,11 @@ function jw_get_webp_url( $attachment_id, $size = 'full' ) {
  * @param  string|null $alt        Alt text. Omit or pass null to fall back to the
  *                                media library alt (_wp_attachment_image_alt). Pass ''
  *                                for decorative images (intentional empty alt).
+ *                                MISSING alt (null passed AND no media-library alt)
+ *                                still renders alt="", but with WP_DEBUG on an HTML
+ *                                comment after the picture names the attachment, so
+ *                                it can be fixed (v1.11.0). A whitespace-only library
+ *                                alt counts as missing.
  * @param  string $class          CSS class on the <img> tag. Default: ''.
  * @param  string $loading        'lazy' or 'eager'. Default: 'lazy'.
  *                                IMPORTANT: Pass 'eager' for above-the-fold / LCP images
@@ -166,8 +172,14 @@ function jw_picture( $attachment_id, $size = 'full', $alt = null, $class = '', $
     }
 
     // null means alt was not passed — fall back to the media library value.
+    // '' passed explicitly is INTENTIONAL decorative and is never flagged; null
+    // with no library alt is MISSING — it still renders alt="" (no visual
+    // change) and is flagged below in a WP_DEBUG-only comment. trim() makes a
+    // whitespace-only library alt count as missing instead of rendering alt=" ".
+    $roci_alt_missing = false;
     if ( null === $alt ) {
-        $alt = (string) get_post_meta( $attachment_id, '_wp_attachment_image_alt', true );
+        $alt              = trim( (string) get_post_meta( $attachment_id, '_wp_attachment_image_alt', true ) );
+        $roci_alt_missing = ( '' === $alt );
     }
     $alt     = esc_attr( $alt );
     $class   = $class ? ' class="' . esc_attr( $class ) . '"' : '';
@@ -220,6 +232,13 @@ function jw_picture( $attachment_id, $size = 'full', $alt = null, $class = '', $
         >
     </picture>
     <?php
+    // The missing-alt flag is echoed HERE, inside the PHP block that already
+    // follows the picture, so the bytes around the closing picture tag never
+    // move: with WP_DEBUG off jw_debug_comment() returns '' and the output is
+    // identical to v1.10.0.
+    if ( $roci_alt_missing ) {
+        echo jw_debug_comment( sprintf( "jw_picture: attachment %d has no alt text. Set it in the Media Library, or pass '' if the image is decorative.", (int) $attachment_id ) );
+    }
     return ob_get_clean();
 }
 
@@ -354,8 +373,11 @@ function jw_picture_sources( $attachment_id, $size = 'full', $loading = 'lazy', 
  * @param  int    $desktop_id  Attachment ID of the desktop crop.
  * @param  int    $mobile_id   Attachment ID of the mobile crop.
  * @param  string|null $alt     Alt text. Omit or pass null to fall back to the
- *                              media library alt of the mobile attachment. Pass ''
- *                              for decorative images (intentional empty alt).
+ *                              media library alt of the mobile attachment, then (if
+ *                              that is empty) of the desktop attachment (v1.11.0).
+ *                              Pass '' for decorative images (intentional empty alt).
+ *                              Missing on both crops renders alt="" and is flagged
+ *                              in a WP_DEBUG-only comment, as in jw_picture().
  * @param  string $class       CSS class on the <img> tag. Default: ''.
  * @param  string $loading     'lazy' or 'eager'. Default: 'eager' (heroes are LCP).
  *                             'eager' adds fetchpriority="high" + data-no-lazy="1",
@@ -381,9 +403,16 @@ function jw_hero_picture( $desktop_id, $mobile_id, $alt = null, $class = '', $lo
     $width    = isset( $metadata['width'] )  ? (int) $metadata['width']  : '';
     $height   = isset( $metadata['height'] ) ? (int) $metadata['height'] : '';
 
-    // null means alt was not passed — fall back to the mobile attachment's media library value.
+    // null means alt was not passed — fall back to the mobile attachment's media
+    // library value, then to the desktop crop's: both crops are the same image,
+    // so an alt set on either one describes it. Missing on both is flagged below.
+    $roci_alt_missing = false;
     if ( null === $alt ) {
-        $alt = (string) get_post_meta( $mobile_id, '_wp_attachment_image_alt', true );
+        $alt = trim( (string) get_post_meta( $mobile_id, '_wp_attachment_image_alt', true ) );
+        if ( '' === $alt && $desktop_id ) {
+            $alt = trim( (string) get_post_meta( $desktop_id, '_wp_attachment_image_alt', true ) );
+        }
+        $roci_alt_missing = ( '' === $alt );
     }
     $alt     = esc_attr( $alt );
     $class   = $class ? ' class="' . esc_attr( $class ) . '"' : '';
@@ -425,6 +454,11 @@ function jw_hero_picture( $desktop_id, $mobile_id, $alt = null, $class = '', $lo
         >
     </picture>
     <?php
+    // Echoed inside the existing trailing PHP block, as in jw_picture(), so
+    // output is byte-identical with WP_DEBUG off.
+    if ( $roci_alt_missing ) {
+        echo jw_debug_comment( sprintf( "jw_hero_picture: attachments %d (mobile) and %d (desktop) have no alt text. Set it in the Media Library, or pass '' if the image is decorative.", (int) $mobile_id, (int) $desktop_id ) );
+    }
     return ob_get_clean();
 }
 
@@ -619,6 +653,39 @@ function jw_logo_dimensions( $attachment_id ) {
 
 
 // ============================================================
+// DEBUG HELPERS
+// ============================================================
+
+/**
+ * jw_debug_comment()
+ *
+ * Returns an HTML comment carrying $message when WP_DEBUG is on, '' otherwise.
+ * Invisible on the page and absent in production — the parent's way of
+ * flagging a CONTENT problem (missing alt text, a nameless frame) to whoever
+ * is viewing source on staging, without a PHP notice that could print into
+ * the layout under WP_DEBUG_DISPLAY.
+ *
+ * Callers echo it from the PHP block that already follows their markup, so
+ * with WP_DEBUG off their output is byte-identical to before.
+ *
+ * Usage:
+ *   echo jw_debug_comment( 'jw_picture: attachment 123 has no alt text.' );
+ *
+ * @param  string $message Plain-text message.
+ * @return string          '<!-- message -->' under WP_DEBUG, else ''.
+ */
+function jw_debug_comment( $message ) {
+
+    if ( ! ( defined( 'WP_DEBUG' ) && WP_DEBUG ) ) {
+        return '';
+    }
+
+    // A double hyphen cannot appear inside an HTML comment.
+    return '<!-- ' . esc_html( str_replace( '--', '—', (string) $message ) ) . ' -->';
+}
+
+
+// ============================================================
 // VIDEO HELPERS
 // ============================================================
 
@@ -649,17 +716,26 @@ function jw_logo_dimensions( $attachment_id ) {
  *       }
  *   }
  *
+ * THE IFRAME IS ALWAYS NAMED (v1.11.0, WCAG 4.1.2). Pass $title — a short
+ * description of THE VIDEO ("Sunset cruise highlights"), not of the page. If
+ * it is omitted the frame falls back to "Embedded video" ONLY so it is never
+ * nameless; that fallback is a weak name, and with WP_DEBUG on an HTML comment
+ * after the embed says so.
+ *
  * Usage:
- *   echo jw_bunny_video( '123456', 'abc123-def456' );
- *   echo jw_bunny_video( '123456', 'abc123-def456', $poster_id, 'venue__video' );
+ *   echo jw_bunny_video( '123456', 'abc123-def456', 0, '', 'Sunset cruise highlights' );
+ *   echo jw_bunny_video( '123456', 'abc123-def456', $poster_id, 'venue__video', 'Venue walkthrough' );
  *
  * @param  string $library_id  Bunny Stream Library ID.
  * @param  string $video_id    Bunny Stream Video ID.
  * @param  int    $poster_id   Optional. WordPress attachment ID for poster image. Default: 0.
  * @param  string $class       CSS class on the wrapper <div>. Default: 'jw-video-embed'.
+ * @param  string $title       The iframe's accessible name — describe the video.
+ *                             Default '' falls back to "Embedded video" (flagged
+ *                             under WP_DEBUG).
  * @return string              HTML output.
  */
-function jw_bunny_video( $library_id, $video_id, $poster_id = 0, $class = '' ) {
+function jw_bunny_video( $library_id, $video_id, $poster_id = 0, $class = '', $title = '' ) {
 
     if ( ! $library_id || ! $video_id ) {
         return '';
@@ -677,17 +753,29 @@ function jw_bunny_video( $library_id, $video_id, $poster_id = 0, $class = '' ) {
 
     $wrapper_class = $class ? esc_attr( $class ) : 'jw-video-embed';
 
+    // Never a nameless frame: an empty $title falls back to a generic name and
+    // is flagged under WP_DEBUG so the caller passes a real one.
+    $title             = trim( (string) $title );
+    $roci_missing_name = ( '' === $title );
+    if ( $roci_missing_name ) {
+        $title = __( 'Embedded video', 'rocinante' );
+    }
+
     ob_start();
     ?>
     <div class="<?php echo $wrapper_class; ?>">
         <iframe
             src="<?php echo esc_url( $embed_url ); ?>"
+            title="<?php echo esc_attr( $title ); ?>"
             loading="lazy"
             allow="accelerometer; gyroscope; autoplay; encrypted-media; picture-in-picture"
             allowfullscreen
         ></iframe>
     </div>
     <?php
+    if ( $roci_missing_name ) {
+        echo jw_debug_comment( 'jw_bunny_video: no $title passed, so the frame is named "Embedded video". Pass a title that describes the video.' );
+    }
     return ob_get_clean();
 }
 

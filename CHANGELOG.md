@@ -4,6 +4,54 @@ All notable changes to the El Rocinante parent theme are recorded here. Entries 
 
 ---
 
+## [6.38.0] — 2026-10-06
+
+**NETWORK-WIDE, ADDITIVE A11Y:** helper hardening — named video frames, flagged missing alt text, shortcode semantics.
+
+PHP only. **No CSS change** (`dist/css/style.css` byte-identical), no front-end JavaScript, no `!important`.
+
+### `jw_bunny_video()` — the iframe is always named (#6, WCAG 4.1.2)
+
+`inc/helpers.php` **v1.10.0 → v1.11.0**. New fifth parameter, appended so every existing call is unchanged:
+
+```php
+jw_bunny_video( $library_id, $video_id, $poster_id = 0, $class = '', $title = '' )
+```
+
+The iframe now always carries `title`. **Pass a description of the video** ("Sunset cruise highlights"), not of the page. Omitted, it falls back to "Embedded video" **only so the frame is never nameless** — a weak name, flagged under `WP_DEBUG` (below). The helper has no callers anywhere today.
+
+### Missing alt text is flagged, and the hero fallback widened (#7, WCAG 1.1.1)
+
+- **New `jw_debug_comment( $message )`** — returns `<!-- message -->` when `WP_DEBUG` is on, `''` otherwise. Invisible on the page and absent in production: the parent's way of flagging a *content* problem on staging without a PHP notice that could print into the layout. Not `_doing_it_wrong()` (it can display under `WP_DEBUG_DISPLAY`), no `error_log()`.
+- **`jw_picture()`** — `$alt` passed as `''` is intentional decorative and is never flagged. `null` (omitted) with no Media Library alt is **missing**: it still renders `alt=""` (no visual change) and, under `WP_DEBUG`, is followed by `<!-- jw_picture: attachment N has no alt text… -->`. The comment is echoed from the PHP block that already followed the picture, so **with `WP_DEBUG` off the output is byte-identical to 6.37.0**.
+- **`jw_hero_picture()`** — falls back to the **mobile** crop's alt, then (new) the **desktop** crop's, since both crops are the same image. Missing on both is flagged the same way.
+- **Whitespace-only alt correction.** A Media Library alt of only spaces used to render `alt=" "` (a non-empty, meaningless alt). It is now trimmed and treated as missing — `alt=""` plus the debug flag. Any non-whitespace alt renders exactly as before.
+- **`[roci_image alt=""]`, `[roci_pair alt1="" alt2=""]`** (`inc/blog-shortcodes.php` **v1.0.1 → v1.1.0**). **Omitted** → the image's Media Library alt (and the missing-alt flag). **Present, even empty** → used exactly as written; `alt=""` marks the image decorative. A caption is never reused as alt — it would be read twice.
+
+### Shortcode semantics (#18, WCAG 1.3.1 / 2.4.4)
+
+- **`[roci_stats]` is a description list.** `div.roci-stats > div.roci-stats__cell > span + span` → `dl.roci-stats > div.roci-stats__cell > dt.roci-stats__label + dd.roci-stats__value`. `<div>` grouping inside `<dl>` is valid HTML; a screen reader now announces the label/value relationship. Both elements are always emitted, so a cell with an empty label or value stays well-formed.
+- **`[roci_notes]` is `role="note"`**, named by its own label (`aria-labelledby`, id from `wp_unique_id( 'roci-notes-' )`). The label stays a non-heading: a callout is parenthetic, not a section, and a heading would put every callout into the post's outline. Not `<aside>`: inside an article an unnamed one is generic, and a named one becomes a complementary landmark per callout.
+- **`[roci_expect level=""]` / `[roci_related level=""]`** — heading level 2–6, **default 3** (the historical level, so existing content renders the same `<h3>`). Anything else falls back to 3; `1` is refused because the page title is the `<h1>`. Validated by a new internal `roci_blog_heading_level()`.
+- **`[roci_related]` card thumbnails get `alt=""`**, so each card link's accessible name is exactly "{Type} {Title}" instead of the image alt followed by the same title again.
+
+### Child impact
+
+**Fish Potrero is the only live consumer** — the only child that calls `roci_register_blog_shortcodes()`, and the only caller of `jw_picture()` / `jw_hero_picture()` besides 360 Splendor (`jw_picture()` only). **Expected visual change: none.**
+
+- **`[roci_stats]` checked against FP's styles.** Every FP rule targets classes (`.roci-stats`, `__cell`, `__label`, `__value`) plus `:nth-child` / `:last-child` on the cells — still `<div>`s, still the container's only children, same order. The UA's `dd` indent and `dl` margins are zeroed by the parent's global `*, *::before, *::after { margin: 0; padding: 0 }`; `dt` carries no UA bold; the value moves from an inline `<span>` to a block `<dd>`, but the label is already `display: block`, so it was already on its own line. Grid/flex on the `<dl>` behave as on the `<div>`. Worth a look on one live post.
+- **Notes, related thumbs, expect/related headings** — attributes and `alt` only; headings stay `<h3>` by default.
+- **The hero** — FP's one `jw_hero_picture()` hero changes only if its mobile crop has no alt and its desktop crop has one (it now picks that up).
+- **`WP_DEBUG` on (staging)** — view-source shows the missing-alt comments; nothing appears on screen.
+
+⚠ **Known FP issue, not fixed here.** FP's `.single-post__body h2` / `h3` rules (specificity 0,1,1) outrank the shortcode heading classes `.roci-expect__heading` / `.roci-related__heading` (0,1,0), so inside FP posts those headings already render with the post body's heading font, size, weight, colour and margin — only the uppercase and letter-spacing survive. Unchanged by this release at the default level; setting `level="2"` would switch them to the body's `h2` rule. An FP child-batch fix.
+
+### Docs follow-up (not in this release)
+
+- Parent `CLAUDE.md` §4 / §5 and `CONVENTIONS.md` → *Helpers*: `jw_bunny_video()` now takes **five** parameters (`$title`); add `jw_debug_comment()` to the `jw_` set; note `jw_picture()` / `jw_hero_picture()`'s missing-alt flag and the hero's desktop-alt fallback.
+- No new filter or action — the extension-point catalogue is unchanged by this release.
+- Future: an SEO Health panel item "Featured image has alt text".
+
 ## [6.37.0] — 2026-10-06
 
 **NETWORK-WIDE, ADDITIVE A11Y:** footer menu landmark; unique "Read More" names; loader logo `alt=""` + `<noscript>` escape; new `--target-min` token.

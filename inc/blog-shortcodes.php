@@ -9,7 +9,7 @@
  * so the functions are available, but registration is left to the child.
  *
  * File:    inc/blog-shortcodes.php
- * Version: 1.0.1
+ * Version: 1.1.0
  * Updated: 2026-10-06
  *
  * @package ElRocinante
@@ -19,13 +19,23 @@
  *   roci_register_blog_shortcodes() — Registers all seven shortcodes with WordPress
  *
  * Shortcodes registered by roci_register_blog_shortcodes():
- *   [roci_image id="" caption=""]
- *   [roci_pair id1="" id2="" caption1="" caption2=""]
+ *   [roci_image id="" caption="" alt=""]
+ *   [roci_pair id1="" id2="" caption1="" caption2="" alt1="" alt2=""]
  *   [roci_quote cite=""]...[/roci_quote]
- *   [roci_expect title=""]...[/roci_expect]
+ *   [roci_expect title="" level=""]...[/roci_expect]
  *   [roci_notes title=""]...[/roci_notes]
  *   [roci_stats stat1="" stat2="" stat3="" stat4=""]
- *   [roci_related ids="" heading=""]
+ *   [roci_related ids="" heading="" level=""]
+ *
+ * Accessibility attributes (v1.1.0):
+ *   alt / alt1 / alt2 — OMITTED: the image's Media Library alt is used (and a
+ *                      missing one is flagged under WP_DEBUG by jw_picture()).
+ *                      PRESENT, even empty: used exactly as written — alt=""
+ *                      marks the image decorative. A caption is never reused
+ *                      as alt (it would be read twice).
+ *   level            — Heading level for [roci_expect] / [roci_related]:
+ *                      2–6, default 3. Anything else falls back to 3; 1 is
+ *                      refused because the page title is the <h1>.
  *
  * Child Config:
  *   Define roci_blog_config() in the child theme returning an array.
@@ -163,6 +173,22 @@ function roci_blog_cfg() {
 }
 
 
+/**
+ * roci_blog_heading_level()
+ *
+ * Internal. Validates a shortcode `level` attribute to an int 2–6; anything
+ * else (missing, 1, 7, non-numeric) returns 3, the historical level. 1 is
+ * refused because the page title is the page's <h1>.
+ *
+ * @param  mixed $level Raw attribute value.
+ * @return int          2–6.
+ */
+function roci_blog_heading_level( $level ) {
+    $level = (int) $level;
+    return ( $level >= 2 && $level <= 6 ) ? $level : 3;
+}
+
+
 // ============================================================
 // SHORTCODE RENDER FUNCTIONS
 // ============================================================
@@ -178,9 +204,11 @@ function roci_blog_cfg() {
  * @return string       HTML output.
  */
 function roci_sc_image( $atts ) {
+    // alt defaults to null: OMITTED -> Media Library alt; PRESENT (even "") -> used as-is.
     $atts = shortcode_atts( [
         'id'      => '',
         'caption' => '',
+        'alt'     => null,
     ], $atts, 'roci_image' );
 
     $id = absint( $atts['id'] );
@@ -188,7 +216,7 @@ function roci_sc_image( $atts ) {
         return '';
     }
 
-    $picture = jw_picture( $id, 'large' );
+    $picture = jw_picture( $id, 'large', $atts['alt'] );
     if ( ! $picture ) {
         return '';
     }
@@ -220,17 +248,20 @@ function roci_sc_image( $atts ) {
  * @return string       HTML output.
  */
 function roci_sc_pair( $atts ) {
+    // alt1 / alt2 default to null: OMITTED -> Media Library alt; PRESENT (even "") -> used as-is.
     $atts = shortcode_atts( [
         'id1'      => '',
         'id2'      => '',
         'caption1' => '',
         'caption2' => '',
+        'alt1'     => null,
+        'alt2'     => null,
     ], $atts, 'roci_pair' );
 
     $id1  = absint( $atts['id1'] );
     $id2  = absint( $atts['id2'] );
-    $pic1 = $id1 ? jw_picture( $id1, 'large' ) : '';
-    $pic2 = $id2 ? jw_picture( $id2, 'large' ) : '';
+    $pic1 = $id1 ? jw_picture( $id1, 'large', $atts['alt1'] ) : '';
+    $pic2 = $id2 ? jw_picture( $id2, 'large', $atts['alt2'] ) : '';
 
     if ( ! $pic1 && ! $pic2 ) {
         return '';
@@ -317,8 +348,10 @@ function roci_sc_quote( $atts, $content = '' ) {
 function roci_sc_expect( $atts, $content = '' ) {
     $atts = shortcode_atts( [
         'title' => '',
+        'level' => 3,
     ], $atts, 'roci_expect' );
 
+    $level = roci_blog_heading_level( $atts['level'] );
     $cfg   = roci_blog_cfg();
     $label = $atts['title'] ? trim( $atts['title'] ) : ( $cfg['expect']['label'] ?? 'What to Expect' );
     $icon  = roci_blog_icon_markup( $cfg['expect']['icon'] ?? '', 'anchor' );
@@ -335,7 +368,7 @@ function roci_sc_expect( $atts, $content = '' ) {
     ob_start();
     ?>
     <div class="roci-expect">
-        <h3 class="roci-expect__heading"><?php echo esc_html( $label ); ?></h3>
+        <h<?php echo $level; ?> class="roci-expect__heading"><?php echo esc_html( $label ); ?></h<?php echo $level; ?>>
         <ul class="roci-expect__list">
             <?php foreach ( $lines as $line ) : ?>
                 <li class="roci-expect__item">
@@ -376,12 +409,17 @@ function roci_sc_notes( $atts, $content = '' ) {
     $label = $atts['title'] ? trim( $atts['title'] ) : ( $cfg['notes']['label'] ?? 'Note' );
     $icon  = roci_blog_icon_markup( $cfg['notes']['icon'] ?? '', 'info' );
 
+    // role="note" (parenthetic content, not a landmark), named by its own label.
+    // The label stays a non-heading: a callout is not a section, and a heading
+    // would put every callout into the post's outline.
+    $label_id = wp_unique_id( 'roci-notes-' );
+
     ob_start();
     ?>
-    <div class="roci-notes">
+    <div class="roci-notes" role="note" aria-labelledby="<?php echo esc_attr( $label_id ); ?>">
         <div class="roci-notes__header">
             <span class="roci-notes__icon" aria-hidden="true"><?php echo $icon; ?></span>
-            <span class="roci-notes__label"><?php echo esc_html( $label ); ?></span>
+            <span class="roci-notes__label" id="<?php echo esc_attr( $label_id ); ?>"><?php echo esc_html( $label ); ?></span>
         </div>
         <div class="roci-notes__body"><?php echo wp_kses_post( $content ); ?></div>
     </div>
@@ -427,16 +465,21 @@ function roci_sc_stats( $atts ) {
         return '';
     }
 
+    // A description list: each <div> groups one <dt> label with its <dd> value
+    // (div grouping inside <dl> is valid HTML). Classes are unchanged, and the
+    // cells are still the container's only children, so class-based and
+    // :nth-child styling keeps matching. Both elements are always emitted so
+    // every group stays well-formed even when a label or value is empty.
     ob_start();
     ?>
-    <div class="roci-stats">
+    <dl class="roci-stats">
         <?php foreach ( $cells as $cell ) : ?>
             <div class="roci-stats__cell">
-                <span class="roci-stats__label"><?php echo esc_html( $cell['label'] ); ?></span>
-                <span class="roci-stats__value"><?php echo esc_html( $cell['value'] ); ?></span>
+                <dt class="roci-stats__label"><?php echo esc_html( $cell['label'] ); ?></dt>
+                <dd class="roci-stats__value"><?php echo esc_html( $cell['value'] ); ?></dd>
             </div>
         <?php endforeach; ?>
-    </div>
+    </dl>
     <?php
     return ob_get_clean();
 }
@@ -459,7 +502,10 @@ function roci_sc_related( $atts ) {
     $atts = shortcode_atts( [
         'ids'     => '',
         'heading' => '',
+        'level'   => 3,
     ], $atts, 'roci_related' );
+
+    $level = roci_blog_heading_level( $atts['level'] );
 
     $ids = array_filter( array_map( 'absint', explode( ',', $atts['ids'] ) ) );
     if ( empty( $ids ) ) {
@@ -484,14 +530,17 @@ function roci_sc_related( $atts ) {
     ?>
     <div class="roci-related">
         <?php if ( $heading ) : ?>
-            <h3 class="roci-related__heading"><?php echo esc_html( $heading ); ?></h3>
+            <h<?php echo $level; ?> class="roci-related__heading"><?php echo esc_html( $heading ); ?></h<?php echo $level; ?>>
         <?php endif; ?>
         <div class="roci-related__strip">
             <?php foreach ( $posts as $roci_post ) : ?>
                 <?php
                 $pto        = get_post_type_object( $roci_post->post_type );
                 $type_label = $pto ? $pto->labels->singular_name : $roci_post->post_type;
-                $thumbnail  = get_the_post_thumbnail( $roci_post->ID, 'medium' );
+                // alt="" — the thumbnail is decorative inside the card link, so the
+                // link's accessible name is exactly "{Type} {Title}" rather than
+                // the image alt followed by the same title again.
+                $thumbnail  = get_the_post_thumbnail( $roci_post->ID, 'medium', array( 'alt' => '' ) );
                 ?>
                 <a href="<?php echo esc_url( get_permalink( $roci_post->ID ) ); ?>" class="roci-related__card">
                     <?php if ( $thumbnail ) : ?>
