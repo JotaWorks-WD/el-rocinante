@@ -10,8 +10,12 @@
  * menu is assigned — so there is never an empty landmark. The label names the
  * nav, not its role (a screen reader announces "Footer, navigation").
  *
+ * The menu's <ul> carries role="list" (v1.1.1): the parent's global
+ * list-style: none strips its markers, and WebKit (Safari + VoiceOver) then
+ * drops its list semantics unless the role is explicit.
+ *
  * File:    footer.php
- * Version: 1.1.0
+ * Version: 1.1.1
  * Updated: 2026-10-06
  *
  * @package ElRocinante
@@ -38,6 +42,7 @@
                             'menu_class'     => 'footer-nav u-flex u-gap-medium u-justify-end-md',
                             'fallback_cb'    => false,
                             'depth'          => 1,
+                            'items_wrap'     => '<ul id="%1$s" class="%2$s" role="list">%3$s</ul>',
                         ) );
                         ?>
                     </nav>

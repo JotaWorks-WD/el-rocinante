@@ -4,6 +4,29 @@ All notable changes to the El Rocinante parent theme are recorded here. Entries 
 
 ---
 
+## [6.39.1] — 2026-10-06
+
+**A11Y:** `role="list"` on the parent's lists that drop their markers (CONVENTIONS → *Lists that drop their markers keep `role="list"`*).
+
+Markup only. **No CSS change** (`dist/css/style.css` byte-identical), no JavaScript.
+
+### Why
+
+The parent's global `ul, ol { list-style: none }` strips markers from every list outside `.entry-content`, and WebKit (Safari + VoiceOver) then drops the element's list semantics — a nav menu or feature list stops being announced as "list, N items". An explicit `role="list"` restores it; it is harmless elsewhere.
+
+### What changed
+
+- **`footer.php` v1.1.0 → v1.1.1** — the footer menu's `wp_nav_menu()` call passes `'items_wrap' => '<ul id="%1$s" class="%2$s" role="list">%3$s</ul>'` (WordPress's default wrap plus the role), so the `<ul class="footer-nav …">` inside `<nav aria-label="Footer">` keeps its list semantics. Printed only when a menu is assigned, as before.
+- **`inc/blog-shortcodes.php` v1.1.0 → v1.1.1** — `[roci_expect]`'s `<ul class="roci-expect__list">` gains `role="list"`.
+
+**Checked and not changed:** the parent's only other list-like front-end output is `the_posts_pagination()` in `archive.php` / `search.php`, which with core's default `type => plain` renders a `<nav>` + `div.nav-links` of links — no `<ul>`. Prose lists keep their markers (and semantics) inside `.entry-content`.
+
+### Child impact
+
+- **Fish Potrero** — renders `[roci_expect]` in posts, so its list is now announced as a list in VoiceOver; no visual change. FP overrides `footer.php`, so the footer change is inert there.
+- **360 Splendor** — overrides `footer.php`; does not register the blog shortcodes. No change.
+- **Coco / the Boilerplate** — inherit the parent footer; the role appears if a menu is ever assigned to "Footer Navigation".
+
 ## [6.39.0] — 2026-10-06
 
 **NETWORK-WIDE, ADDITIVE A11Y:** `roci_current_atts()` — current-page indication via `aria-current` (#10; WCAG 1.3.1 where styled, 2.4.8).
