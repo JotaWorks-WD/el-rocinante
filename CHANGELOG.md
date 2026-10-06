@@ -4,6 +4,60 @@ All notable changes to the El Rocinante parent theme are recorded here. Entries 
 
 ---
 
+## [6.34.0] — 2026-10-06
+
+**NETWORK-WIDE, ADDITIVE A11Y:** global `prefers-reduced-motion` reset, parent-owned.
+
+CSS only. **No front-end JavaScript.**
+
+### What was added
+
+`base/_animations.scss` goes from **0 bytes to v1.0.0**. It was one of the parent's declared empty slots and was already `@use`d by `main.scss`, so `main.scss` is unchanged. The reset compiles into `dist/css/style.css` only. The page bundles load abstracts alone, and the admin sheets are separate entries.
+
+```css
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+```
+
+It covers durations only. It never sets `transition-property` or `animation-name`, so a component's own `transition: none` / `animation: none` guard still means exactly that. `animation-iteration-count: 1` stops an infinite animation from becoming a 0.01ms strobe. `scroll-behavior: auto` stops a child's smooth scrolling (the skip-link jump included) for a user who asked for no motion. Delays are deliberately left alone.
+
+### Why `!important` is sanctioned here
+
+This is **sanctioned use 1** in `CONVENTIONS.md` → *`!important` — banned by default, two sanctioned uses*. A universal selector has specificity 0, and the reset must beat every component transition and animation it knows nothing about. The user asked for less motion, so their preference wins. It is not a specificity patch, and it is one of only two front-end exceptions network-wide.
+
+### 0.01ms, never 0
+
+At `0.01ms` the transition or animation still runs, so `transitionend` / `animationend` still fire and JS waiting on them completes. At `0` they do not. **JS must still never wait on an end event alone:** a component that sets `transition: none` under reduced motion has no transition at all, and the event never fires. Always race a `setTimeout`.
+
+### The minifier finding, and the fix
+
+**clean-css (the Build pipeline's minifier, 4.2.3) rewrites `0.01ms` to `0s`.** Its time-unit optimisation converts `ms` to `s` when shorter and rounds `0.00001s` down to zero. (`.01ms` is worse: it becomes `NaNs`, which browsers drop.) Left alone, the parent reset would have shipped the exact value the rule forbids. The v6.31.1 `zeroUnits: false` option does not cover it.
+
+**The fix is scoped, not global.** The `@media` block is wrapped in `/* clean-css ignore:start */` … `/* clean-css ignore:end */`. Sass keeps those comments, clean-css passes the block through untouched and strips the markers, and `0.01ms` survives into `dist`. The block ships unminified, which is a deliberate trade. The gulpfile is unchanged; turning off time-unit rewriting globally would have changed bytes elsewhere (the loader's `.4s` to `400ms`, and two values in `admin-folders.css`). **Do not remove the wrapper**, and after any build-tooling change grep the compiled `style.css` for `0.01ms` (expect 2). The file header says so in place.
+
+### Loader interaction: no conflict
+
+Under reduced motion the loader's own guard sets `#loader.roci-loader { transition: none }` and `.roci-loader__spinner { animation: none }`, in both the stylesheet and the inline `:where()` critical CSS. Because the reset is durations-only, the two agree: no transition, no animation. The loader still dismisses. The parent ships no front-end JS, and dismissal is the child's. Fish Potrero's dismissal is timer- and readiness-based (hero ready, then a load fallback, then a 5s ceiling), never waits on `transitionend`, and hides the overlay immediately under reduced motion.
+
+### Child impact
+
+- **Children must not redeclare this reset.** A child copy shadows the parent's and stops tracking it (the engine/skin contract).
+- **The existing child resets are now redundant** and will be removed in a later child-cleanup batch. Those children are Fish Potrero (with `!important`, in its animations partial) and the Boilerplate and Coco (plain, in their base partial).
+- ⚠ **The child copies are compiled by the same minifier, so they ship `0s`.** Fish Potrero's live compiled reset reads `animation-duration:0s!important … transition-duration:0s!important`. Until the cleanup, **FP's copy shadows the parent reset on source order**: it is equally `!important` with equal specificity, in a later-loaded sheet. So on FP the effective durations stay `0s` until FP's copy is removed. Nothing breaks meanwhile, because FP's end-event JS already has timer fallbacks. The Boilerplate and Coco copies are plain, so the parent's `!important` wins there.
+- **Fish Potrero's `.reveal` guard stays.** It is a component rule forcing its own scroll-reveal visible, not a copy of the reset.
+
+### Purely additive
+
+The compiled `dist/css/style.css` is the 6.33.0 output plus exactly one insertion: the block above, after base typography and before the utilities. Removing it gives back the previous file byte for byte. The `!important` count goes from 1 to 5.
+
 ## [6.33.0] — 2026-10-05
 
 **NETWORK-WIDE, ADDITIVE A11Y:** focus-visible baseline with `--color-focus` token; forced-colors/high-contrast support.
