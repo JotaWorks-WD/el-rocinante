@@ -4,6 +4,74 @@ All notable changes to the El Rocinante parent theme are recorded here. Entries 
 
 ---
 
+## [6.36.0] — 2026-10-06
+
+**NETWORK-WIDE, ADDITIVE A11Y:** entry title `<h1>` in the parent's content templates (#3, WCAG 1.3.1 / 2.4.6); `index.php` becomes a listing; new filter `roci_entry_title_mode`.
+
+PHP only. **No CSS change** (`dist/css/style.css` byte-identical), and no front-end JavaScript.
+
+### Why
+
+`page.php`, `single.php` and `index.php` printed no title at all, so every route they served had **no `<h1>`**. The heading outline started at whatever the editor typed, and a screen-reader user navigating by headings got no page heading. `archive.php`, `search.php` and `404.php` already had one each. These three were the gap.
+
+### Per route
+
+| Template | Now prints |
+|---|---|
+| `page.php` (**v1.1.0 → v1.2.0**) | One `<header class="entry-header"><h1 class="entry-title">` with the page title, inside the loop, immediately before `div.entry-content`. A static front page left on the default template gets its page title. |
+| `single.php` (**v1.1.0 → v1.2.0**) | The same, for any post type with no more specific template. |
+| `index.php` (**v1.1.0 → v1.2.0**) | **A listing.** One `<header class="archive-header"><h1 class="entry-title">`: the **Posts page's own title** when `page_for_posts` is set, otherwise the **site name** (latest posts on the front page). Then each post as `<article id="post-N" class="…post_class…">` with `<h2 class="entry-title"><a href="permalink">title</a></h2>` and its `div.entry-content`. A defensive singular branch prints one `<h1>`, as `page.php` does. |
+
+The post title prints through `the_title()`, matching core and the neighbouring templates. Titles are author-controlled filtered HTML, and wrapping them in `esc_html()` would strip intentional inline markup. The listing heading is not a loop title and is escaped with `esc_html()`. Permalinks use `esc_url()`.
+
+### The filter: `roci_entry_title_mode`
+
+`inc/helpers.php` **v1.9.0 → v1.10.0** adds `roci_entry_title_mode( $template, $post_id = 0 )`, which dispatches:
+
+```php
+apply_filters( 'roci_entry_title_mode', 'visible', array( 'template' => $template, 'post_id' => (int) $post_id ) );
+```
+
+- **`'visible'`** (the default): a normal `<h1>`.
+- **`'hidden'`**: `<h1 class="entry-title screen-reader-text">`. It stays in the heading outline, but nothing shows. Use it for a design with no visible title. It reuses the parent's existing `.screen-reader-text` utility. The 6.32.0 focus reveal never triggers on a non-focusable heading.
+- **`'none'`**: no parent title. Use it when the child renders its own `<h1>`.
+- **An unknown value falls back to `'visible'`**, so a typo fails toward a correct outline, not away from it.
+- `$context['template']` is `'page'`, `'single'` or `'index'`. `$context['post_id']` is the current post. For the `index` listing heading it is the Posts page ID, or `0` for latest-posts-on-front.
+- **It is not memoized:** the filter runs on every call, so per-post logic works and a late `add_filter()` still takes effect. Register it at file scope anyway, like every parent filter.
+- In a listing, the per-post `<h2>` links are **always** rendered (they are the link targets). The mode governs only the `<h1>`.
+
+```php
+// A child whose design shows no visible title on parent-template routes:
+add_filter( 'roci_entry_title_mode', fn() => 'hidden' );
+```
+
+**On by default, no theme-support flag.** Flags in this parent gate opt-in *features* (`roci-loader`, `roci-i18n`, `roci-tour-layout`). A page heading is a correctness baseline, like the 6.32.0 skip link, the 6.33.0 focus ring, the 6.34.0 reduced-motion reset and the 6.35.0 prose contract, all on by default.
+
+### The `index.php` / `page.php` mirror is broken, deliberately
+
+The two files used to be byte-identical after their docblocks, so that terminating an unassigned Page's fallthrough at `page.php` changed no output. That no longer holds: `page.php` is the **singular** template (one `<h1>`) and `index.php` is the **listing** template (one listing `<h1>` + per-post `<h2>`). Both docblocks are rewritten to say so. Do not "restore" the mirror.
+
+### Child impact
+
+**No template route produces a double `<h1>`.** Every child hero `<h1>` lives in a child template that never reaches the parent's content templates. Every parent-template route had zero `<h1>` until now.
+
+- **Fish Potrero:** only **Pages left on the default template** gain a title. Posts and `fish-species` (FP's `single.php`), charters and tours (their own singles), the blog index (`home.php`) and every named page keep their own hero `<h1>`, unchanged.
+- **360 Splendor:** **unassigned Pages** gain a title, and so does any stray **post or attachment single** (RJK ships no `single.php`). Its four named pages and its own `index.php` are unchanged.
+- **Coco and the Boilerplate:** **every Page** gains a title (their `pages/` folder is empty, so all Pages use the parent's `page.php`). Their **posts index** (no `index.php` or `home.php`) gains the listing structure. Their own `single.php` already has a `header.entry-header > <h1>`, which is the same convention the parent now uses.
+- A visible title renders at the parent's base `h1` (`--font-display`, `--fs-h1`). `page.php` and `single.php` have no `.u-container`, so it sits flush with `main`, as their content always has. Spacing and containment are the child's.
+
+⚠ **The one remaining double-`<h1>` source is editor content.** A Heading block set to H1, or the classic editor's Heading 1, inside the content of a post that renders through a parent template. Find them per site with:
+
+```
+wp db query "SELECT ID, post_type, post_status, post_title FROM $(wp db prefix)posts WHERE post_status = 'publish' AND post_type NOT IN ('revision','nav_menu_item','attachment','wp_block','wp_template','wp_template_part','wp_global_styles','wp_navigation') AND post_content LIKE '%<h1%' ORDER BY post_type, ID"
+```
+
+Fix a hit by changing that heading to H2 in the editor, or by returning `'none'` (or `'hidden'`) for that post from the filter. Hits on posts or pages that render through a child's own template are unaffected.
+
+### Docs follow-up (not in this release)
+
+`CONVENTIONS.md` → *Parent extension points — the complete catalogue* needs a row for `roci_entry_title_mode`. That takes the extension-point count from **23 to 24** (filters 21 to 22). The catalogue's own rule is "add its row in the same change", but wrapper docs are out of scope for theme builds, so it belongs in the next docs pass. Parent `CLAUDE.md` §4/§5 should list the new helper there too.
+
 ## [6.35.0] — 2026-10-06
 
 **NETWORK-WIDE, ADDITIVE A11Y:** `.entry-content` prose contract — prose lists regain markers (#2, WCAG 1.3.1) and prose links regain underlines (#1, WCAG 1.4.1).

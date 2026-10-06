@@ -7,8 +7,8 @@
  * and template parts throughout El Rocinante and child themes.
  *
  * File:    inc/helpers.php
- * Version: 1.9.0
- * Updated: 2026-09-23
+ * Version: 1.10.0
+ * Updated: 2026-10-06
  *
  * @package ElRocinante
  *
@@ -25,6 +25,7 @@
  *   jw_wysiwyg_body()              — Expands shortcodes + targets external links inside stored wysiwyg HTML
  *   roci_sanitize_object_position() — Whitelists a CSS object-position value (strict)
  *   roci_get_hero_focus()          — Resolves the sanitized hero focal point for a post
+ *   roci_entry_title_mode()        — How the parent's content templates render the entry title (filterable)
  *
  * Future expansion:
  *   If this file grows significantly, split into:
@@ -1058,4 +1059,38 @@ function roci_get_hero_focus( $post_id = null ) {
     }
 
     return roci_sanitize_object_position( $focus );
+}
+
+
+// ============================================================
+// ENTRY TITLE — parent content templates (page, single, index)
+// ============================================================
+
+/**
+ * roci_entry_title_mode()
+ *
+ * How the parent's content templates (page, single, index) render the entry
+ * title: 'visible' (default), 'hidden' (visually hidden — .screen-reader-text,
+ * still in the heading outline) or 'none' (the child renders its own <h1>).
+ * Filterable via roci_entry_title_mode; an unknown value falls back to
+ * 'visible' so a typo fails toward a correct outline, not away from it.
+ *
+ * Not memoized — the filter runs on every call, so per-post logic works.
+ *
+ * @param  string $template 'page', 'single' or 'index'.
+ * @param  int    $post_id  The post whose title is rendered (index listing:
+ *                          the Posts page ID, or 0 for latest-posts-on-front).
+ * @return string           'visible', 'hidden' or 'none'.
+ */
+function roci_entry_title_mode( $template, $post_id = 0 ) {
+    $mode = apply_filters(
+        'roci_entry_title_mode',
+        'visible',
+        array(
+            'template' => $template,
+            'post_id'  => (int) $post_id,
+        )
+    );
+
+    return in_array( $mode, array( 'visible', 'hidden', 'none' ), true ) ? $mode : 'visible';
 }
