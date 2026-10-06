@@ -6,9 +6,13 @@
  * menu, then fires wp_footer(). Children inherit this unless they define their
  * own footer.php. Contains no action hooks.
  *
+ * The menu sits in a <nav aria-label="Footer"> landmark, printed only when a
+ * menu is assigned — so there is never an empty landmark. The label names the
+ * nav, not its role (a screen reader announces "Footer, navigation").
+ *
  * File:    footer.php
- * Version: 1.0.0
- * Updated: 2026-07-22
+ * Version: 1.1.0
+ * Updated: 2026-10-06
  *
  * @package ElRocinante
  */
@@ -25,17 +29,19 @@
                 </p>
             </div>
             <div class="u-col-half u-text-right-md">
-                <?php
-                if ( has_nav_menu( 'footer' ) ) :
-                    wp_nav_menu( array(
-                        'theme_location' => 'footer',
-                        'container'      => false,
-                        'menu_class'     => 'footer-nav u-flex u-gap-medium u-justify-end-md',
-                        'fallback_cb'    => false,
-                        'depth'          => 1,
-                    ) );
-                endif;
-                ?>
+                <?php if ( has_nav_menu( 'footer' ) ) : ?>
+                    <nav class="footer-navigation" aria-label="<?php esc_attr_e( 'Footer', 'rocinante' ); ?>">
+                        <?php
+                        wp_nav_menu( array(
+                            'theme_location' => 'footer',
+                            'container'      => false,
+                            'menu_class'     => 'footer-nav u-flex u-gap-medium u-justify-end-md',
+                            'fallback_cb'    => false,
+                            'depth'          => 1,
+                        ) );
+                        ?>
+                    </nav>
+                <?php endif; ?>
             </div>
         </div>
 

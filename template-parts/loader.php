@@ -24,9 +24,23 @@
  * the <img> is omitted entirely when none is set, leaving a spinner-only
  * overlay rather than a broken image.
  *
+ * ⚠ THE LOGO'S alt IS EMPTY ON PURPOSE (v1.4.0). Inside a "Loading" status the
+ * logo is decorative: the site's name is already conveyed by the document
+ * <title> and by the header logo the child's nav renders. With the name as the
+ * alt, a screen reader reading from the top heard it twice — "{name} Loading…"
+ * here, then the header logo. The status now says only "Loading…".
+ *
+ * ⚠ NO-JS ESCAPE (v1.4.0). Dismissal is the child's JavaScript; with scripts
+ * disabled or failed nothing would ever dismiss the overlay and the page would
+ * stay covered. The <noscript> rule after the critical CSS hides #loader
+ * whenever scripting is off. Its selector is #loader.roci-loader (1,1,0) on
+ * purpose: it must TIE the external sheet's #loader.roci-loader{display:flex}
+ * and then win on source order (this block is in the body, after every head
+ * stylesheet). A bare #loader (1,0,0) would lose. No !important.
+ *
  * File:    template-parts/loader.php
- * Version: 1.3.0
- * Updated: 2026-09-23
+ * Version: 1.4.0
+ * Updated: 2026-10-06
  *
  * @package ElRocinante
  */
@@ -88,13 +102,14 @@ $roci_loader_logo_size = $roci_loader_logo_dims
 // sheet. Change a value there and it must change here too — nothing warns.
 ?>
 <style id="roci-loader-critical">:where(html){font-size:62.5%}:where(#loader.roci-loader){position:fixed;inset:0;z-index:var(--z-tooltip,700);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2rem;background-color:var(--color-surface,#fff);opacity:1;transition:opacity .4s ease}:where(#loader.roci-loader[hidden]){display:none}:where(#loader.roci-loader.is-dismissed){opacity:0;pointer-events:none}:where(.roci-loader__logo){max-width:18rem;height:auto}:where(.roci-loader__spinner){width:4rem;height:4rem;border:3px solid var(--color-border,#e5e5e5);border-top-color:var(--color-action,#333);border-radius:50%;animation:roci-loader-spin .8s linear infinite}@keyframes roci-loader-spin{to{transform:rotate(360deg)}}@media (prefers-reduced-motion:reduce){:where(#loader.roci-loader){transition:none}:where(.roci-loader__spinner){animation:none}}</style>
+<noscript><style>#loader.roci-loader{display:none}</style></noscript>
 <div id="loader" class="roci-loader" role="status" aria-live="polite">
 
 	<?php if ( $roci_loader_logo_url ) : ?>
 		<img
 			class="roci-loader__logo"
 			src="<?php echo esc_url( $roci_loader_logo_url ); ?>"
-			alt="<?php echo esc_attr( get_bloginfo( 'name' ) ); ?>"<?php echo $roci_loader_logo_size; ?> data-no-lazy="1" loading="eager" decoding="async"
+			alt=""<?php echo $roci_loader_logo_size; ?> data-no-lazy="1" loading="eager" decoding="async"
 		>
 	<?php endif; ?>
 

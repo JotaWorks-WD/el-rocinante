@@ -4,6 +4,62 @@ All notable changes to the El Rocinante parent theme are recorded here. Entries 
 
 ---
 
+## [6.37.0] — 2026-10-06
+
+**NETWORK-WIDE, ADDITIVE A11Y:** footer menu landmark; unique "Read More" names; loader logo `alt=""` + `<noscript>` escape; new `--target-min` token.
+
+Markup + one token. **No front-end JavaScript**, no `!important` added.
+
+### Footer menu in a `<nav>` (#13 — WCAG 1.3.1, 2.4.1)
+
+`footer.php` **v1.0.0 → v1.1.0**. The `footer` menu location was printed as a bare `<ul>` (`'container' => false`) — no landmark. It is now wrapped in `<nav class="footer-navigation" aria-label="Footer">`, **printed only when a menu is assigned**, so there is never an empty landmark. The label names the nav, not its role ("Footer, navigation"). The `<nav>` carries no `u-` class and the `<ul>` keeps every class it had, so layout is unchanged.
+
+### "Read More" gets a unique name (#12 — WCAG 2.4.4, 2.4.9)
+
+`archive.php` and `search.php` (**→ v1.1.0**). Each post printed an `<h2>` link and a "Read More" link to the same URL, and a links list read "Read More, Read More, Read More…". "Read More" now ends with a screen-reader-only span:
+
+```php
+<?php esc_html_e( 'Read More', 'rocinante' ); ?><span class="screen-reader-text"> <?php
+    printf( esc_html__( 'about %s', 'rocinante' ), esc_html( get_the_title() ) );
+?></span>
+```
+
+Visually identical; the link keeps its place in the design. Reuses the parent's `.screen-reader-text`.
+
+### Loader: decorative logo, and a no-JS escape (#16 — WCAG 2.4.11 groundwork)
+
+The loader partial **v1.3.0 → v1.4.0**:
+
+- **The logo's `alt` is now `""`.** Inside the `role="status"` overlay the logo is decorative — the site's name is conveyed by the `<title>` and by the header logo. With the name as the alt, a screen reader reading from the top heard it twice ("{name} Loading…", then the header logo); the status now says only "Loading…". Visually identical.
+- **`<noscript><style>#loader.roci-loader{display:none}</style></noscript>`**, right after the inline critical CSS. Dismissal is the child's JavaScript; with scripts disabled or failed, nothing ever dismissed the overlay and the page stayed covered. ⚠ The selector is `#loader.roci-loader` (1,1,0) on purpose: it ties the external sheet's `#loader.roci-loader { display: flex }` and wins on source order (the block is in the body, after every head stylesheet). A bare `#loader` (1,0,0) would lose. No `!important`.
+
+Both live **only on sites that declare `roci-loader`**. The overlay's `inert` handling (focus must not reach the obscured page) is the child's dismissal JS — recorded for a later convention + child batch, not shipped here.
+
+### New token: `--target-min` (#17 — WCAG 2.5.8)
+
+`base/_tokens.scss` **v1.4.0 → v1.5.0** adds, in the Layout group:
+
+```css
+--target-min: 2.4rem;   /* 24px at the 62.5% root — WCAG 2.5.8 AA */
+```
+
+**Token-only — no utility class.** A child applies it in its own component rules (icon buttons, pagination, tag lists): `min-width: var(--target-min); min-height: var(--target-min)`. A child aiming for 2.5.5 AAA / platform guidance redeclares it at `4.4rem` (44px). The parent consumes it nowhere, so **nothing renders differently**. `:root` goes from **52 to 53** custom properties.
+
+### Child impact
+
+- **Fish Potrero** and **360 Splendor** override `footer.php`, `archive.php` and `search.php` — #13 and #12 are **inert there** (both already label their footer `<nav>`s; FP's own `archive.php` still carries the duplicate "Read More" — a child batch). The **loader `alt` and the `<noscript>` escape are live on FP** (it declares `roci-loader`); the change is screen-reader-only and no-JS-only. The token is present but unconsumed.
+- **Coco** and **the Boilerplate** inherit `footer.php` — the `<nav>` appears if a menu is ever assigned to "Footer Navigation". Their own `archive.php` / `search.php` are copies of the old parent markup and still carry the duplicate "Read More" — fix in their code batch by copying the new pattern.
+
+### Purely additive
+
+The compiled `dist/css/style.css` is the 6.36.0 output plus exactly one insertion: `--target-min:2.4rem;` in `:root`, after `--gutter-h`. `!important` count unchanged (5); the reduced-motion `0.01ms` still appears twice.
+
+### Open items (not in this release)
+
+- **#11 — new-tab links unannounced (3.2.5, AAA).** Deferred. If built: a `jw_new_tab_note()` helper beside `jw_link_atts()`, `jw_wysiwyg_body()` appending the note centrally, and a child adoption batch.
+- **The `footer` menu location.** `el_rocinante_setup()` registers it and only the parent's `footer.php` consumes it; no child renders a menu there (FP and RJK override the footer; Coco and the Boilerplate forbid `wp_nav_menu()`). Removal is an owner call.
+- **Docs follow-up:** `CONVENTIONS.md` → *Design tokens* and the stylesheet contents list, and parent `CLAUDE.md` §8, state **52** custom properties — now **53**.
+
 ## [6.36.0] — 2026-10-06
 
 **NETWORK-WIDE, ADDITIVE A11Y:** entry title `<h1>` in the parent's content templates (#3, WCAG 1.3.1 / 2.4.6); `index.php` becomes a listing; new filter `roci_entry_title_mode`.

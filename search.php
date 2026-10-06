@@ -5,9 +5,12 @@
  * Displays results for the site search query. Children inherit this unless they
  * define their own search.php.
  *
+ * Each "Read More" carries a screen-reader-only " about {title}", so its
+ * accessible name is unique and makes sense out of context (WCAG 2.4.4).
+ *
  * File:    search.php
- * Version: 1.0.0
- * Updated: 2026-07-22
+ * Version: 1.1.0
+ * Updated: 2026-10-06
  *
  * @package ElRocinante
  */
@@ -41,7 +44,10 @@ get_header(); ?>
                             <?php the_excerpt(); ?>
                         </div>
                         <a href="<?php the_permalink(); ?>" class="read-more">
-                            <?php esc_html_e( 'Read More', 'rocinante' ); ?>
+                            <?php esc_html_e( 'Read More', 'rocinante' ); ?><span class="screen-reader-text"> <?php
+                                /* translators: %s: post title */
+                                printf( esc_html__( 'about %s', 'rocinante' ), esc_html( get_the_title() ) );
+                            ?></span>
                         </a>
                     </article>
                 <?php endwhile; ?>
