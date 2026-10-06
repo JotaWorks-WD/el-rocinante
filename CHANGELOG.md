@@ -4,6 +4,47 @@ All notable changes to the El Rocinante parent theme are recorded here. Entries 
 
 ---
 
+## [6.40.0] — 2026-10-06
+
+**A11Y (AAA 3.2.5, technique G201):** links that open a new tab now say so — `jw_new_tab_note()`, appended automatically by `jw_wysiwyg_body()`; one shared external-link test behind every link helper.
+
+PHP only. **No CSS change** (`dist/css/style.css` byte-identical), no JavaScript.
+
+### What was added
+
+`inc/helpers.php` **v1.12.0 → v1.13.0**:
+
+- **`jw_new_tab_note( $url )`** — returns `<span class="screen-reader-text"> (opens in a new tab)</span>` (gettext, `'rocinante'` domain, escaped) for a link that opens a new tab, `''` otherwise. Echo it **inside the link, right before `</a>`**, so it becomes part of the link's accessible name:
+
+  ```php
+  <a href="<?php echo esc_url( $url ); ?>"<?php echo jw_link_atts( $url ); ?>>Label<?php echo jw_new_tab_note( $url ); ?></a>
+  ```
+
+- **`jw_wysiwyg_body()` appends the note automatically** inside every anchor it adds `target="_blank"` to, right before its `</a>`. Anchors it leaves alone — an existing `target`, same-host, non-http — get no note. An anchor that already contains the note text is not given a second one, so running a field through it twice is harmless. (An unclosed anchor is still targeted, as before, but gets no note — there is no `</a>` to put it in front of.)
+- **One internal predicate, `roci_is_external_link( $url )`**, now behind `jw_link_atts()`, `jw_new_tab_note()` and `jw_wysiwyg_body()`, so a link opens a new tab — and is announced as doing so — everywhere or nowhere. Previously `jw_link_atts()` and `jw_wysiwyg_body()` carried two slightly different tests.
+
+### Behaviour change (edge only)
+
+The predicate matches WhatsApp links on the **host** `wa.me` (or a subdomain of it), with or without a scheme, where `jw_link_atts()` used to test the **substring** `"wa.me"` anywhere in the URL. That substring test opened a new tab for any URL that merely contained those letters. `jw_link_atts()` output changes **only** for such inputs:
+
+| Input | Before | After |
+|---|---|---|
+| `https://fishpotrero.com/kiwa.menu/` (same-host path containing "wa.me") | `target="_blank"` | `''` |
+| `/kiwa.menu/` (relative) | `target="_blank"` | `''` |
+| `mailto:x@wa.me`, `tel:wa.me` | `target="_blank"` | `''` |
+| `WA.ME/…` (scheme-less, uppercase — the old test was case-sensitive) | `''` | `target="_blank"` |
+
+**Unchanged:** `https://wa.me/…`, `//wa.me/…` and scheme-less `wa.me/…` (still external — the host is `wa.me`); `https://api.whatsapp.com/…` and every other cross-host `http(s)` URL; same-host, relative, `mailto:`, `tel:` and `#fragment` links. **No live URL is affected** — no child uses `wa.me` (Fish Potrero moved to `api.whatsapp.com` at child 5.46.1), and `jw_wysiwyg_body()`'s decisions are identical (it only ever considered `http(s)` hrefs, where a real `wa.me` link is cross-host either way).
+
+### Child impact
+
+- **Fish Potrero (live)** — every external link inside a wysiwyg field it echoes through `jw_wysiwyg_body()` (the venue copy on the Discover pages, solunar notes and similar) **gains the screen-reader-only note**. No visual change; a screen reader now hears "Facebook, link, (opens in a new tab)".
+- **Fish Potrero's template links are a later FP batch** — the external links it writes with `jw_link_atts()` (footer socials, the topbar WhatsApp and social links, hero and outro CTAs to booking platforms, ~70 call sites in all, most internal) each need `<?php echo jw_new_tab_note( $url ); ?>` before `</a>`. `jw_link_atts()` itself is unchanged for all of them.
+- **360 Splendor** — the same applies to its `jw_link_atts()` call sites, when in scope.
+- **Coco / the Boilerplate** — no call sites yet.
+
+**A visible indicator is optional.** The note is screen-reader-only by design (3.2.5 is satisfied by announcing the change of context). A site may also show an icon — that is per-site design; keep the note alongside it, because an icon alone is not announced.
+
 ## [6.39.1] — 2026-10-06
 
 **A11Y:** `role="list"` on the parent's lists that drop their markers (CONVENTIONS → *Lists that drop their markers keep `role="list"`*).

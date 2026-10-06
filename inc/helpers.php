@@ -7,7 +7,7 @@
  * and template parts throughout El Rocinante and child themes.
  *
  * File:    inc/helpers.php
- * Version: 1.12.0
+ * Version: 1.13.0
  * Updated: 2026-10-06
  *
  * @package ElRocinante
@@ -23,6 +23,8 @@
  *   jw_debug_comment()             — WP_DEBUG-only HTML comment flagging a content problem
  *   jw_faq_schema()                — FAQPage JSON-LD schema output from jw_faq_items field
  *   jw_link_atts()                 — Returns target + rel attribute string for external links
+ *   jw_new_tab_note()              — SR-only "(opens in a new tab)" for links that open a new tab
+ *   roci_is_external_link()        — (internal) The one external-link test behind the three link helpers
  *   roci_current_atts()            — Returns aria-current for the link to the page being viewed
  *   roci_current_path()            — (internal) Normalised path of the current page, once per request
  *   roci_normalize_url_path()      — (internal) Normalises a URL path for comparison
@@ -877,7 +879,8 @@ function jw_faq_schema( $post_id = null ) {
  * or '' for all other URLs.
  *
  * Returns new-tab attributes when:
- *   - The URL contains 'wa.me' (WhatsApp short links)
+ *   - Its host is wa.me or a subdomain of it (WhatsApp short links), with or
+ *     without a scheme — matched as a HOST since v1.13.0, not a substring
  *   - It is an http(s) URL whose host does not match the host of home_url()
  *
  * Returns '' when:
@@ -893,26 +896,96 @@ function jw_faq_schema( $post_id = null ) {
  */
 function jw_link_atts( $url ) {
 
-    if ( ! $url ) {
+    // The external test lives in roci_is_external_link() (v1.13.0), shared with
+    // jw_new_tab_note() and jw_wysiwyg_body() so the three can never disagree.
+    return roci_is_external_link( $url ) ? ' target="_blank" rel="noopener noreferrer"' : '';
+}
+
+
+/**
+ * roci_is_external_link()
+ *
+ * Internal. THE one external-link test behind jw_link_atts(), jw_new_tab_note()
+ * and jw_wysiwyg_body() — a link either opens a new tab everywhere or nowhere.
+ * True when:
+ *   - the URL's HOST is wa.me or a subdomain of it (WhatsApp short links),
+ *     with or without a scheme — "https://wa.me/…", "//wa.me/…", "wa.me/…";
+ *   - it is an http(s) URL whose host differs from home_url()'s host.
+ * False for everything else: mailto:, tel:, relative, fragment and same-host
+ * URLs, and protocol-relative URLs to any host but wa.me.
+ *
+ * ⚠ wa.me IS MATCHED AS A HOST, NOT A SUBSTRING (v1.13.0). jw_link_atts() used
+ *   to test strpos( $url, 'wa.me' ), so any URL merely CONTAINING the letters —
+ *   a same-host /kiwa.menu/ path, a mailto: address — opened in a new tab. Real
+ *   WhatsApp links are unaffected: https://wa.me/… is cross-host either way.
+ *
+ * @param  string $url The href value to evaluate.
+ * @return bool        True if the link opens a new tab.
+ */
+function roci_is_external_link( $url ) {
+
+    if ( ! $url || ! is_string( $url ) ) {
+        return false;
+    }
+
+    $is_http = (bool) preg_match( '#^https?://#i', $url );
+
+    // The would-be host, for the wa.me test: from an http(s) or protocol-
+    // relative URL; or, for a scheme-less "wa.me/123", its first segment. A
+    // URL with any other scheme (mailto:, tel:) or a relative one has none.
+    $host = '';
+
+    if ( $is_http || 0 === strpos( $url, '//' ) ) {
+        $host = (string) wp_parse_url( ( 0 === strpos( $url, '//' ) ? 'https:' : '' ) . $url, PHP_URL_HOST );
+    } elseif ( ! preg_match( '#^[a-z][a-z0-9+.\-]*:#i', $url ) && ! preg_match( '#^[/?\#.]#', $url ) ) {
+        $segments = preg_split( '#[/?\#]#', $url, 2 );
+        $host     = (string) $segments[0];
+    }
+
+    $host = strtolower( $host );
+
+    if ( 'wa.me' === $host || '.wa.me' === substr( $host, -6 ) ) {
+        return true;
+    }
+
+    // Cross-host http(s) — compared exactly as jw_link_atts() always did.
+    if ( $is_http ) {
+        $link_host = wp_parse_url( $url, PHP_URL_HOST );
+        $home_host = wp_parse_url( home_url(), PHP_URL_HOST );
+
+        return ( $link_host && $home_host && $link_host !== $home_host );
+    }
+
+    return false;
+}
+
+
+/**
+ * jw_new_tab_note()
+ *
+ * Returns a visually-hidden "(opens in a new tab)" for a link that opens a new
+ * tab (WCAG 3.2.5 AAA, technique G201), or '' for one that does not. Uses the
+ * same test as jw_link_atts(), so the note appears on exactly the links that
+ * carry target="_blank".
+ *
+ * Echo it INSIDE the link, right before </a>, so it becomes part of the link's
+ * accessible name:
+ *
+ *   <a href="<?php echo esc_url( $url ); ?>"<?php echo jw_link_atts( $url ); ?>>Label<?php echo jw_new_tab_note( $url ); ?></a>
+ *
+ * Visually nothing changes. A VISIBLE indicator (an icon) is optional per-site
+ * design; if a site adds one, keep this note — an icon alone is not announced.
+ *
+ * @param  string $url The same href passed to jw_link_atts().
+ * @return string      '<span class="screen-reader-text"> (opens in a new tab)</span>' or ''.
+ */
+function jw_new_tab_note( $url ) {
+
+    if ( ! roci_is_external_link( $url ) ) {
         return '';
     }
 
-    // WhatsApp short links.
-    if ( false !== strpos( $url, 'wa.me' ) ) {
-        return ' target="_blank" rel="noopener noreferrer"';
-    }
-
-    // For http(s) URLs, compare hosts against the current site.
-    if ( preg_match( '#^https?://#i', $url ) ) {
-        $link_host = parse_url( $url, PHP_URL_HOST );
-        $home_host = parse_url( home_url(), PHP_URL_HOST );
-
-        if ( $link_host && $home_host && $link_host !== $home_host ) {
-            return ' target="_blank" rel="noopener noreferrer"';
-        }
-    }
-
-    return '';
+    return '<span class="screen-reader-text"> ' . esc_html__( '(opens in a new tab)', 'rocinante' ) . '</span>';
 }
 
 
@@ -1114,6 +1187,12 @@ function roci_normalize_url_path( $path ) {
  * instead would produce a duplicate the browser resolves by taking the first,
  * silently dropping whichever one mattered.
  *
+ * EVERY ANCHOR IT TARGETS ALSO ANNOUNCES THE NEW TAB (v1.13.0, WCAG 3.2.5): the
+ * jw_new_tab_note() span is appended inside the link, right before its </a>,
+ * unless the anchor already contains that text. Anchors it leaves alone (an
+ * existing target, same-host, non-http) get no note. The external test is
+ * roci_is_external_link(), shared with jw_link_atts() and jw_new_tab_note().
+ *
  * Usage:
  *   echo jw_wysiwyg_body( $body );
  *
@@ -1139,33 +1218,36 @@ function jw_wysiwyg_body( $html ) {
         return $html;
     }
 
+    // Matches an opening <a> tag and, when the anchor is closed, its content and
+    // its </a> — anchors do not nest, and the content may not contain another
+    // opening <a>, so a match never spans two anchors. An UNCLOSED anchor still
+    // matches on its opening tag alone and is rewritten exactly as before, just
+    // without the note (there is no </a> to put it in front of).
     return preg_replace_callback(
-        '#<a\s[^>]*>#i',
-        function ( $matches ) use ( $home_host ) {
+        '#(<a\s[^>]*>)(?:((?:(?!<a\s).)*?)(</a>))?#is',
+        function ( $matches ) {
 
-            $tag = $matches[0];
+            $tag   = $matches[1];
+            $inner = isset( $matches[2] ) ? $matches[2] : '';
+            $close = isset( $matches[3] ) ? $matches[3] : '';
 
             // Author already chose a target — leave the anchor alone.
             if ( preg_match( '#\starget\s*=#i', $tag ) ) {
-                return $tag;
+                return $matches[0];
             }
 
             if ( ! preg_match( '#\shref\s*=\s*("|\')(.*?)\1#i', $tag, $href ) ) {
-                return $tag;
+                return $matches[0];
             }
 
             // The stored href is entity-encoded (&amp; in query strings);
             // decode before parsing so the host reads correctly.
             $url = trim( html_entity_decode( $href[2], ENT_QUOTES, 'UTF-8' ) );
 
-            if ( ! preg_match( '#^https?://#i', $url ) ) {
-                return $tag;
-            }
-
-            $link_host = wp_parse_url( $url, PHP_URL_HOST );
-
-            if ( ! $link_host || $link_host === $home_host ) {
-                return $tag;
+            // Only http(s) links are ever rewritten here; then the shared test
+            // decides — the same one jw_link_atts() and jw_new_tab_note() use.
+            if ( ! preg_match( '#^https?://#i', $url ) || ! roci_is_external_link( $url ) ) {
+                return $matches[0];
             }
 
             // Merge into an existing rel rather than emitting a second one.
@@ -1186,7 +1268,16 @@ function jw_wysiwyg_body( $html ) {
             }
 
             // Insert before the closing bracket, preserving a self-closing slash.
-            return preg_replace( '#\s*(/?)>$#', $inject . '$1>', $tag, 1 );
+            $tag = preg_replace( '#\s*(/?)>$#', $inject . '$1>', $tag, 1 );
+
+            // Announce the new tab inside the link (WCAG 3.2.5), right before
+            // </a> — unless the anchor already carries the note, so a field run
+            // through this twice never doubles it.
+            if ( '' !== $close && false === stripos( $inner, __( '(opens in a new tab)', 'rocinante' ) ) ) {
+                $inner .= jw_new_tab_note( $url );
+            }
+
+            return $tag . $inner . $close;
         },
         $html
     );
