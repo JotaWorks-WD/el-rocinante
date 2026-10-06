@@ -7,7 +7,7 @@
  * and template parts throughout El Rocinante and child themes.
  *
  * File:    inc/helpers.php
- * Version: 1.11.0
+ * Version: 1.12.0
  * Updated: 2026-10-06
  *
  * @package ElRocinante
@@ -23,6 +23,9 @@
  *   jw_debug_comment()             — WP_DEBUG-only HTML comment flagging a content problem
  *   jw_faq_schema()                — FAQPage JSON-LD schema output from jw_faq_items field
  *   jw_link_atts()                 — Returns target + rel attribute string for external links
+ *   roci_current_atts()            — Returns aria-current for the link to the page being viewed
+ *   roci_current_path()            — (internal) Normalised path of the current page, once per request
+ *   roci_normalize_url_path()      — (internal) Normalises a URL path for comparison
  *   jw_wysiwyg_body()              — Expands shortcodes + targets external links inside stored wysiwyg HTML
  *   roci_sanitize_object_position() — Whitelists a CSS object-position value (strict)
  *   roci_get_hero_focus()          — Resolves the sanitized hero focal point for a post
@@ -910,6 +913,155 @@ function jw_link_atts( $url ) {
     }
 
     return '';
+}
+
+
+/**
+ * roci_current_atts()
+ *
+ * The companion to jw_link_atts() for CURRENT-PAGE state. Returns
+ * ' aria-current="page"' when $url is the page being viewed, '' otherwise —
+ * with a leading space so it drops inline into an <a> tag, exactly like
+ * jw_link_atts(). The two never both emit for one URL (this one answers only
+ * for same-host links, jw_link_atts() only for external ones), so they can be
+ * concatenated on the same anchor:
+ *
+ *   <a href="<?php echo esc_url( $url ); ?>"<?php echo jw_link_atts( $url ) . roci_current_atts( $url ); ?>>
+ *
+ * WHAT "CURRENT" MEANS. Resolved once per request from WordPress's query, not
+ * the raw request URI: the front page, the Posts page, any singular, a CPT
+ * archive, a term archive or an author archive. Search, 404 and date archives
+ * have no current page. A paged archive (/page/2/) is still its archive.
+ * Only the PATH is compared — scheme ignored, trailing slash normalised,
+ * percent-encoding decoded. A link to another host, a non-root-relative or
+ * opaque URL (mailto:, tel:, #top), or a link with a query string or fragment
+ * is never current.
+ *
+ * SECTION MATCH (opt-in). Pass $scope = 'section' on a link that stands for a
+ * whole section — a disclosure trigger such as "Charters" — and it also
+ * returns ' aria-current="true"' (the spec's generic "current item in a set")
+ * when the current page sits BELOW that link's path. An exact match still
+ * returns "page". The home link never section-matches. It is opt-in because
+ * it assumes a section's pages live under its landing page's path; where they
+ * don't, it simply never matches.
+ *
+ * STYLE THE STATE FROM THE ATTRIBUTE. The parent ships no nav CSS. A child that
+ * shows the current link visually must style it from [aria-current], never a
+ * parallel class — otherwise the visual state and the announced state can
+ * drift apart (WCAG 1.3.1).
+ *
+ * @param  string $url   The link's href — the same value passed to esc_url().
+ * @param  string $scope 'page' (default, exact match only) or 'section'.
+ * @return string        ' aria-current="page"', ' aria-current="true"', or ''.
+ */
+function roci_current_atts( $url, $scope = 'page' ) {
+
+    $current = roci_current_path();
+
+    if ( null === $current || ! is_string( $url ) || '' === trim( $url ) ) {
+        return '';
+    }
+
+    $parts = wp_parse_url( trim( $url ) );
+
+    // Unparseable, or a query string / fragment: not "this page".
+    if ( ! is_array( $parts ) || isset( $parts['query'] ) || isset( $parts['fragment'] ) ) {
+        return '';
+    }
+
+    if ( isset( $parts['host'] ) ) {
+        $home_host = wp_parse_url( home_url(), PHP_URL_HOST );
+
+        if ( ! $home_host || strtolower( $parts['host'] ) !== strtolower( $home_host ) ) {
+            return '';
+        }
+    } elseif ( ! isset( $parts['path'] ) || '/' !== substr( $parts['path'], 0, 1 ) ) {
+        // Relative or opaque (mailto:, tel:, "contact/") — never current.
+        return '';
+    }
+
+    $path = roci_normalize_url_path( isset( $parts['path'] ) ? $parts['path'] : '/' );
+
+    if ( $path === $current ) {
+        return ' aria-current="page"';
+    }
+
+    if ( 'section' === $scope && '/' !== $path && 0 === strpos( $current, $path ) ) {
+        return ' aria-current="true"';
+    }
+
+    return '';
+}
+
+
+/**
+ * roci_current_path()
+ *
+ * Internal. The normalised path of the page being viewed, or null when the
+ * request has no "current page" (search, 404, date archives) or the main
+ * query has not run yet. Resolved once per request; a resolved null is cached
+ * too, but a call made before the 'wp' action is not, so a later call still
+ * resolves.
+ *
+ * @return string|null '/path/' (root: '/'), or null.
+ */
+function roci_current_path() {
+    static $resolved = false;
+    static $path     = null;
+
+    if ( $resolved ) {
+        return $path;
+    }
+
+    if ( ! did_action( 'wp' ) ) {
+        return null;
+    }
+
+    $url = null;
+
+    if ( is_404() || is_search() ) {
+        $url = null;
+    } elseif ( is_front_page() ) {
+        $url = home_url( '/' );
+    } elseif ( is_home() ) {
+        $posts_page = (int) get_option( 'page_for_posts' );
+        $url        = $posts_page ? get_permalink( $posts_page ) : home_url( '/' );
+    } elseif ( is_singular() ) {
+        $url = get_permalink( get_queried_object_id() );
+    } elseif ( is_post_type_archive() ) {
+        $object = get_queried_object();
+        $url    = ( $object && isset( $object->name ) ) ? get_post_type_archive_link( $object->name ) : null;
+    } elseif ( is_category() || is_tag() || is_tax() ) {
+        $link = get_term_link( get_queried_object() );
+        $url  = is_wp_error( $link ) ? null : $link;
+    } elseif ( is_author() ) {
+        $url = get_author_posts_url( get_queried_object_id() );
+    }
+
+    $parsed   = $url ? wp_parse_url( $url ) : null;
+    $path     = is_array( $parsed ) ? roci_normalize_url_path( isset( $parsed['path'] ) ? $parsed['path'] : '/' ) : null;
+    $resolved = true;
+
+    return $path;
+}
+
+
+/**
+ * roci_normalize_url_path()
+ *
+ * Internal. '/Fishing-Charters//boomerang' -> '/Fishing-Charters/boomerang/';
+ * '' or '/' -> '/'. Percent-encoding is decoded so a non-ASCII slug compares
+ * equal whichever form either side used. Case is preserved — WordPress
+ * lowercases slugs itself, and folding case here could invent a match.
+ *
+ * @param  string $path A URL path.
+ * @return string       Normalised path, always with leading and trailing slash.
+ */
+function roci_normalize_url_path( $path ) {
+    $path = trim( rawurldecode( (string) $path ), '/' );
+    $path = preg_replace( '#/+#', '/', $path );
+
+    return '' === $path ? '/' : '/' . $path . '/';
 }
 
 

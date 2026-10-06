@@ -4,6 +4,73 @@ All notable changes to the El Rocinante parent theme are recorded here. Entries 
 
 ---
 
+## [6.39.0] — 2026-10-06
+
+**NETWORK-WIDE, ADDITIVE A11Y:** `roci_current_atts()` — current-page indication via `aria-current` (#10; WCAG 1.3.1 where styled, 2.4.8).
+
+PHP only. **No CSS change** (`dist/css/style.css` byte-identical), no front-end JavaScript, no filter. **Zero callers** until children adopt it — no rendered output changes anywhere in this release.
+
+### The helper
+
+`inc/helpers.php` **v1.11.0 → v1.12.0** adds, beside `jw_link_atts()`:
+
+```php
+roci_current_atts( $url, $scope = 'page' )   // ' aria-current="page"', ' aria-current="true"', or ''
+```
+
+Same shape as `jw_link_atts()`: one URL in, an attribute string with a leading space (or `''`) out, dropped inline into the `<a>`. Two internal functions support it — `roci_current_path()` (the current page's path, resolved once per request) and `roci_normalize_url_path()` — documented as internal, not part of the child-facing contract.
+
+### Matching rules
+
+**"Current" is resolved once per request from WordPress's query**, not the raw request URI — so query strings, trailing slashes, `/page/N/` and casing in the request make no difference:
+
+| Route | The current page is |
+|---|---|
+| Front page (static page or latest posts) | `home_url( '/' )` |
+| Posts page | the Posts page's permalink |
+| Any singular (page, post, CPT single, attachment) | its permalink |
+| CPT archive | the post type's archive link |
+| Category / tag / custom taxonomy archive | the term link |
+| Author archive | the author posts URL |
+| **Search, 404, date archives** | **none — nothing is ever current** |
+| Called before the main query has run | none (and not cached, so a later call still resolves) |
+
+A paged archive (`/blog/page/2/`) is still its archive, so its link stays current.
+
+**The link side:** only the **path** is compared — scheme ignored, trailing slash normalised, percent-encoding decoded, case preserved. A link to **another host**, a **non-root-relative or opaque** URL (`mailto:`, `tel:`, `contact/`, `#top`), or a link carrying a **query string or fragment** is never current.
+
+- **Exact match → `aria-current="page"`** (default scope).
+- **`'section'` scope (opt-in) → `aria-current="true"`** when the current page sits *below* the link's path — for a link that stands for a whole section, such as a disclosure trigger ("Charters" while viewing a charter). An exact match still returns `"page"`; the home link never section-matches; matching is on whole path segments (`/tours/` does not match `/tours-extra/…`). Opt-in because it assumes a section's pages live under its landing page's path — where they don't, it simply never matches.
+
+Called 60–70 times on a page with mega menus, it costs one `wp_parse_url()` and string normalisation per call; the current path is computed once.
+
+### Call-site pattern
+
+`jw_link_atts()` answers only for external links and `roci_current_atts()` only for same-host links, so their outputs never overlap and they can be concatenated on one anchor with no duplicate attributes:
+
+```php
+<a href="<?php echo esc_url( $url ); ?>"<?php echo jw_link_atts( $url ) . roci_current_atts( $url ); ?>>
+```
+
+### Styling convention — the parent ships no CSS
+
+The parent ships no nav design, so it ships no `[aria-current]` rule (any rule would land in every child's nav and fight its design). **A child that shows the current page visually must style it from `[aria-current]`, never a parallel class** — the same "the ARIA attribute is the single state source" rule CONVENTIONS locks for `aria-expanded`. That makes the visual and announced states impossible to separate: a visually-marked current link without `aria-current` fails 1.3.1; `aria-current` without a visual style is not a failure (it serves 2.4.8 for AT users).
+
+### Why no filter
+
+No child has a route the query-based resolution cannot name (no virtual pages, no custom endpoints rendering as another page). A `roci_current_url` filter would be an extension point with zero consumers; a child with a special case simply doesn't call the helper on that link. Add the seam when a real consumer appears.
+
+### Child adoption scope (later child batches)
+
+- **Fish Potrero — ~70 call sites**, all hand-written `home_url()` literals: ~30 in the desktop nav (including the charters/tours mega panels and the Discover dropdown), ~30 duplicated in the off-canvas mobile nav, ~9 in the footer navs, plus the topbar CTA. Consolidate the duplicated desktop/mobile lists into one shared array looped twice in that batch — it removes the "edit it in two places" cost at the same time. `'section'` fits the three disclosure-trigger links.
+- **360 Splendor — 3 loop sites** (one `$links` array looped for desktop and off-canvas; one footer loop).
+- **Coco / the Boilerplate — 1 loop site each** (`$TODO_nav_links`); adopting it in the Boilerplate makes every future clone current-aware.
+
+### Docs follow-up (not in this release)
+
+- Parent `CLAUDE.md` §4 (another `roci_` function lives in `inc/helpers.php` — the "two `roci_` functions" note there is already stale) and §5 (usage); `CONVENTIONS.md` → *Helpers*, plus a one-line nav-state convention ("style current state from `[aria-current]`").
+- No extension-point catalogue change — no filter or action added.
+
 ## [6.38.0] — 2026-10-06
 
 **NETWORK-WIDE, ADDITIVE A11Y:** helper hardening — named video frames, flagged missing alt text, shortcode semantics.
