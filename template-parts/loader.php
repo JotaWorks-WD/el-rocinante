@@ -38,9 +38,19 @@
  * and then win on source order (this block is in the body, after every head
  * stylesheet). A bare #loader (1,0,0) would lose. No !important.
  *
+ * ⚠ CSS FAILSAFE (v1.4.1). The overlay also hides itself 8s after it first
+ * paints (the roci-loader-failsafe animation, in components/_loader.scss and in
+ * the inline copy below), so JS that is slow, blocked or broken can no longer
+ * leave it up. 8s is above the children's 5s dismissal ceiling, so on a working
+ * page the JS always wins. The reduced-motion reset leaves animation-delay
+ * alone, so the failsafe still fires there (it cuts instead of fading). With
+ * the <noscript> escape covering no-JS, the overlay cannot strand a visitor.
+ * A child's dismissal JS that runs after the failsafe has fired should see the
+ * computed visibility: hidden and skip its "page behind is inert" step.
+ *
  * File:    template-parts/loader.php
- * Version: 1.4.0
- * Updated: 2026-10-06
+ * Version: 1.4.1
+ * Updated: 2026-10-07
  *
  * @package ElRocinante
  */
@@ -100,8 +110,13 @@ $roci_loader_logo_size = $roci_loader_logo_dims
 // ⚠ A HAND-COPIED DUPLICATE OF components/_loader.scss (plus base/_base.scss's
 // root size). The SCSS is still the source and still ships in the external
 // sheet. Change a value there and it must change here too — nothing warns.
+// That includes the failsafe animation and its @keyframes (v1.4.1). Keyframes
+// carry no specificity and both copies are identical, so whichever the browser
+// meets is the same animation. The 8s clock starts when the inline copy first
+// styles the overlay, and the external sheet's identical declaration does not
+// restart it.
 ?>
-<style id="roci-loader-critical">:where(html){font-size:62.5%}:where(#loader.roci-loader){position:fixed;inset:0;z-index:var(--z-tooltip,700);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2rem;background-color:var(--color-surface,#fff);opacity:1;transition:opacity .4s ease}:where(#loader.roci-loader[hidden]){display:none}:where(#loader.roci-loader.is-dismissed){opacity:0;pointer-events:none}:where(.roci-loader__logo){max-width:18rem;height:auto}:where(.roci-loader__spinner){width:4rem;height:4rem;border:3px solid var(--color-border,#e5e5e5);border-top-color:var(--color-action,#333);border-radius:50%;animation:roci-loader-spin .8s linear infinite}@keyframes roci-loader-spin{to{transform:rotate(360deg)}}@media (prefers-reduced-motion:reduce){:where(#loader.roci-loader){transition:none}:where(.roci-loader__spinner){animation:none}}</style>
+<style id="roci-loader-critical">:where(html){font-size:62.5%}:where(#loader.roci-loader){position:fixed;inset:0;z-index:var(--z-tooltip,700);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2rem;background-color:var(--color-surface,#fff);opacity:1;transition:opacity .4s ease;animation:roci-loader-failsafe .4s ease 8s forwards}@keyframes roci-loader-failsafe{to{opacity:0;visibility:hidden;pointer-events:none}}:where(#loader.roci-loader[hidden]){display:none}:where(#loader.roci-loader.is-dismissed){opacity:0;pointer-events:none}:where(.roci-loader__logo){max-width:18rem;height:auto}:where(.roci-loader__spinner){width:4rem;height:4rem;border:3px solid var(--color-border,#e5e5e5);border-top-color:var(--color-action,#333);border-radius:50%;animation:roci-loader-spin .8s linear infinite}@keyframes roci-loader-spin{to{transform:rotate(360deg)}}@media (prefers-reduced-motion:reduce){:where(#loader.roci-loader){transition:none}:where(.roci-loader__spinner){animation:none}}</style>
 <noscript><style>#loader.roci-loader{display:none}</style></noscript>
 <div id="loader" class="roci-loader" role="status" aria-live="polite">
 

@@ -4,6 +4,43 @@ All notable changes to the El Rocinante parent theme are recorded here. Entries 
 
 ---
 
+## [6.40.1] — 2026-10-07
+
+**A11Y / RESILIENCE: CSS-only loader failsafe.** The opt-in loader overlay (`roci-loader`) used to disappear only when the child's dismissal JavaScript ran. If that script was slow or blocked, the overlay stayed up; it was seen once on a live child, for ~30s on a cold cache. The overlay now hides itself after a fixed delay, whatever the JavaScript does.
+
+CSS plus the inline critical copy. **No `!important`**, no JavaScript, and no change for a child that does not use the loader.
+
+### What changed
+
+`components/_loader.scss` **v1.0.0 → v1.0.1**:
+
+```scss
+#loader.roci-loader {
+  …
+  animation: roci-loader-failsafe 0.4s ease 8s forwards;
+}
+
+@keyframes roci-loader-failsafe {
+  to { opacity: 0; visibility: hidden; pointer-events: none; }
+}
+```
+
+`template-parts/loader.php` **v1.4.0 → v1.4.1**: the same declaration and `@keyframes` are added to the inline `:where()` critical CSS. That block is a hand copy of `_loader.scss`, so the two must stay identical.
+
+### Why it is safe
+
+- **8s, above the children's 5s dismissal ceiling.** On a working page the JavaScript always dismisses first, so the failsafe never shows. It only matters when the script has not run at all.
+- **`forwards`, not `both`:** nothing is applied during the 8s delay, so the overlay paints and dismisses exactly as before.
+- **It cannot bring back a dismissed overlay.** `.is-dismissed` is already `opacity: 0`, and the end state is `opacity: 0` too. `[hidden]` is `display: none`, which cancels the animation.
+- **It survives reduced motion.** The global reduced-motion reset shortens `animation-duration` and pins `animation-iteration-count`; it never touches `animation-delay`. Under reduced motion the overlay cuts out at 8s instead of fading. The loader's own reduced-motion block still sets only `transition: none` on the overlay; it must never add `animation: none` there.
+- **Together with the `<noscript>` escape (6.37.0) it covers every case.** With no JavaScript the overlay never shows; when the JavaScript never arrives, the overlay leaves on its own.
+
+### Child impact
+
+**A child's dismissal JavaScript that runs after the failsafe has fired should not re-inert the page.** If the script sets `inert` on the page behind the overlay when it starts, it should first check `getComputedStyle( loader ).visibility === 'hidden'`. If the overlay is already gone, skip the inert step, or the visitor's already-usable page goes dead until the dismissal completes. Fish Potrero adopts this in a later child patch. No child markup or CSS change is required.
+
+---
+
 ## [6.40.0] — 2026-10-06
 
 **A11Y (AAA 3.2.5, technique G201):** links that open a new tab now say so — `jw_new_tab_note()`, appended automatically by `jw_wysiwyg_body()`; one shared external-link test behind every link helper.
