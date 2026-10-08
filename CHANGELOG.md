@@ -4,6 +4,46 @@ All notable changes to the El Rocinante parent theme are recorded here. Entries 
 
 ---
 
+## [6.40.3] — 2026-10-08
+
+**FIX (staging safety): "Discourage search engines" now wins over every page's own robots setting.** Observed on a live child: with Settings → Reading → "Discourage search engines from indexing this site" ticked (`blog_public = 0`), a page whose SEO Robots field said `index, follow` still rendered as indexable.
+
+PHP only. **No CSS change**, no JavaScript. **Public sites are byte-identical**: the new branch runs only when `blog_public` is falsy.
+
+### What changed
+
+`header.php` **v2.1.1 → v2.1.2**, under the `// ROBOTS` sub-banner, immediately after the `index, follow` default:
+
+```php
+if ( ! get_option( 'blog_public' ) ) {
+    $roci_robots = 'noindex, nofollow';
+}
+```
+
+`functions.php` **v1.16.0 → v1.16.1**: a one-line comment beside `remove_action( 'wp_head', 'wp_robots', 1 )` pointing at the check, so neither is removed without the other.
+
+### Precedence
+
+| `blog_public` | `<meta name="robots">` |
+|---|---|
+| `0` (discouraged) | `noindex, nofollow` on every route through `header.php`, whatever `roci_robots` says |
+| `1` (public) | the per-page `roci_robots` field, defaulting to `index, follow`, as before |
+
+`! get_option( 'blog_public' )` and `noindex, nofollow` are exactly the test and the value of core's own `wp_robots_noindex()` → `wp_robots_no_robots()`, so the theme and core agree on what "discouraged" means.
+
+### Root cause
+
+**The theme removed WordPress's only "discourage" signal and never replaced it.** `functions.php` unhooks core's `wp_robots()` from `wp_head` (the theme prints its own robots tag in `header.php` instead). Core implements "Discourage search engines" **only** through that function's `wp_robots` filter chain. Since WordPress 5.3 it no longer writes `Disallow: /` to robots.txt, so the robots meta tag is the whole mechanism. `header.php` built its tag from the per-page field and a hardcoded `index, follow` default, and **nothing in the theme read `blog_public`**. Every discouraged site on the network therefore published `index` on every page whose field was not set to `noindex`.
+
+XML sitemaps were never affected: core disables them on its own when `blog_public` is `0`.
+
+### Not in this release
+
+- **Search results** still print the first result's robots value, inherited through `get_the_ID()`. Core would have noindexed them; this is a separate decision because it changes output on public sites.
+- **The `remove_filter( 'wp_robots', 'wp_robots_max_image_preview', 9 )` line** in `functions.php` names a callback core does not register under that name or priority, so it removes nothing. It is untouched here.
+
+---
+
 ## [6.40.2] — 2026-10-08
 
 **FIX: SVG uploads that WordPress sniffs as another type were refused.** Confirmed live on a child: a valid SVG with no `<?xml` prolog sniffs as `text/plain`, and the upload failed even for an administrator with SVG uploads enabled.

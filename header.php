@@ -12,8 +12,8 @@
  * for children that opt into multilingual output with add_theme_support('roci-i18n').
  *
  * File:    header.php
- * Version: 2.1.1
- * Updated: 2026-10-05
+ * Version: 2.1.2
+ * Updated: 2026-10-08
  *
  * @package ElRocinante
  */
@@ -105,6 +105,15 @@
     // --------------------------------------------------------
     $roci_robots = roci_get_field( 'roci_robots', $roci_post_id );
     $roci_robots = $roci_robots ? $roci_robots : 'index, follow';
+
+    // SITE-WIDE SWITCH WINS. Settings → Reading → "Discourage search engines"
+    // (blog_public = 0) is the staging safety switch. Core implements it ONLY
+    // through wp_robots(), which this theme unhooks (functions.php) — so this
+    // tag must carry it, or a discouraged site publishes "index". The value and
+    // the test match core's own wp_robots_noindex() -> wp_robots_no_robots().
+    if ( ! get_option( 'blog_public' ) ) {
+        $roci_robots = 'noindex, nofollow';
+    }
 
     // --------------------------------------------------------
     // OG IMAGE

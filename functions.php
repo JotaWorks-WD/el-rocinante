@@ -6,8 +6,8 @@
  * loads includes, and outputs analytics/integration scripts.
  *
  * File:    functions.php
- * Version: 1.16.0
- * Updated: 2026-10-05
+ * Version: 1.16.1
+ * Updated: 2026-10-08
  *
  * @package ElRocinante
  */
@@ -171,7 +171,7 @@ remove_filter( 'wp_robots', 'wp_robots_max_image_preview', 9 );
 // ============================================================
 
 remove_action( 'wp_head', 'rel_canonical' );
-remove_action( 'wp_head', 'wp_robots', 1 );
+remove_action( 'wp_head', 'wp_robots', 1 ); // header.php's ROBOTS block re-applies blog_public = 0 (noindex) — remove neither without the other.
 
 
 // ============================================================
