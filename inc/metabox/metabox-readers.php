@@ -36,7 +36,7 @@
  * Pages under a different namespace override via:
  *
  *     add_filter( 'roci_page_option_prefix', function() {
- *         return 'fpp_page_';
+ *         return 'childprefix_page_';
  *     } );
  *
  * @return string
@@ -141,15 +141,15 @@ function roci_get_setting( $page, $field, $default = '' ) {
  *
  * MB Pro's rwmb_meta() hydration is convenient when a template needs
  * full image metadata (URL, width, height, alt, etc.) in one call. But
- * many templates — and all child-theme raw readers (e.g. FP's
- * fpp_setting()) — expect a bare attachment ID that they pass to
+ * many templates — and all child-theme raw readers (each
+ * child's own one-line setting alias) — expect a bare attachment ID that they pass to
  * wp_get_attachment_image() or jw_picture() themselves. Passing an
  * already-hydrated array to those functions produces incorrect output.
  * roci_get_setting_raw() is the drop-in replacement for those raw child
  * readers: same get_option() path, same isset() && !== '' empty-value
  * semantics, same result shape. A forking dev should use this reader
  * anywhere the child theme was previously calling its own raw wrapper
- * (fpp_setting(), etc.) so the migration is a straight substitution.
+ * so the migration is a straight substitution.
  *
  * WHEN TO USE EACH
  *

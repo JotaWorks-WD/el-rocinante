@@ -4,8 +4,8 @@
  *
  * Disables WordPress comments, pingbacks and trackbacks across every site
  * in the family. Graduated to the parent from the standalone "Disable
- * Comments Clean" plugin (v3.14, JotaWorks) that previously ran on Fish
- * Potrero only, so every child — current and future — inherits it without
+ * Comments Clean" plugin (v3.14, JotaWorks) that previously ran on one
+ * child only, so every child — current and future — inherits it without
  * a per-site plugin install.
  *
  * Five mechanisms, because no single one covers the whole surface:
@@ -24,7 +24,7 @@
  * alone leaves existing comments rendering. Both are needed.
  *
  * NO OPT-OUT FILTER — deliberate, not an oversight. Every site in the
- * family wants comments gone, including Fish Potrero, the only one with a
+ * family wants comments gone, including the one child with a
  * blog. This intentionally departs from inc/archive-suppression.php, which
  * dispatches a filter per archive type. If per-site re-enable is ever
  * wanted, add the filter then; do not add one speculatively.

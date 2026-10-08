@@ -217,8 +217,8 @@ function roci_enqueue_page_bundle() {
      * page bundle that prints BEFORE the sheet it was written to override
      * loses every equal-specificity rule in it.
      *
-     * Both current children name their base handle '{stylesheet}-style'
-     * (fishpotrero-style, rjk-splendor-style), so the default resolves. The
+     * The current children name their base handle '{stylesheet}-style'
+     * (e.g. child-slug-style), so the default resolves. The
      * filter exists so a child that names its handle differently corrects it
      * in one line instead of silently losing its page styles.
      */

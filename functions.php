@@ -72,8 +72,8 @@ add_action( 'after_setup_theme', 'el_rocinante_setup' );
 // removing it is the child's job, because the parent ships zero front-end
 // JavaScript by design (see §8 of CLAUDE.md) and that rule is not broken
 // for this feature. A child that opts in WITHOUT shipping dismissal JS gets
-// an overlay that never goes away. Fish Potrero's dismissal lives in its
-// own dist/js/navigation.js.
+// an overlay that never goes away. The reference child's dismissal lives in
+// its own front-end script.
 
 function el_rocinante_render_loader() {
 
@@ -396,10 +396,10 @@ function el_rocinante_analytics() {
     <?php endif;
 
     if ( $head_script ) :
-        // Intentionally unescaped: $head_script is sanitized at save time via
-        // wp_kses_post(), which permits <script> tags for users with the
-        // unfiltered_html capability. Wrapping this in esc_html() would break
-        // the custom-scripts feature for admins.
+        // Intentionally unescaped: roci_sanitize_integrations() stores the value
+        // raw only for users with the unfiltered_html capability, and runs
+        // wp_kses_post() (which strips <script>) for everyone else. Wrapping
+        // this in esc_html() would break the custom-scripts feature for admins.
         echo $head_script;
     endif;
 
@@ -414,10 +414,10 @@ add_action( 'wp_head', 'el_rocinante_analytics' );
 function el_rocinante_footer_scripts() {
     $footer_script = roci_setting( 'integrations', 'custom_footer_script' );
     if ( $footer_script ) {
-        // Intentionally unescaped: $footer_script is sanitized at save time via
-        // wp_kses_post(), which permits <script> tags for users with the
-        // unfiltered_html capability. Wrapping this in esc_html() would break
-        // the custom-scripts feature for admins.
+        // Intentionally unescaped: roci_sanitize_integrations() stores the value
+        // raw only for users with the unfiltered_html capability, and runs
+        // wp_kses_post() (which strips <script>) for everyone else. Wrapping
+        // this in esc_html() would break the custom-scripts feature for admins.
         echo $footer_script;
     }
 }

@@ -22,7 +22,7 @@ jQuery(document).ready(function ($) {
   // wpColorPicker() call that stood here matched zero elements.
   //
   // The wp-color-picker dependency is deliberately LEFT in place on the
-  // roci-settings-js enqueue (settings-register.php:67, :72). It is a few KB on
+  // roci-settings-js enqueue (roci_settings_enqueue() in settings-register.php). It is a few KB on
   // admin settings screens only, and that enqueue is shared by all seven tabs —
   // removing it to save nothing risks the Identity tab's media/logo uploader for
   // no gain. Keeping it is harmless; removing it wrongly is not.
