@@ -12,7 +12,7 @@
  * for children that opt into multilingual output with add_theme_support('roci-i18n').
  *
  * File:    header.php
- * Version: 2.2.0
+ * Version: 2.2.1
  * Updated: 2026-10-08
  *
  * @package ElRocinante
@@ -310,10 +310,26 @@
     } else {
         $roci_hreflang_alternates = $roci_hreflang_default;
     }
+
+    // NO EMPTY content="" (v2.2.1). Below, every tag whose value can come out
+    // empty is printed only when that value is non-empty after trim():
+    // description, og:title, og:description, og:site_name, og:image:alt,
+    // twitter:title, twitter:description. (A listing route with no site-default
+    // description used to print <meta name="description" content="">.) The
+    // guards sit at column 0 so they print nothing: wherever a value is
+    // non-empty the output is byte-identical. Tags that can never be empty —
+    // robots (always defaulted), og:type, og:locale — stay unguarded.
+    //
+    // twitter:card follows the image (v2.2.1): summary_large_image when there
+    // is one (the same test that prints twitter:image, so byte-identical
+    // there), summary when there is not — a large-image card with no image
+    // is a contradiction.
     ?>
 
     <!-- Meta -->
+<?php if ( '' !== trim( (string) $roci_description ) ) : ?>
     <meta name="description" content="<?php echo esc_attr( $roci_description ); ?>">
+<?php endif; ?>
     <meta name="robots" content="<?php echo esc_attr( $roci_robots ); ?>">
 <?php if ( '' !== $roci_canonical ) : ?>
     <link rel="canonical" href="<?php echo esc_url( $roci_canonical ); ?>">
@@ -326,16 +342,24 @@
 
     <!-- Open Graph -->
     <meta property="og:type" content="<?php echo is_single() ? 'article' : 'website'; ?>">
+<?php if ( '' !== trim( (string) $roci_og_title ) ) : ?>
     <meta property="og:title" content="<?php echo esc_attr( $roci_og_title ); ?>">
+<?php endif; ?>
+<?php if ( '' !== trim( (string) $roci_og_description ) ) : ?>
     <meta property="og:description" content="<?php echo esc_attr( $roci_og_description ); ?>">
+<?php endif; ?>
 <?php if ( '' !== $roci_canonical ) : ?>
     <meta property="og:url" content="<?php echo esc_url( $roci_canonical ); ?>">
 <?php endif; ?>
+<?php if ( '' !== trim( (string) $roci_site_name ) ) : ?>
     <meta property="og:site_name" content="<?php echo esc_attr( $roci_site_name ); ?>">
+<?php endif; ?>
     <meta property="og:locale" content="<?php echo esc_attr( get_locale() ); ?>">
     <?php if ( $roci_og_image_url ) : ?>
     <meta property="og:image" content="<?php echo esc_url( $roci_og_image_url ); ?>">
+<?php if ( '' !== trim( (string) $roci_og_image_alt ) ) : ?>
     <meta property="og:image:alt" content="<?php echo esc_attr( $roci_og_image_alt ); ?>">
+<?php endif; ?>
 <?php if ( $roci_og_image_w && $roci_og_image_h ) : ?>
     <meta property="og:image:width" content="<?php echo (int) $roci_og_image_w; ?>">
     <meta property="og:image:height" content="<?php echo (int) $roci_og_image_h; ?>">
@@ -346,9 +370,13 @@
     <?php endif; ?>
 
     <!-- Twitter Card -->
-    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:card" content="<?php echo $roci_og_image_url ? 'summary_large_image' : 'summary'; ?>">
+<?php if ( '' !== trim( (string) $roci_og_title ) ) : ?>
     <meta name="twitter:title" content="<?php echo esc_attr( $roci_og_title ); ?>">
+<?php endif; ?>
+<?php if ( '' !== trim( (string) $roci_og_description ) ) : ?>
     <meta name="twitter:description" content="<?php echo esc_attr( $roci_og_description ); ?>">
+<?php endif; ?>
 <?php if ( '' !== $roci_canonical ) : ?>
     <meta property="twitter:url" content="<?php echo esc_url( $roci_canonical ); ?>">
 <?php endif; ?>

@@ -4,6 +4,49 @@ All notable changes to the El Rocinante parent theme are recorded here. Entries 
 
 ---
 
+## [7.0.1] — 2026-10-08
+
+**FIX: no more empty `content=""` tags in the `<head>`, and no large-image Twitter card without an image.** Observed on a live child (7.0.0): `/?s=fishing` printed `<meta name="description" content="">`.
+
+PHP only. **No CSS change**, no JavaScript. **Byte-identical wherever a value is non-empty and wherever an OG image exists.**
+
+### Root cause
+
+7.0.0 made listing routes take the **site-default** description instead of the first search result's. On a site with no default meta description set, that value is empty, and `header.php` printed the description tag (and its OG/Twitter twins) **unconditionally**, so the empty value reached the page as `content=""`. The same unconditional printing applied to every other tag whose value can come out empty.
+
+### What changed
+
+`header.php` **v2.2.0 → v2.2.1**. These tags now print **only when their value is non-empty after `trim()`**:
+
+| Tag | Value | When it can be empty |
+|---|---|---|
+| `<meta name="description">` | per-page field → site default | no field and no site default (the observed case) |
+| `og:description`, `twitter:description` | per-page OG field → the description above | same |
+| `og:title`, `twitter:title` | OG field → meta title → post title / document title | an untitled post with no meta title |
+| `og:site_name` | Business name → Site Title | both blank |
+| `og:image:alt` | typed alt → attachment alt → description → title | every link in the chain empty |
+
+The guards sit at **column 0**, so the `<?php if … ?>` / `<?php endif; ?>` lines print nothing. Wherever a value is non-empty, the output is byte-identical to 7.0.0.
+
+**Left unguarded, because they cannot be empty:**
+- `robots`, which always has a default;
+- `og:type`, which is a constant;
+- `og:locale`, because `get_locale()` always returns a value.
+
+**Already guarded since 7.0.0:**
+- `og:url`, `twitter:url` and the canonical, on a non-empty canonical;
+- `og:image:width`/`height`/`type`;
+- `og:image` and `twitter:image`, inside the image-URL check.
+
+### `twitter:card` follows the image
+
+`twitter:card` was hardcoded `summary_large_image`, so a page with no OG image announced a large-image card with nothing to show. It is now:
+
+- `summary_large_image` when there is an image, decided by the same test that prints `twitter:image`, so it is **byte-identical** there;
+- `summary` when there is not.
+
+---
+
 ## [7.0.0] — 2026-10-08
 
 **Milestone: the accessibility programme is complete and the bug board is clear.**
