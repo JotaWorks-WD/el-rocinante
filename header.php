@@ -12,7 +12,7 @@
  * for children that opt into multilingual output with add_theme_support('roci-i18n').
  *
  * File:    header.php
- * Version: 2.2.1
+ * Version: 2.2.2
  * Updated: 2026-10-08
  *
  * @package ElRocinante
@@ -675,10 +675,17 @@
          * OG, Twitter and per-page schema block with it. See CLAUDE.md §5b.
          */
         $roci_local_schema = apply_filters( 'roci_schema_data', $roci_local_schema );
+
+        // SCRIPT-SAFE (v2.2.2), the same rewrite as jw_faq_schema() and
+        // roci_schema_json_for_output(). JSON_UNESCAPED_SLASHES leaves "</"
+        // as-is, and a Theme Settings value or a roci_schema_data callback
+        // could carry a literal </script>, closing the tag early. "<\/" is a
+        // valid JSON escape that parses back to the same string, so output is
+        // byte-identical for any data without "</".
     ?>
 <!-- Schema JSON-LD — Site Level (Theme Settings) -->
 <script type="application/ld+json">
-<?php echo wp_json_encode( $roci_local_schema, JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT ); ?>
+<?php echo str_replace( '</', '<\/', wp_json_encode( $roci_local_schema, JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT ) ); ?>
 </script>
     <?php endif; ?>
 

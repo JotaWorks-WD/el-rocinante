@@ -4,6 +4,30 @@ All notable changes to the El Rocinante parent theme are recorded here. Entries 
 
 ---
 
+## [7.0.6] — 2026-10-08
+
+**FIX (#30, latent): the site-level JSON-LD escapes `</`.**
+
+PHP only. **No CSS change**, no JavaScript. **Byte-identical for any data that contains no `</`**, which is every site today.
+
+### Root cause
+
+The theme prints JSON-LD in three places, and only two of them were script-safe:
+
+- **Page-level schema** (the `roci_schema_json` field) goes through `roci_schema_json_for_output()`. That function decodes HTML entities per string value, re-encodes, rewrites every `</` to `<\/`, and re-validates.
+- **FAQ schema**: `jw_faq_schema()` rewrites `</` to `<\/` after `wp_json_encode()`.
+- **Site-level LocalBusiness schema** (`header.php`) was printed straight from `wp_json_encode( …, JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT )`. With `JSON_UNESCAPED_SLASHES`, a `</` in any value survives as-is. The data comes from Theme Settings and the child-filterable `roci_schema_data`, so a value containing `</script>` would close the script element early.
+
+**Latent:** no current site has such a value.
+
+### What changed
+
+`header.php` **v2.2.1 → v2.2.2**: `str_replace( '</', '<\/', … )` wraps the existing `wp_json_encode()` call, in the same form `jw_faq_schema()` uses. `<\/` is a valid JSON escape that parses back to the same string.
+
+Nothing else changed: same flags, same position, same `if ( $roci_biz_name )` gate. There is no entity decoding, and the call is not routed through `roci_schema_json_for_output()`.
+
+---
+
 ## [7.0.5] — 2026-10-08
 
 **FIX (#34): the SEO Health panel no longer recurses on the new-post screen.**

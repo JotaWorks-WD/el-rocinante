@@ -4,7 +4,7 @@ Theme URI: https://jota.works
 Author: JotaWorks
 Author URI: https://jota.works
 Description: A lean, professional WordPress base theme by JotaWorks. Built for service businesses, tourism, and property management — with a custom SEO layer, schema markup, and no page builder bloat.
-Version: 7.0.5
+Version: 7.0.6
 License: Private
 License URI: https://jota.works
 Text Domain: rocinante
@@ -14,11 +14,11 @@ GitHub Branch: main
 
 /*
 Changelog (newest first, rolling 6):
+v7.0.6 — 2026-10-08 — PATCH — FIX (#30, latent): the site-level LocalBusiness JSON-LD was printed without the "</" → "<\/" rewrite the page-level schema and jw_faq_schema() already apply, so a Theme Settings value or roci_schema_data callback containing "</script>" could close the tag early. Same flags, position and gate; byte-identical for data without "</". header.php only.
 v7.0.5 — 2026-10-08 — PATCH — FIX (#34): on the new-post screen (no post ID) the SEO Health panel recursed until a stack overflow — fetchSlug() called back without setting slugFetched, so rociUpdateHealth() re-entered it forever. The no-ID path now sets slugFetched first and the panel shows "no slug". inc/metabox/metabox-seo-health.php only.
 v7.0.4 — 2026-10-08 — PATCH — FIX (#29): the SEO Health panel's slug fetch hardcoded "/wp-json/wp/v2/pages/" (then "posts/") with no nonce, so it broke on subdirectory installs and plain permalinks, missed CPTs, and could not read drafts. Now rest_url() + the edited post type's rest_namespace/rest_base + X-WP-Nonce; a type with show_in_rest false skips the fetch. inc/metabox/metabox-seo-health.php only.
 v7.0.3 — 2026-10-08 — PATCH — FIX (#28, latent): the four SEO preview tab <button>s had no type, so inside the post edit form they defaulted to type="submit" and a tab click could submit the form (classic editor; not reproducible in the block editor). Now type="button". inc/metabox/metabox-seo-preview.php only.
 v7.0.2 — 2026-10-08 — PATCH — FIX (#27): index.php had no pagination, so a posts index served by the parent reached only the first posts_per_page posts. Adds the_posts_pagination() after the loop, as archive.php and search.php do. Nothing else in the template changed. index.php only.
 v7.0.1 — 2026-10-08 — PATCH — FIX: no empty content="" head tags. description, og:title, og:description, og:site_name, og:image:alt, twitter:title and twitter:description now print only when their value is non-empty (trimmed) — e.g. /?s= on a site with no default meta description printed <meta name="description" content="">. twitter:card is summary_large_image with an OG image, summary without. Byte-identical wherever the value is non-empty and wherever an image exists. header.php only.
-v7.0.0 — 2026-10-08 — MAJOR (milestone) — Accessibility programme complete + bug board cleared. (1) Listing routes (search, archives, 404, posts-on-front) no longer borrow the first loop post's <head>: own title/description/OG from site defaults, route canonical (none on search/404; archive/term URL; paged self-canonical incl. the posts page), no page schema; roci_hreflang_alternates receives [] when there is no canonical (CONTRACT CHANGE). (2) Only real .webp is labelled WebP (AVIF et al.); hero <source> + art-directed preload typed only when the desktop crop is WebP. (3) og:image:type/width/height from the real image (site default: extension mime, no dims). (4) Defensive SVG URL fallbacks: identity previews, schema logo, Bunny poster. Singular <head> and jpg/png/gif/webp image output byte-identical.
 */
 
