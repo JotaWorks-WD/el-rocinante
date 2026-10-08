@@ -4,7 +4,7 @@ Theme URI: https://jota.works
 Author: JotaWorks
 Author URI: https://jota.works
 Description: A lean, professional WordPress base theme by JotaWorks. Built for service businesses, tourism, and property management — with a custom SEO layer, schema markup, and no page builder bloat.
-Version: 7.0.8
+Version: 7.0.9
 License: Private
 License URI: https://jota.works
 Text Domain: rocinante
@@ -14,11 +14,11 @@ GitHub Branch: main
 
 /*
 Changelog (newest first, rolling 6):
+v7.0.9 — 2026-10-08 — PATCH — FIX (#35): Meta Box's REST extension put every field value in post responses under `meta_box` with no permission or post_password check, and post/page/attachment responses still carried folder term IDs and their wp:term links after #12 gated the folder routes. New inc/rest-gate.php strips `meta_box` unless the requester can edit the post, and the folder keys and links unless they have upload_files. Registry-driven over every show_in_rest post type, so child CPTs and fields are covered. Reads only; writes untouched.
 v7.0.8 — 2026-10-08 — PATCH — FIX (#32, latent): archive.php's <h1> was empty on custom-taxonomy archives (they fell to post_type_archive_title(), which prints nothing there) and date archives were all labelled "F Y". Adds an is_tax() → single_term_title() branch; dates split into year / month / day (escaped); post_type_archive_title() only on post-type archives, the_archive_title() as a never-empty fallback. Category, tag, author and post-type titles byte-identical. archive.php only.
 v7.0.7 — 2026-10-08 — PATCH — FIX (#31, latent): jw_faq_schema() called rwmb_meta() directly with no function_exists guard, a fatal error if Meta Box is inactive. It now reads through roci_get_field() — same field, args and post ID, so the value is identical with Meta Box active, and it emits nothing (no fatal) without it. inc/helpers.php only.
 v7.0.6 — 2026-10-08 — PATCH — FIX (#30, latent): the site-level LocalBusiness JSON-LD was printed without the "</" → "<\/" rewrite the page-level schema and jw_faq_schema() already apply, so a Theme Settings value or roci_schema_data callback containing "</script>" could close the tag early. Same flags, position and gate; byte-identical for data without "</". header.php only.
 v7.0.5 — 2026-10-08 — PATCH — FIX (#34): on the new-post screen (no post ID) the SEO Health panel recursed until a stack overflow — fetchSlug() called back without setting slugFetched, so rociUpdateHealth() re-entered it forever. The no-ID path now sets slugFetched first and the panel shows "no slug". inc/metabox/metabox-seo-health.php only.
 v7.0.4 — 2026-10-08 — PATCH — FIX (#29): the SEO Health panel's slug fetch hardcoded "/wp-json/wp/v2/pages/" (then "posts/") with no nonce, so it broke on subdirectory installs and plain permalinks, missed CPTs, and could not read drafts. Now rest_url() + the edited post type's rest_namespace/rest_base + X-WP-Nonce; a type with show_in_rest false skips the fetch. inc/metabox/metabox-seo-health.php only.
-v7.0.3 — 2026-10-08 — PATCH — FIX (#28, latent): the four SEO preview tab <button>s had no type, so inside the post edit form they defaulted to type="submit" and a tab click could submit the form (classic editor; not reproducible in the block editor). Now type="button". inc/metabox/metabox-seo-preview.php only.
 */
 

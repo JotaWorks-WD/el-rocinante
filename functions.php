@@ -6,7 +6,7 @@
  * loads includes, and outputs analytics/integration scripts.
  *
  * File:    functions.php
- * Version: 1.16.3
+ * Version: 1.16.4
  * Updated: 2026-10-08
  *
  * @package ElRocinante
@@ -312,6 +312,13 @@ require_once get_template_directory() . '/inc/blog-shortcodes.php';
 // ============================================================
 
 require_once get_template_directory() . '/inc/folders/folders.php';
+
+
+// ============================================================
+// REST GATE — meta_box and folder term IDs in post responses
+// ============================================================
+
+require_once get_template_directory() . '/inc/rest-gate.php';
 
 
 // ============================================================

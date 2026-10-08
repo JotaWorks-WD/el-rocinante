@@ -4,6 +4,30 @@ All notable changes to the El Rocinante parent theme are recorded here. Entries 
 
 ---
 
+## [7.0.9] — 2026-10-08
+
+**FIX (#35): Meta Box field data and folder term IDs are gated in REST post responses.**
+
+PHP only. **No CSS change**, no JavaScript. No front-end rendering change. Writes are untouched.
+
+### Root cause
+
+- **`meta_box` was readable by anyone.** Meta Box's REST extension adds every field of every box to post responses under a `meta_box` key through `register_rest_field()`, with no permission check and no `post_password` check on read. An anonymous caller could read every field value, including internal ones (the SEO focus keyword, raw robots and canonical values, popup IDs), and every field of a **password-protected** post, whose content core itself withholds.
+- **The #12 gate stopped at the taxonomy routes.** It gated `/wp/v2/{folder taxonomy}`, but core still embeds each post's folder term IDs in post, page, attachment and CPT responses, plus a `wp:term` link naming the folder route. Folder membership stayed readable anonymously.
+
+### What changed
+
+New file **`inc/rest-gate.php` v1.0.0**, required from `functions.php` (**v1.16.3 → v1.16.4**) under a new `REST GATE` banner after the folder system.
+
+- On `rest_api_init` priority 99, `roci_gate_rest_register()` hooks `roci_gate_rest_post_fields()` onto `rest_prepare_{type}` (priority 99) for every `show_in_rest` post type, attachment included.
+- `roci_gate_rest_post_fields()`:
+  - removes `meta_box` unless `current_user_can( 'edit_post', $post->ID )`;
+  - unless `current_user_can( 'upload_files' )` (the #12 gate's capability), removes each folder taxonomy's key (from `roci_get_folder_taxonomies()`, keyed by `rest_base` falling back to the name, as core keys it) and its `https://api.w.org/term` link, matched by the link's `taxonomy` attribute.
+
+**Registry-driven:** child CPTs and child fields are covered with no child code. Editors' own requests carry the REST nonce, pass both checks and get the full response.
+
+---
+
 ## [7.0.8] — 2026-10-08
 
 **FIX (#32, latent): `archive.php` titles custom-taxonomy and date archives correctly.**
