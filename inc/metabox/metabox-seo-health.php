@@ -12,8 +12,8 @@
  * the classic editor, and it reports before the save rather than after.
  *
  * File:    inc/metabox/metabox-seo-health.php
- * Version: 1.2.0
- * Updated: 2026-09-04
+ * Version: 1.2.1
+ * Updated: 2026-10-08
  *
  * @package ElRocinante
  */
@@ -24,6 +24,35 @@
 // ============================================================
 
 function roci_seo_health_html( $default_og_image ) {
+
+    // REST ROUTE FOR THE SLUG FETCH (v1.2.1). The panel's JS reads the post's
+    // slug over the REST API. It used to hardcode "/wp-json/wp/v2/pages/" (then
+    // "posts/") with no nonce, which broke on subdirectory installs and plain
+    // permalinks, missed every CPT, and could not read drafts. The route is
+    // now built here from rest_url() and the edited post's own type:
+    // rest_namespace (default wp/v2) + rest_base (falling back to the type
+    // name when rest_base is empty or true). It is sent with an X-WP-Nonce.
+    //
+    // This markup is built while meta boxes register, before any post is
+    // loaded, so the type comes from the edit screen's ?post= ID — the same
+    // value the JS reads as postId. A type with show_in_rest false gets no
+    // route, and the JS degrades exactly as it does on a failed fetch.
+    $roci_rest_route = '';
+    $roci_rest_nonce = '';
+
+    if ( is_admin() ) {
+        $roci_edit_id   = isset( $_GET['post'] ) ? absint( $_GET['post'] ) : 0; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- read-only: selects the REST route for the post being edited.
+        $roci_edit_type = $roci_edit_id ? get_post_type( $roci_edit_id ) : '';
+        $roci_type_obj  = $roci_edit_type ? get_post_type_object( $roci_edit_type ) : null;
+
+        if ( $roci_type_obj && ! empty( $roci_type_obj->show_in_rest ) ) {
+            $roci_rest_base  = ( is_string( $roci_type_obj->rest_base ) && '' !== $roci_type_obj->rest_base ) ? $roci_type_obj->rest_base : $roci_type_obj->name;
+            $roci_rest_ns    = ( isset( $roci_type_obj->rest_namespace ) && is_string( $roci_type_obj->rest_namespace ) && '' !== $roci_type_obj->rest_namespace ) ? $roci_type_obj->rest_namespace : 'wp/v2';
+            $roci_rest_route = rest_url( $roci_rest_ns . '/' . $roci_rest_base . '/' );
+            $roci_rest_nonce = wp_create_nonce( 'wp_rest' );
+        }
+    }
+
     return array(
         'type' => 'custom_html',
         'std'  => '
@@ -70,21 +99,24 @@ function roci_seo_health_html( $default_og_image ) {
             var slugFetched  = false;
             var slugFetching = false;
             var postId       = new URLSearchParams( window.location.search ).get("post");
+            var restRoute    = ' . wp_json_encode( esc_url_raw( $roci_rest_route ) ) . ';
+            var restNonce    = ' . wp_json_encode( $roci_rest_nonce ) . ';
 
             // ------------------------------------------------
             // FETCH SLUG VIA REST API
-            // Tries pages first, falls back to posts
+            // The edited post type\'s own route, built server-side from
+            // rest_url(), with the REST nonce so drafts can be read.
             // ------------------------------------------------
             function fetchSlug( callback ) {
                 if ( !postId ) { callback(""); return; }
 
-                fetch( "/wp-json/wp/v2/pages/" + postId )
+                // No REST route (show_in_rest false): degrade as a failed fetch does.
+                if ( !restRoute ) { slugFetched = true; callback(""); return; }
+
+                fetch( restRoute + postId, { headers: { "X-WP-Nonce": restNonce } } )
                     .then(function(r) {
                         if ( r.ok ) return r.json();
-                        return fetch( "/wp-json/wp/v2/posts/" + postId ).then(function(r2) {
-                            if ( r2.ok ) return r2.json();
-                            return null;
-                        });
+                        return null;
                     })
                     .then(function(data) {
                         if ( data && data.slug ) {

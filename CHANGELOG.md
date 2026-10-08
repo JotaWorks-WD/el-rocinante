@@ -4,6 +4,35 @@ All notable changes to the El Rocinante parent theme are recorded here. Entries 
 
 ---
 
+## [7.0.4] — 2026-10-08
+
+**FIX (#29): the SEO Health panel's REST fetch uses the real REST root, the post type's own route and a nonce.** The panel reads the edited post's slug over the REST API to run its slug checks.
+
+PHP and inline admin JS only. **No CSS change**, and no change to the panel's checks or markup.
+
+### Root cause
+
+The inline JS fetched `"/wp-json/wp/v2/pages/" + postId`, then on failure `"/wp-json/wp/v2/posts/" + postId`, with no `X-WP-Nonce`. That broke in four ways:
+
+- **A hardcoded root** fails on subdirectory installs and on plain permalinks (`?rest_route=`).
+- **Hardcoded `pages` / `posts`** never matched a custom post type opted into the SEO meta box through `roci_seo_post_types`, so CPTs always showed "Could not read slug".
+- **No nonce** means the request is anonymous, so a draft, pending or private post returns 401, and its slug could not be read.
+- Each failure cost a wasted second request.
+
+### What changed
+
+`inc/metabox/metabox-seo-health.php` **v1.2.0 → v1.2.1**:
+
+- **The route is built server-side** in `roci_seo_health_html()`, from the edited post's type (read from the edit screen's `?post=` ID, the same value the JS uses as `postId`): `rest_url( rest_namespace . '/' . rest_base . '/' )`. `rest_namespace` defaults to `wp/v2`; `rest_base` falls back to the type name when it is empty or `true`. The route is printed into the JS through `wp_json_encode( esc_url_raw( … ) )`, so there is no literal `/wp-json/` anywhere.
+- **The nonce:** `wp_create_nonce( 'wp_rest' )` is printed through `wp_json_encode()` and sent as the `X-WP-Nonce` header.
+- **`show_in_rest` false:** no route is printed, and the JS skips the fetch and marks the slug as unavailable. That is exactly how a failed fetch already degrades ("Could not read slug").
+- **One request**, on the right route, replaces the `pages` → `posts` guess.
+- **No `?context=edit`:** the panel reads only `slug`, which is in the default `view` context, and an authenticated request already returns drafts the user may edit.
+
+The meta box is built while meta boxes register, before any post is loaded. That is why the type comes from `?post=` rather than from a global post. On the new-post screen there is no ID, and the fetch is skipped as before.
+
+---
+
 ## [7.0.3] — 2026-10-08
 
 **FIX (#28, latent): the SEO preview tab buttons no longer submit the edit form.** The four tabs in the SEO preview meta box (Google, Facebook, Twitter, SEO Health) were `<button>` elements with no `type`. Inside the post edit form a button's default type is `submit`, and the tab click handler does not cancel it, so a tab click could submit the post form.
