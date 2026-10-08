@@ -4,6 +4,39 @@ All notable changes to the El Rocinante parent theme are recorded here. Entries 
 
 ---
 
+## [7.0.8] — 2026-10-08
+
+**FIX (#32, latent): `archive.php` titles custom-taxonomy and date archives correctly.**
+
+PHP only. **No CSS change**, no JavaScript. Markup, classes, the loop and pagination are unchanged.
+
+### Root cause
+
+The `<h1>` title chain was category → tag → author → date (`get_the_date( 'F Y' )`, unescaped) → `post_type_archive_title()`.
+
+- **Custom-taxonomy term archives were never matched.** `archive-suppression.php` 404s only category, tag, author and date archives, so a child-registered taxonomy's term archive reaches this template. It fell through to `post_type_archive_title()`, which prints nothing unless `is_post_type_archive()`, so the page's `<h1>` was **empty**.
+- **Every date archive was labelled "F Y"** from the first post's date, so a year archive read "March 2026" and a day archive lost its day. (Date archives are suppressed by default; this applies only when a child re-enables them.)
+
+**Latent:** no current site renders a custom-taxonomy or date archive through the parent template.
+
+### What changed
+
+`archive.php` **v1.1.0 → v1.1.1**, the title chain only:
+
+- **Date archives split by granularity:**
+  - `is_year()` → `get_the_date( 'Y' )`;
+  - `is_month()` → `get_the_date( 'F Y' )`;
+  - otherwise (a day archive) → `get_the_date()` in the site's date format.
+
+  All three are escaped with `esc_html()`.
+- **`is_tax()` → `single_term_title()`**, a new branch before the post-type case.
+- **`post_type_archive_title()`** now runs only when `is_post_type_archive()`.
+- **`the_archive_title()`** is the last-resort fallback, so the `<h1>` is never empty.
+
+Category (`single_cat_title()`), tag (`single_tag_title()`), author (`esc_html( get_the_author() )`) and post-type archive titles are **byte-identical**. Core's "Category:" / "Tag:" prefixes are deliberately not introduced; `the_archive_title()` is reached only where the old chain printed nothing.
+
+---
+
 ## [7.0.7] — 2026-10-08
 
 **FIX (#31, latent): `jw_faq_schema()` reads through `roci_get_field()`.**

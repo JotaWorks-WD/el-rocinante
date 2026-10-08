@@ -8,8 +8,8 @@
  * accessible name is unique and makes sense out of context (WCAG 2.4.4).
  *
  * File:    archive.php
- * Version: 1.1.0
- * Updated: 2026-10-06
+ * Version: 1.1.1
+ * Updated: 2026-10-08
  *
  * @package ElRocinante
  */
@@ -28,9 +28,24 @@ get_header(); ?>
                 } elseif ( is_author() ) {
                     echo esc_html( get_the_author() );
                 } elseif ( is_date() ) {
-                    echo get_the_date( 'F Y' );
-                } else {
+                    // By granularity (v1.1.1): a single "F Y" label misnamed
+                    // year and day archives.
+                    if ( is_year() ) {
+                        echo esc_html( get_the_date( 'Y' ) );
+                    } elseif ( is_month() ) {
+                        echo esc_html( get_the_date( 'F Y' ) );
+                    } else {
+                        echo esc_html( get_the_date() ); // is_day(): the site date format
+                    }
+                } elseif ( is_tax() ) {
+                    // Custom-taxonomy term archives (v1.1.1) — they used to fall
+                    // to post_type_archive_title(), which prints nothing there.
+                    single_term_title();
+                } elseif ( is_post_type_archive() ) {
                     post_type_archive_title();
+                } else {
+                    // Last resort, so the <h1> is never empty.
+                    the_archive_title();
                 }
                 ?>
             </h1>
