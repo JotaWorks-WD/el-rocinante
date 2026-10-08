@@ -4,6 +4,30 @@ All notable changes to the El Rocinante parent theme are recorded here. Entries 
 
 ---
 
+## [7.0.5] — 2026-10-08
+
+**FIX (#34): the SEO Health panel no longer recurses on the new-post screen.**
+
+Inline admin JS only. **No CSS change**, and no change to the panel's checks or markup.
+
+### Root cause
+
+On `post-new.php` the URL has no `post` parameter, so `postId` is null. `fetchSlug()` then took its early return and invoked the callback **without setting `slugFetched`**. The callback runs `rociUpdateHealth()`, which, seeing `slugFetched` still false, calls `fetchSlug()` again. The two recursed synchronously until the browser threw a stack overflow, and the panel never rendered.
+
+That was the only path with the flaw. Every other exit already set `slugFetched = true` before calling back:
+- the no-REST-route skip;
+- a successful fetch with or without a slug;
+- a non-OK response, which yields `null`;
+- a network or JSON failure, through `.catch`.
+
+### What changed
+
+`inc/metabox/metabox-seo-health.php` **v1.2.1 → v1.2.2**: the no-`postId` early return sets `slugFetched = true` before invoking the callback, so the panel degrades to "Could not read slug", exactly like a failed fetch.
+
+**The post-save refetch is unchanged and still works.** It resets `slugFetched` and `slugFetching` to false itself, then calls `fetchSlug()` directly, so every save still triggers a fresh read. On the new-post screen the saved post's ID is still not in the URL the script read at load, so that refetch also degrades to "no slug" instead of looping.
+
+---
+
 ## [7.0.4] — 2026-10-08
 
 **FIX (#29): the SEO Health panel's REST fetch uses the real REST root, the post type's own route and a nonce.** The panel reads the edited post's slug over the REST API to run its slug checks.

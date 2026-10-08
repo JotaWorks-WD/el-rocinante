@@ -12,7 +12,7 @@
  * the classic editor, and it reports before the save rather than after.
  *
  * File:    inc/metabox/metabox-seo-health.php
- * Version: 1.2.1
+ * Version: 1.2.2
  * Updated: 2026-10-08
  *
  * @package ElRocinante
@@ -108,7 +108,9 @@ function roci_seo_health_html( $default_og_image ) {
             // rest_url(), with the REST nonce so drafts can be read.
             // ------------------------------------------------
             function fetchSlug( callback ) {
-                if ( !postId ) { callback(""); return; }
+                // No post ID (the new-post screen): mark the slug as read before
+                // calling back, or rociUpdateHealth() re-enters fetchSlug() forever.
+                if ( !postId ) { slugFetched = true; callback(""); return; }
 
                 // No REST route (show_in_rest false): degrade as a failed fetch does.
                 if ( !restRoute ) { slugFetched = true; callback(""); return; }
