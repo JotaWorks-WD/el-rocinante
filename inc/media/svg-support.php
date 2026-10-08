@@ -19,8 +19,8 @@
  * whitelisted — without the second filter, uploads still fail.
  *
  * File:    inc/media/svg-support.php
- * Version: 1.0.0
- * Updated: 2026-07-13
+ * Version: 1.0.1
+ * Updated: 2026-10-08
  *
  * @package ElRocinante
  */
@@ -75,7 +75,11 @@ add_filter( 'wp_check_filetype_and_ext', function( $data, $file, $filename, $mim
     }
 
     $ext = isset( $data['ext'] ) ? $data['ext'] : '';
-    if ( '' === $ext ) {
+    // empty(), not '' ===: when WordPress's own sniff rejects the file it sets
+    // ext to FALSE, which isset() accepts. A strict '' check missed that case,
+    // so an SVG sniffed as anything else (e.g. text/plain — no <?xml prolog)
+    // never reached the filename fallback and was refused.
+    if ( empty( $ext ) ) {
         $ext = strtolower( pathinfo( $filename, PATHINFO_EXTENSION ) );
     }
 

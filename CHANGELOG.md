@@ -4,6 +4,35 @@ All notable changes to the El Rocinante parent theme are recorded here. Entries 
 
 ---
 
+## [6.40.2] — 2026-10-08
+
+**FIX: SVG uploads that WordPress sniffs as another type were refused.** Confirmed live on a child: a valid SVG with no `<?xml` prolog sniffs as `text/plain`, and the upload failed even for an administrator with SVG uploads enabled.
+
+PHP only. **No CSS change**, no JavaScript, no change for an SVG that already sniffed correctly.
+
+### What changed
+
+`inc/media/svg-support.php` **v1.0.0 → v1.0.1**, in the `wp_check_filetype_and_ext` filter:
+
+```php
+// before
+if ( '' === $ext ) {
+// after
+if ( empty( $ext ) ) {
+```
+
+### Why it failed
+
+When WordPress's own content sniff rejects a file, it returns `ext` as **`false`**, not as an empty string. `isset( $data['ext'] )` is true for `false`, so `$ext` became `false`, and the strict `'' === $ext` test did not match it. The filename-extension fallback was skipped, `$ext` never equalled `'svg'`, and the filter returned WordPress's rejection unchanged. `empty()` covers `false`, `''` and an unset key alike.
+
+An SVG that sniffed as `image/svg+xml` never reached the fallback, which is why a site whose SVGs carry an XML prolog never saw the bug.
+
+### What did not change
+
+The gate is the same: `manage_options` plus the `roci_allow_svg_uploads` filter. Uploaded SVGs are still **not sanitized** (`CLAUDE.md` §13.2). This fix lets an admin-uploaded `.svg` through when the sniff disagrees, which was always the filter's intent; it does not widen who can upload.
+
+---
+
 ## [6.40.1] — 2026-10-07
 
 **A11Y / RESILIENCE: CSS-only loader failsafe.** The opt-in loader overlay (`roci-loader`) used to disappear only when the child's dismissal JavaScript ran. If that script was slow or blocked, the overlay stayed up; it was seen once on a live child, for ~30s on a cold cache. The overlay now hides itself after a fixed delay, whatever the JavaScript does.
