@@ -1292,8 +1292,9 @@ function roci_normalize_url_path( $path ) {
  *
  * NO wpautop(). The field is a wysiwyg — TinyMCE stores <p> tags in the value
  * — so wpautop() would find paragraphs already there and change nothing.
- * (A TEXTAREA field is the opposite case and does need it: there the pairing
- * is wpautop( esc_html() ), and both halves are load-bearing.)
+ * (A TEXTAREA field is the opposite case and does need it: a child rendering
+ * a textarea as paragraphs pairs it as wpautop( esc_html() ), and both halves
+ * are load-bearing.)
  *
  * Regex rather than DOMDocument is deliberate: this rewrites opening <a> tags
  * only and never reads structure, DOMDocument would need mangling guards for
