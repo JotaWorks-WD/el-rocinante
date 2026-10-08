@@ -4,6 +4,111 @@ All notable changes to the El Rocinante parent theme are recorded here. Entries 
 
 ---
 
+## [7.0.0] — 2026-10-08
+
+**Milestone: the accessibility programme is complete and the bug board is clear.**
+
+- **Accessibility (WCAG 2.2 AA), 6.32.0–6.40.1:**
+  - the skip link (6.32.0);
+  - the `:focus-visible` baseline and `--color-focus` (6.33.0);
+  - the global reduced-motion reset (6.34.0);
+  - the `.entry-content` prose contract (6.35.0);
+  - the footer nav landmark, SR-only "Read More" titles, the loader's `<noscript>` escape and `--target-min` (6.37.0);
+  - helper alt/title hardening (6.38.0);
+  - `roci_current_atts()` nav state (6.39.0);
+  - `role="list"` on marker-less lists (6.39.1);
+  - new-tab announcements (6.40.0);
+  - the loader failsafe (6.40.1).
+- **Fixes, 6.40.2–6.41.0:**
+  - SVG uploads that sniff as another type (6.40.2);
+  - "Discourage search engines" forcing `noindex, nofollow` (6.40.3);
+  - search results `noindex, follow` (6.40.4);
+  - SVG-aware image helpers (6.41.0).
+- **This release** closes the last four open findings, below.
+
+**MAJOR because it is a declared milestone (`CLAUDE.md` §3, amended), and because it carries one child-facing contract change** (`roci_hreflang_alternates`, below).
+
+PHP only. **No CSS change**, no JavaScript.
+
+**Byte-identical:**
+- every singular route's `<head>` (pages, posts, CPT singles, the static front page);
+- the posts page at page 1;
+- all jpg/png/gif/webp image and preload output.
+
+The **only** exceptions are the `og:image:*` lines (Bug 3), which now describe the real image.
+
+**Files:**
+
+| File | Version |
+|---|---|
+| `header.php` | 2.1.3 → 2.2.0 |
+| `functions.php` | 1.16.2 → 1.16.3 |
+| `inc/helpers.php` | 1.14.0 → 1.15.0 |
+| `inc/lcp-preload.php` | 1.0.1 → 1.0.2 |
+| `inc/theme-settings/tabs/tab-identity.php` | 1.1.2 → 1.1.3 |
+
+### Bug 1 — listing routes no longer borrow the first post's `<head>`
+
+**Observed on a live child (6.41.0):** `/?s=fishing` rendered the **first result's** description, canonical, hreflang, `og:*`, `twitter:*` and pasted page schema as its own. The `<title>` took that result's meta title too.
+
+**Root cause.** "WHICH POST OWNS THIS `<head>`" in `header.php`, and its twin in the `pre_get_document_title` filter in `functions.php`, fell through to `get_the_ID()` on every non-singular route. On a listing route WordPress has already set the global post to the **first post in the main query**. The affected routes were search, CPT and term archives, 404 (including the suppressed category/tag/author/date archives), and a front page that lists posts.
+
+**Fix.**
+- **No post owns a listing route.** `$roci_post_id` / `$post_id` is `0` there, and **every per-post read is skipped** behind `$roci_post_id ? … : ''`: meta title, description, OG title/description, canonical, robots, OG image, OG image alt, page schema, title and featured image. Passing `0` alone would not do it, because `roci_get_field()`, `get_the_title()`, `get_permalink()` and `has_post_thumbnail()` all fall back to the global post for an empty ID.
+- **Title.** A listing route uses core's document title ("Search Results for …", the archive title). The `<title>` filter returns core's title untouched.
+- **Description, OG and Twitter** fall to the site defaults: `seo.default_meta_description` and `seo.default_og_image`.
+- **Canonical per route:**
+
+  | Route | Canonical |
+  |---|---|
+  | search, 404 | **none** |
+  | CPT archive | `get_post_type_archive_link()` |
+  | term archive | `get_term_link()` |
+  | front page that lists posts | `home_url( '/' )` |
+  | anything else | none |
+  | page 2+ of an archive **or of the posts page** | self-canonicalises (`get_pagenum_link()`) |
+
+  Page 1 of the posts page is unchanged.
+- **Omitted when there is no canonical:** `<link rel="canonical">`, `og:url`, `twitter:url` and the default hreflang pair. This also ends the invalid `<link rel="canonical" href="">` a real 404 used to print.
+- **Robots:** unchanged in effect. A listing route takes the `index, follow` default; search is still `noindex, follow`, and `blog_public = 0` still wins last.
+- **Site-level LocalBusiness JSON-LD:** unchanged on every route.
+
+### Bug 2 — only real WebP is labelled WebP
+
+**Root cause.** The image path treated "extension swap left the URL unchanged" as "already WebP". Any non-jpg/png/gif original (AVIF, BMP, HEIC) was handed out as the WebP URL and rendered under `<source type="image/webp">`. A browser that supports WebP but not AVIF picks that `<source>` and cannot decode it. The same logic ran in three places: `jw_get_webp_url()` and both srcset loops (`jw_picture_sources()`, `jw_hero_picture_sources()`).
+
+**Fix** (`inc/helpers.php`): an unchanged URL counts as WebP **only if it ends in `.webp`**. `jw_get_webp_url()` returns `null` otherwise, and the loops drop such candidates. jpg/png/gif (the swap changes the URL) and `.webp` originals are byte-identical.
+
+**And the hero `<source>`.** `jw_hero_picture()` printed the desktop `<source>` with a **literal** `type="image/webp"`, even when it fell back to a non-WebP desktop URL. That type is now conditional on a new `desktop_is_webp` source key. The srcset line ends in a PHP closing tag, which swallows the newline after it, so the echo carries its own `"\n"`. A WebP desktop crop renders **byte-identically** (srcset, sizes, ` type="image/webp"`, newline); a non-WebP one drops the false type. `inc/lcp-preload.php` gets the same gate on the art-directed preload's fallback branch, so the preload still mirrors the markup. That file was not in the recon's list; it was added because the preload must never disagree with the `<source>`.
+
+### Bug 3 — `og:image:type` / width / height from the real image
+
+**Root cause.** `header.php` printed `og:image:width` 1200, `og:image:height` 630 and `og:image:type` `image/webp` for **every** OG image, so a JPEG featured image was declared a 1200×630 WebP.
+
+**Fix.**
+- **An attachment** (OG field or featured image): its stored mime type, plus the width/height of its `full` file from attachment metadata. A `-scaled` copy *is* `full`, so the dimensions match the URL.
+- **The site default** (a bare URL): the mime type from the file extension (`wp_check_filetype()`) and **no** width/height. No `attachment_url_to_postid()`.
+- **A tag whose value cannot be determined is omitted**, never guessed.
+
+Output is byte-identical only where the real image is a 1200×630 WebP; everything else now tells the truth.
+
+### Bug 4 — SVG URL fallbacks outside the helpers (latent / defensive)
+
+**Latent:** on the network's confirmed environment, core returns the bare `.svg` URL for an SVG, so none of these was broken there. The fallback only matters where core returns `false` for SVG (another core version, or an SVG plugin that filters the image-src pipeline). That is the case `template-parts/loader.php` already defends against.
+
+**Fix:** the loader's two-step, where `wp_get_attachment_image_url()` falls back to `wp_get_attachment_url()` **only when it returns false**, now applies at three more sites:
+- the Theme Settings logo and icon previews (`tab-identity.php`);
+- the schema `logo` (`header.php`);
+- the `jw_bunny_video()` poster (`inc/helpers.php`).
+
+Every resolvable image is unchanged. It was **not exercised** in this release: the fallback can only be attempted on an environment where core returns `false`.
+
+### Contract change — `roci_hreflang_alternates` may receive `[]`
+
+On routes with no canonical (search, 404), the default hreflang set is now **empty**, because an alternate needs a URL. `roci_hreflang_alternates` therefore receives `array()` there instead of two self-referential entries, which before 7.0.0 pointed at the first search result. The filter is still called, so an opted-in (`roci-i18n`) child can supply its own alternates. **No child currently declares `roci-i18n`**, so the seam is dormant and nothing changes in production today.
+
+---
+
 ## [6.41.0] — 2026-10-08
 
 **SVG-aware image helpers.** An SVG attachment passed to `jw_picture()` used to come out as a `<picture>` whose `<source type="image/webp">` pointed at the SVG, with no width or height. The hero preload described it as WebP too. It now renders as a plain, sized `<img>` and preloads by its real URL.

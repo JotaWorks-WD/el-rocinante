@@ -51,7 +51,7 @@
  * declined by the helpers, so its descriptor emits nothing.
  *
  * File:    inc/lcp-preload.php
- * Version: 1.0.1
+ * Version: 1.0.2
  * Updated: 2026-10-08
  *
  * @package ElRocinante
@@ -107,11 +107,15 @@ function roci_hero_preload() {
             return;
         }
 
-        // Desktop: the <source media="(min-width: 768px)" type="image/webp">.
+        // Desktop: the <source media="(min-width: 768px)">. Typed image/webp only
+        // when the desktop crop really is WebP (v1.0.2), exactly as the
+        // <source> itself is since helpers v1.15.0 — a JPEG/PNG/AVIF fallback
+        // URL is never labelled WebP. (A WebP srcset list implies a WebP crop,
+        // so that branch keeps its type unconditionally, byte-identical.)
         $links[] = $sources['desktop_webp_srcset']
             ? ' media="(min-width: 768px)" type="image/webp" imagesrcset="' . esc_attr( $sources['desktop_webp_srcset'] ) . '"'
                 . ( $sources['desktop_sizes'] ? ' imagesizes="' . esc_attr( $sources['desktop_sizes'] ) . '"' : '' )
-            : ' media="(min-width: 768px)" type="image/webp" href="' . esc_url( $sources['desktop_src'] ) . '"';
+            : ' media="(min-width: 768px)"' . ( ! empty( $sources['desktop_is_webp'] ) ? ' type="image/webp"' : '' ) . ' href="' . esc_url( $sources['desktop_src'] ) . '"';
 
         // Mobile: the <img>, which applies whenever the desktop media query
         // does not — the exact complement, so one and only one is fetched.

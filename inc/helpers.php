@@ -7,7 +7,7 @@
  * and template parts throughout El Rocinante and child themes.
  *
  * File:    inc/helpers.php
- * Version: 1.14.0
+ * Version: 1.15.0
  * Updated: 2026-10-08
  *
  * @package ElRocinante
@@ -80,9 +80,13 @@ function jw_get_webp_url( $attachment_id, $size = 'full' ) {
     // Swap extension to .webp.
     $webp_url = preg_replace( '/\.(jpe?g|png|gif)$/i', '.webp', $src );
 
-    // If the URL didn't change, the original was already .webp — return as-is.
+    // If the URL didn't change, the original was not jpg/png/gif. Only a real
+    // .webp original is returned as-is (v1.15.0): before, ANY unchanged URL —
+    // an AVIF, a BMP — was returned as the "WebP URL" and rendered under
+    // <source type="image/webp">, which a WebP-but-not-AVIF browser picks and
+    // then cannot decode.
     if ( $webp_url === $src ) {
-        return $src;
+        return preg_match( '/\.webp$/i', $src ) ? $src : null;
     }
 
     // Resolve filesystem path and confirm the file exists.
@@ -376,8 +380,13 @@ function jw_picture_sources( $attachment_id, $size = 'full', $loading = 'lazy', 
             list( $candidate_url, $descriptor ) = $parts;
             $candidate_webp = preg_replace( '/\.(jpe?g|png|gif)$/i', '.webp', $candidate_url );
 
-            // Unchanged means the candidate is already .webp — keep it, as
-            // jw_get_webp_url() returns an already-WebP original as-is.
+            // Unchanged means the candidate was not jpg/png/gif. Keep it only if
+            // it is really .webp, as jw_get_webp_url() does (v1.15.0) — an
+            // unchanged AVIF candidate is not WebP.
+            if ( $candidate_webp === $candidate_url && ! preg_match( '/\.webp$/i', $candidate_url ) ) {
+                continue;
+            }
+
             if ( $candidate_webp !== $candidate_url ) {
                 $webp_path = str_replace( $base_url, $upload_dir['basedir'], preg_replace( '#^https?:#i', '', $candidate_webp ) );
 
@@ -439,10 +448,10 @@ function jw_picture_sources( $attachment_id, $size = 'full', $loading = 'lazy', 
  */
 function jw_hero_picture( $desktop_id, $mobile_id, $alt = null, $class = '', $loading = 'eager' ) {
 
-    // ART-DIRECTED SVG IS DECLINED (v1.14.0). The desktop <source> below carries
-    // a LITERAL type="image/webp" on a line laid out around the closing-tag
-    // newline trap, so it cannot be made conditional without risking every
-    // raster hero's bytes — and a vector rarely needs a separate mobile crop.
+    // ART-DIRECTED SVG IS DECLINED (v1.14.0). A vector rarely needs a separate
+    // mobile crop, and jw_picture() renders an SVG hero correctly. (Declined
+    // when the desktop <source>'s type="image/webp" was still a literal; it is
+    // conditional since v1.15.0, but SVG crops stay out of scope here.)
     // jw_hero_picture_sources() returns [] for an SVG crop too, so the preload
     // agrees. '' in production; a pointer under WP_DEBUG.
     if ( roci_is_svg_attachment( $desktop_id ) || roci_is_svg_attachment( $mobile_id ) ) {
@@ -493,11 +502,17 @@ function jw_hero_picture( $desktop_id, $mobile_id, $alt = null, $class = '', $lo
     $sizes_attr = $sources['sizes'] ? ' sizes="' . esc_attr( $sources['sizes'] ) . '"' : '';
     $responsive = $sources['srcset'] ? ' srcset="' . esc_attr( $sources['srcset'] ) . '"' . $sizes_attr : '';
 
-    // type="image/webp" shares the srcset line on purpose: the line must end
-    // in a literal character, not in a closing tag, or PHP swallows the
-    // newline after the sizes echo (the trap documented in jw_picture()).
+    // THE SRCSET LINE ENDS IN A CLOSING TAG, SO IT ECHOES ITS OWN NEWLINE
+    // (v1.15.0). PHP swallows the newline right after a closing tag (the trap
+    // documented in jw_picture()). The line used to end in a LITERAL
+    // type="image/webp" to dodge that; the type is now conditional, so the
+    // echo carries the "\n" itself. Output for a WebP desktop crop is
+    // byte-identical to before: srcset, sizes, ' type="image/webp"', newline.
+    // A desktop crop with no WebP (a JPEG/PNG/AVIF fallback URL) drops the
+    // false type.
     $desktop_srcset_attr = $sources['desktop_webp_srcset'] ? esc_attr( $sources['desktop_webp_srcset'] ) : esc_url( $desktop_src );
     $desktop_sizes_attr  = ( $sources['desktop_webp_srcset'] && $sources['desktop_sizes'] ) ? ' sizes="' . esc_attr( $sources['desktop_sizes'] ) . '"' : '';
+    $desktop_type_attr   = ! empty( $sources['desktop_is_webp'] ) ? ' type="image/webp"' : '';
 
     ob_start();
     ?>
@@ -505,7 +520,7 @@ function jw_hero_picture( $desktop_id, $mobile_id, $alt = null, $class = '', $lo
         <!-- Desktop crop: activates at 768px and above -->
         <source
             media="(min-width: 768px)"
-            srcset="<?php echo $desktop_srcset_attr; ?>"<?php echo $desktop_sizes_attr; ?> type="image/webp"
+            srcset="<?php echo $desktop_srcset_attr; ?>"<?php echo $desktop_sizes_attr . $desktop_type_attr . "\n"; ?>
         >
         <!-- Mobile crop: default source, no media query -->
         <img
@@ -581,7 +596,8 @@ function jw_hero_picture_sources( $desktop_id, $mobile_id, $loading = 'eager' ) 
     // only where the .webp sibling exists (same test as jw_picture_sources()).
     // Built only when the full-size desktop .webp exists, so the list always
     // holds the full size; otherwise the <source> keeps a single URL, WebP or
-    // not, exactly as before.
+    // not — and since v1.15.0 it is typed image/webp only when that URL really
+    // is WebP ('desktop_is_webp' below).
     $desktop_srcset      = wp_get_attachment_image_srcset( $desktop_id, 'full' );
     $desktop_sizes       = ( 'eager' === $loading ) ? '100vw' : wp_get_attachment_image_sizes( $desktop_id, 'full' );
     $desktop_webp_srcset = '';
@@ -600,6 +616,12 @@ function jw_hero_picture_sources( $desktop_id, $mobile_id, $loading = 'eager' ) 
 
             list( $candidate_url, $descriptor ) = $parts;
             $candidate_webp = preg_replace( '/\.(jpe?g|png|gif)$/i', '.webp', $candidate_url );
+
+            // Same rule as jw_picture_sources() (v1.15.0): an unchanged
+            // candidate is kept only if it is really .webp.
+            if ( $candidate_webp === $candidate_url && ! preg_match( '/\.webp$/i', $candidate_url ) ) {
+                continue;
+            }
 
             if ( $candidate_webp !== $candidate_url ) {
                 $webp_path = str_replace( $base_url, $upload_dir['basedir'], preg_replace( '#^https?:#i', '', $candidate_webp ) );
@@ -623,6 +645,11 @@ function jw_hero_picture_sources( $desktop_id, $mobile_id, $loading = 'eager' ) 
         'sizes'               => $sizes,
         'desktop_webp_srcset' => $desktop_webp_srcset,
         'desktop_sizes'       => $desktop_sizes,
+        // v1.15.0: whether the desktop <source> really offers WebP — the
+        // full-size .webp exists (or the original is .webp). It gates the
+        // <source>'s type attribute and the art-directed preload's type, so a
+        // JPEG/PNG/AVIF fallback URL is never labelled image/webp.
+        'desktop_is_webp'     => (bool) $desktop_webp,
     ];
 }
 
@@ -815,6 +842,14 @@ function jw_bunny_video( $library_id, $video_id, $poster_id = 0, $class = '', $t
     // Append poster image URL if a WordPress attachment ID was provided.
     if ( $poster_id ) {
         $poster_url = wp_get_attachment_image_url( $poster_id, 'full' );
+
+        // SVG FALLBACK (v1.15.0, defensive) — the loader's two-step: where core
+        // returns false for an SVG, the bare attachment URL. Runs only when the
+        // first call fails, so every resolvable poster is unchanged.
+        if ( ! $poster_url ) {
+            $poster_url = wp_get_attachment_url( $poster_id );
+        }
+
         if ( $poster_url ) {
             $embed_url .= '?poster=' . urlencode( $poster_url );
         }

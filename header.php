@@ -12,7 +12,7 @@
  * for children that opt into multilingual output with add_theme_support('roci-i18n').
  *
  * File:    header.php
- * Version: 2.1.3
+ * Version: 2.2.0
  * Updated: 2026-10-08
  *
  * @package ElRocinante
@@ -42,13 +42,21 @@
     //
     //   posts page (is_home && ! is_front_page) -> page_for_posts
     //   singular (incl. a static front page)    -> get_queried_object_id()
-    //   everything else                         -> get_the_ID(), unchanged
+    //   everything else                         -> 0 — NO post (v7.0.0)
     //
-    // "Everything else" (term, date and author archives, search, 404, a
-    // front page that lists posts) keeps today's behaviour exactly. The
-    // queried object there can be a TERM, and a term ID must never reach a
-    // post-meta lookup. The page_for_posts branch also requires the option to
-    // be set, so a site without a posts page falls through unchanged.
+    // ⚠ "EVERYTHING ELSE" OWNS NO POST (v7.0.0). Search, archives (CPT, term,
+    // date, author), 404 and a front page that lists posts used to take
+    // get_the_ID() — which on a listing route is the FIRST POST IN THE LOOP — so
+    // a search page published the first result's title, description,
+    // canonical, hreflang, OG and pasted schema as its own. Now $roci_post_id
+    // is 0 there and EVERY per-post read below is SKIPPED behind
+    // `$roci_post_id ? … : ''`. Passing 0 is not enough on its own:
+    // roci_get_field(), get_the_title(), get_permalink() and
+    // has_post_thumbnail() all fall back to the global post for an empty ID.
+    // Those routes take site defaults and a route-level canonical instead (see
+    // CANONICAL). The queried object there can be a TERM, and a term ID must
+    // never reach a post-meta lookup. The page_for_posts branch also requires
+    // the option to be set.
     //
     // ⚠ The pre_get_document_title filter in functions.php resolves its ID the
     // same way for the <title> tag. Change one, change both.
@@ -60,24 +68,23 @@
     } elseif ( is_singular() ) {
         $roci_post_id = get_queried_object_id();
     } else {
-        $roci_post_id = get_the_ID();
+        $roci_post_id = 0; // no post owns a listing route — see the note above
     }
 
     // --------------------------------------------------------
     // META TITLE
     // --------------------------------------------------------
-    $roci_meta_title = roci_get_field( 'roci_meta_title', $roci_post_id );
+    $roci_meta_title = $roci_post_id ? roci_get_field( 'roci_meta_title', $roci_post_id ) : '';
     $roci_site_name  = roci_setting( 'business', 'name', get_bloginfo( 'name' ) );
     // Keyed to $roci_post_id, not the global post: on the posts page the global
-    // is the first post. Everywhere else the two name the same post (or both
-    // fall back to the global when $roci_post_id is false), so output there is
-    // unchanged.
-    $roci_title      = $roci_meta_title ? $roci_meta_title : get_the_title( $roci_post_id );
+    // is the first post. With no post (a listing route), the document title
+    // core builds ("Search Results for …", the archive title) stands in.
+    $roci_title      = $roci_meta_title ? $roci_meta_title : ( $roci_post_id ? get_the_title( $roci_post_id ) : wp_get_document_title() );
 
     // --------------------------------------------------------
     // META DESCRIPTION
     // --------------------------------------------------------
-    $roci_meta_desc    = roci_get_field( 'roci_meta_description', $roci_post_id );
+    $roci_meta_desc    = $roci_post_id ? roci_get_field( 'roci_meta_description', $roci_post_id ) : '';
     $roci_default_desc = roci_setting( 'seo', 'default_meta_description' );
     $roci_description  = $roci_meta_desc ? $roci_meta_desc : $roci_default_desc;
 
@@ -88,30 +95,66 @@
     // and description silently.
     // Twitter inherits these — there are no separate Twitter fields.
     // --------------------------------------------------------
-    $roci_og_title_field = roci_get_field( 'roci_og_title', $roci_post_id );
+    $roci_og_title_field = $roci_post_id ? roci_get_field( 'roci_og_title', $roci_post_id ) : '';
     $roci_og_title       = $roci_og_title_field ? $roci_og_title_field : $roci_title;
 
-    $roci_og_desc_field  = roci_get_field( 'roci_og_description', $roci_post_id );
+    $roci_og_desc_field  = $roci_post_id ? roci_get_field( 'roci_og_description', $roci_post_id ) : '';
     $roci_og_description = $roci_og_desc_field ? $roci_og_desc_field : $roci_description;
 
     // --------------------------------------------------------
     // CANONICAL
+    //
+    // A post: its field, else its permalink — unchanged. A listing route
+    // (v7.0.0) gets a ROUTE canonical, never a post's:
+    //   search, 404                    -> none (WP convention; the tag, og:url,
+    //                                     twitter:url and the hreflang default
+    //                                     are then omitted)
+    //   CPT archive                    -> the archive URL
+    //   term archive                   -> the term URL
+    //   front page that lists posts    -> home_url( '/' )
+    //   anything else (a re-enabled date/author archive) -> none
+    // Page 2+ of an archive or of the posts page self-canonicalises to its
+    // own paged URL (get_pagenum_link, unescaped — esc_url() runs at output).
+    // Page 1 of the posts page is unchanged.
     // --------------------------------------------------------
-    $roci_canonical_field = roci_get_field( 'roci_canonical', $roci_post_id );
-    $roci_canonical       = $roci_canonical_field ? $roci_canonical_field : get_permalink( $roci_post_id );
+    if ( $roci_post_id ) {
+        $roci_canonical_field = roci_get_field( 'roci_canonical', $roci_post_id );
+        $roci_canonical       = $roci_canonical_field ? $roci_canonical_field : get_permalink( $roci_post_id );
+    } elseif ( is_search() || is_404() ) {
+        $roci_canonical = '';
+    } elseif ( is_post_type_archive() ) {
+        $roci_archive_type = get_query_var( 'post_type' );
+        $roci_archive_type = is_array( $roci_archive_type ) ? reset( $roci_archive_type ) : $roci_archive_type;
+        $roci_canonical    = $roci_archive_type ? get_post_type_archive_link( $roci_archive_type ) : '';
+    } elseif ( is_tax() || is_category() || is_tag() ) {
+        $roci_term_link = get_term_link( get_queried_object() );
+        $roci_canonical = is_wp_error( $roci_term_link ) ? '' : $roci_term_link;
+    } elseif ( is_home() && is_front_page() ) {
+        $roci_canonical = home_url( '/' );
+    } else {
+        $roci_canonical = '';
+    }
+
+    $roci_paged = (int) get_query_var( 'paged' );
+    if ( $roci_paged > 1 && $roci_canonical && ( is_home() || is_archive() ) ) {
+        $roci_canonical = get_pagenum_link( $roci_paged, false );
+    }
+
+    // One type from here on: a URL string, or '' for "no canonical".
+    $roci_canonical = $roci_canonical ? (string) $roci_canonical : '';
 
     // --------------------------------------------------------
     // ROBOTS
     // --------------------------------------------------------
-    $roci_robots = roci_get_field( 'roci_robots', $roci_post_id );
+    $roci_robots = $roci_post_id ? roci_get_field( 'roci_robots', $roci_post_id ) : '';
     $roci_robots = $roci_robots ? $roci_robots : 'index, follow';
 
     // SEARCH RESULTS ARE NEVER INDEXED. Core noindexes them through
     // wp_robots_noindex_search(), part of the wp_robots() chain this theme
-    // unhooks — and $roci_post_id here is the FIRST RESULT, whose own field
-    // would otherwise leak onto the results page. "follow" keeps link
-    // discovery. ORDER: per-page -> search -> blog_public; the site-wide
-    // switch below must stay LAST.
+    // unhooks. (Before v7.0.0 the search page also borrowed the FIRST RESULT's
+    // own field; it now owns no post and would take the default.) "follow"
+    // keeps link discovery. ORDER: per-page -> search -> blog_public; the
+    // site-wide switch below must stay LAST.
     if ( is_search() ) {
         $roci_robots = 'noindex, follow';
     }
@@ -133,7 +176,7 @@
     $roci_og_image_att_id = 0; // attachment ID of the image that won the URL race (0 = none / site default)
 
     // 1. OG Image field (Metabox)
-    $roci_og_image_field = roci_get_field( 'roci_og_image', $roci_post_id );
+    $roci_og_image_field = $roci_post_id ? roci_get_field( 'roci_og_image', $roci_post_id ) : '';
     if ( $roci_og_image_field ) {
         $roci_og_image_ids = array_keys( $roci_og_image_field );
         if ( ! empty( $roci_og_image_ids ) ) {
@@ -142,8 +185,9 @@
         }
     }
 
-    // 2. Featured Image fallback
-    if ( ! $roci_og_image_url && has_post_thumbnail( $roci_post_id ) ) {
+    // 2. Featured Image fallback (a post only — has_post_thumbnail( 0 ) would
+    //    read the global post, i.e. the first result on a listing route)
+    if ( ! $roci_og_image_url && $roci_post_id && has_post_thumbnail( $roci_post_id ) ) {
         $roci_og_image_att_id = get_post_thumbnail_id( $roci_post_id );
         $roci_og_image_url    = get_the_post_thumbnail_url( $roci_post_id, 'full' );
     }
@@ -155,11 +199,38 @@
     }
 
     // --------------------------------------------------------
+    // OG IMAGE TYPE / WIDTH / HEIGHT — from the real image (v7.0.0)
+    //
+    // These were hardcoded image/webp, 1200 × 630 whatever the image was. Now:
+    //   an attachment (field or featured image) -> its stored mime type, and
+    //     the width/height of its 'full' file from attachment metadata (the
+    //     file the URL names — a -scaled copy IS 'full');
+    //   the site default (a bare URL, no attachment) -> mime from the file
+    //     extension, and NO width/height: they cannot be known honestly.
+    // A tag whose value cannot be determined is omitted, never guessed.
+    // --------------------------------------------------------
+    $roci_og_image_type = '';
+    $roci_og_image_w    = 0;
+    $roci_og_image_h    = 0;
+
+    if ( $roci_og_image_att_id ) {
+        $roci_og_image_type = (string) get_post_mime_type( $roci_og_image_att_id );
+        $roci_og_image_meta = wp_get_attachment_metadata( $roci_og_image_att_id );
+        if ( ! empty( $roci_og_image_meta['width'] ) && ! empty( $roci_og_image_meta['height'] ) ) {
+            $roci_og_image_w = (int) $roci_og_image_meta['width'];
+            $roci_og_image_h = (int) $roci_og_image_meta['height'];
+        }
+    } elseif ( $roci_og_image_url ) {
+        $roci_og_image_ft   = wp_check_filetype( strtok( $roci_og_image_url, '?' ) );
+        $roci_og_image_type = $roci_og_image_ft['type'] ? $roci_og_image_ft['type'] : '';
+    }
+
+    // --------------------------------------------------------
     // OG IMAGE ALT
     // Priority: typed field → attachment alt of the winning image
     //           → meta description → meta title
     // --------------------------------------------------------
-    $roci_og_image_alt = roci_get_field( 'roci_og_image_alt', $roci_post_id );
+    $roci_og_image_alt = $roci_post_id ? roci_get_field( 'roci_og_image_alt', $roci_post_id ) : '';
 
     if ( ! $roci_og_image_alt && $roci_og_image_att_id ) {
         $roci_og_image_alt = get_post_meta( $roci_og_image_att_id, '_wp_attachment_image_alt', true );
@@ -189,7 +260,7 @@
     // can close the script tag. It returns '' on any failure, which is
     // emitted exactly like an invalid paste: skipped with the comment below.
     // --------------------------------------------------------
-    $roci_schema          = roci_get_field( 'roci_schema_json', $roci_post_id );
+    $roci_schema          = $roci_post_id ? roci_get_field( 'roci_schema_json', $roci_post_id ) : '';
     $roci_schema_expanded = roci_expand_schema_tokens( $roci_schema );
     $roci_schema_valid    = roci_schema_json_is_valid( $roci_schema );
     $roci_schema_output   = $roci_schema_valid ? roci_schema_json_for_output( $roci_schema_expanded ) : '';
@@ -211,17 +282,28 @@
     // with the plugin absent falls back to this safe self-referential stub
     // rather than emitting nothing. Returning an empty array defers hreflang
     // entirely to whatever the plugin emits via wp_head().
+    //
+    // ⚠ CONTRACT (v7.0.0): THE DEFAULT IS EMPTY WHEN THERE IS NO CANONICAL —
+    // search and 404 (see CANONICAL). An alternate needs a URL, so on those
+    // routes roci_hreflang_alternates receives array() instead of the two
+    // self-referential entries (which, before v7.0.0, pointed at the first
+    // search result). The filter is still called, so an opted-in child can
+    // supply alternates of its own there.
     // --------------------------------------------------------
-    $roci_hreflang_default = array(
-        array(
-            'hreflang' => str_replace( '_', '-', get_locale() ),
-            'href'     => $roci_canonical,
-        ),
-        array(
-            'hreflang' => 'x-default',
-            'href'     => $roci_canonical,
-        ),
-    );
+    $roci_hreflang_default = array();
+
+    if ( '' !== $roci_canonical ) {
+        $roci_hreflang_default = array(
+            array(
+                'hreflang' => str_replace( '_', '-', get_locale() ),
+                'href'     => $roci_canonical,
+            ),
+            array(
+                'hreflang' => 'x-default',
+                'href'     => $roci_canonical,
+            ),
+        );
+    }
 
     if ( current_theme_supports( 'roci-i18n' ) ) {
         $roci_hreflang_alternates = apply_filters( 'roci_hreflang_alternates', $roci_hreflang_default );
@@ -233,7 +315,9 @@
     <!-- Meta -->
     <meta name="description" content="<?php echo esc_attr( $roci_description ); ?>">
     <meta name="robots" content="<?php echo esc_attr( $roci_robots ); ?>">
+<?php if ( '' !== $roci_canonical ) : ?>
     <link rel="canonical" href="<?php echo esc_url( $roci_canonical ); ?>">
+<?php endif; ?>
 
     <!-- hreflang -->
 <?php foreach ( $roci_hreflang_alternates as $roci_alt ) : ?>
@@ -244,22 +328,30 @@
     <meta property="og:type" content="<?php echo is_single() ? 'article' : 'website'; ?>">
     <meta property="og:title" content="<?php echo esc_attr( $roci_og_title ); ?>">
     <meta property="og:description" content="<?php echo esc_attr( $roci_og_description ); ?>">
+<?php if ( '' !== $roci_canonical ) : ?>
     <meta property="og:url" content="<?php echo esc_url( $roci_canonical ); ?>">
+<?php endif; ?>
     <meta property="og:site_name" content="<?php echo esc_attr( $roci_site_name ); ?>">
     <meta property="og:locale" content="<?php echo esc_attr( get_locale() ); ?>">
     <?php if ( $roci_og_image_url ) : ?>
     <meta property="og:image" content="<?php echo esc_url( $roci_og_image_url ); ?>">
     <meta property="og:image:alt" content="<?php echo esc_attr( $roci_og_image_alt ); ?>">
-    <meta property="og:image:width" content="1200">
-    <meta property="og:image:height" content="630">
-    <meta property="og:image:type" content="image/webp">
+<?php if ( $roci_og_image_w && $roci_og_image_h ) : ?>
+    <meta property="og:image:width" content="<?php echo (int) $roci_og_image_w; ?>">
+    <meta property="og:image:height" content="<?php echo (int) $roci_og_image_h; ?>">
+<?php endif; ?>
+<?php if ( '' !== $roci_og_image_type ) : ?>
+    <meta property="og:image:type" content="<?php echo esc_attr( $roci_og_image_type ); ?>">
+<?php endif; ?>
     <?php endif; ?>
 
     <!-- Twitter Card -->
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:title" content="<?php echo esc_attr( $roci_og_title ); ?>">
     <meta name="twitter:description" content="<?php echo esc_attr( $roci_og_description ); ?>">
+<?php if ( '' !== $roci_canonical ) : ?>
     <meta property="twitter:url" content="<?php echo esc_url( $roci_canonical ); ?>">
+<?php endif; ?>
     <?php if ( $roci_og_image_url ) : ?>
     <meta name="twitter:image" content="<?php echo esc_url( $roci_og_image_url ); ?>">
     <?php endif; ?>
@@ -398,6 +490,14 @@
          */
         $roci_logo_id  = (int) get_option( 'site_icon', 0 );
         $roci_logo_url = $roci_logo_id ? wp_get_attachment_image_url( $roci_logo_id, 'full' ) : '';
+
+        // SVG FALLBACK (v7.0.0, defensive) — the loader's two-step. Where core
+        // cannot resolve an SVG through the image-size pipeline it returns
+        // false; the bare attachment URL is then the honest answer. Runs only
+        // when the first call fails, so every resolvable image is unchanged.
+        if ( $roci_logo_id && ! $roci_logo_url ) {
+            $roci_logo_url = wp_get_attachment_url( $roci_logo_id );
+        }
         if ( $roci_logo_url ) {
             $roci_local_schema['logo'] = $roci_logo_url;
         }

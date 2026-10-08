@@ -6,7 +6,7 @@
  * loads includes, and outputs analytics/integration scripts.
  *
  * File:    functions.php
- * Version: 1.16.2
+ * Version: 1.16.3
  * Updated: 2026-10-08
  *
  * @package ElRocinante
@@ -181,8 +181,9 @@ remove_action( 'wp_head', 'wp_robots', 1 ); // header.php's ROBOTS block re-appl
 // "WHICH POST OWNS THIS <head>" there), and the two must stay in step. With a
 // bare get_the_ID() the posts page took the FIRST POST'S meta title as its
 // <title>. Posts page -> page_for_posts; singular -> get_queried_object_id();
-// everything else -> get_the_ID(), unchanged, so a term ID never reaches a
-// post-meta lookup.
+// everything else -> 0, NO post (v7.0.0): get_the_ID() there is the first
+// post in the loop, so a search page took the first result's meta title.
+// With 0 the filter returns $title untouched and core builds the title.
 add_filter( 'pre_get_document_title', function( $title ) {
     $posts_page_id = (int) get_option( 'page_for_posts' );
 
@@ -191,7 +192,7 @@ add_filter( 'pre_get_document_title', function( $title ) {
     } elseif ( is_singular() ) {
         $post_id = get_queried_object_id();
     } else {
-        $post_id = get_the_ID();
+        $post_id = 0;
     }
 
     if ( ! $post_id ) {

@@ -5,8 +5,8 @@
  * Included by settings-page.php inside roci_settings_page().
  *
  * File:    inc/theme-settings/tabs/tab-identity.php
- * Version: 1.1.2
- * Updated: 2026-05-28
+ * Version: 1.1.3
+ * Updated: 2026-10-08
  *
  * @package ElRocinante
  */
@@ -24,6 +24,17 @@ $icon_url    = $site_icon ? wp_get_attachment_image_url( $site_icon, 'thumbnail'
 // Custom logo — WP stores attachment ID as theme mod
 $logo_id  = get_theme_mod( 'custom_logo', 0 );
 $logo_url = $logo_id ? wp_get_attachment_image_url( $logo_id, 'medium' ) : '';
+
+// SVG FALLBACK (v1.1.3, defensive) — the loader's two-step. Where core cannot
+// resolve an SVG through the image-size pipeline it returns false, and the
+// preview would be blank; the bare attachment URL is shown instead. Runs only
+// when the first call fails, so every resolvable image is unchanged.
+if ( $site_icon && ! $icon_url ) {
+    $icon_url = wp_get_attachment_url( $site_icon );
+}
+if ( $logo_id && ! $logo_url ) {
+    $logo_url = wp_get_attachment_url( $logo_id );
+}
 ?>
 
 <p class="roci-sync-note">&#8505; These settings are synced with Appearance → Customize → Site Identity. Changes here update both locations automatically.</p>
