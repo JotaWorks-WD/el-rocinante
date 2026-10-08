@@ -12,7 +12,7 @@
  * for children that opt into multilingual output with add_theme_support('roci-i18n').
  *
  * File:    header.php
- * Version: 2.1.2
+ * Version: 2.1.3
  * Updated: 2026-10-08
  *
  * @package ElRocinante
@@ -105,6 +105,16 @@
     // --------------------------------------------------------
     $roci_robots = roci_get_field( 'roci_robots', $roci_post_id );
     $roci_robots = $roci_robots ? $roci_robots : 'index, follow';
+
+    // SEARCH RESULTS ARE NEVER INDEXED. Core noindexes them through
+    // wp_robots_noindex_search(), part of the wp_robots() chain this theme
+    // unhooks — and $roci_post_id here is the FIRST RESULT, whose own field
+    // would otherwise leak onto the results page. "follow" keeps link
+    // discovery. ORDER: per-page -> search -> blog_public; the site-wide
+    // switch below must stay LAST.
+    if ( is_search() ) {
+        $roci_robots = 'noindex, follow';
+    }
 
     // SITE-WIDE SWITCH WINS. Settings → Reading → "Discourage search engines"
     // (blog_public = 0) is the staging safety switch. Core implements it ONLY

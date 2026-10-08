@@ -6,7 +6,7 @@
  * loads includes, and outputs analytics/integration scripts.
  *
  * File:    functions.php
- * Version: 1.16.1
+ * Version: 1.16.2
  * Updated: 2026-10-08
  *
  * @package ElRocinante
@@ -163,7 +163,6 @@ remove_action( 'wp_head', 'wp_shortlink_wp_head' );
 remove_action( 'wp_head', 'wp_oembed_add_discovery_links' );
 remove_action( 'wp_head', 'wp_oembed_add_host_js' );
 remove_action( 'wp_head', 'rest_output_link_wp_head' );
-remove_filter( 'wp_robots', 'wp_robots_max_image_preview', 9 );
 
 
 // ============================================================

@@ -4,6 +4,40 @@ All notable changes to the El Rocinante parent theme are recorded here. Entries 
 
 ---
 
+## [6.40.4] — 2026-10-08
+
+**SEO: search results are never indexed.** These are the two follow-ups to 6.40.3.
+
+PHP only. **No CSS change**, no JavaScript. On a public site only the search-results route changes; every other route is byte-identical.
+
+### What changed
+
+`header.php` **v2.1.2 → v2.1.3**, under the `// ROBOTS` sub-banner, between the per-page default and the `blog_public` check:
+
+```php
+if ( is_search() ) {
+    $roci_robots = 'noindex, follow';
+}
+```
+
+The order is fixed: **per-page field → search → `blog_public`**. The site-wide switch stays last, so a discouraged site still gets `noindex, nofollow` on its search page too.
+
+`functions.php` **v1.16.1 → v1.16.2**: the line `remove_filter( 'wp_robots', 'wp_robots_max_image_preview', 9 );` is deleted.
+
+### Root cause
+
+**Search.** Core noindexes search results through `wp_robots_noindex_search()`, part of the `wp_robots()` chain the theme unhooks. Without it, `header.php` resolved the search page's `$roci_post_id` with `get_the_ID()`, which on a results page is the **first result**. The results page therefore published that post's own robots value, usually `index, follow`. `follow` is kept so crawlers still discover the linked posts.
+
+**The dead line.** It named a callback core does not register under that name. Core's is `wp_robots_max_image_preview_large`, at the default priority 10, not 9. So it removed nothing. With core's printer unhooked it could not matter either way. It claimed to do something it did not, so it is gone.
+
+| `blog_public` | Route | `<meta name="robots">` |
+|---|---|---|
+| `1` | search results | `noindex, follow` (was: the first result's field) |
+| `1` | anything else | the per-page field / `index, follow`, as before |
+| `0` | any route | `noindex, nofollow` (6.40.3) |
+
+---
+
 ## [6.40.3] — 2026-10-08
 
 **FIX (staging safety): "Discourage search engines" now wins over every page's own robots setting.** Observed on a live child: with Settings → Reading → "Discourage search engines from indexing this site" ticked (`blog_public = 0`), a page whose SEO Robots field said `index, follow` still rendered as indexable.
