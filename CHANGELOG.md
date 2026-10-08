@@ -4,6 +4,30 @@ All notable changes to the El Rocinante parent theme are recorded here. Entries 
 
 ---
 
+## [7.0.7] — 2026-10-08
+
+**FIX (#31, latent): `jw_faq_schema()` reads through `roci_get_field()`.**
+
+PHP only. **No CSS change**, no JavaScript. **Output is identical while Meta Box is active.**
+
+### Root cause
+
+`jw_faq_schema()` read its field with a direct `rwmb_meta( 'jw_faq_items', array(), $post_id )`. There was no `function_exists( 'rwmb_meta' )` guard, so a page that renders the FAQ partial would **fatal** if Meta Box were deactivated. It also bypassed the parent's `roci_get_field()` wrapper, which CLAUDE.md §7 and §12.1 require for every postmeta read.
+
+**Latent:** Meta Box is active on every site.
+
+### What changed
+
+`inc/helpers.php` **v1.15.0 → v1.15.1**: the read is `roci_get_field( 'jw_faq_items', $post_id )`. The value passed to Meta Box is unchanged:
+
+- **Field:** `jw_faq_items` (same).
+- **Args:** `roci_get_field()` always passes `array()`, the same empty args as before.
+- **Post ID:** `jw_faq_schema()` already resolves an empty `$post_id` to `get_the_ID()` before the read, so `roci_get_field()` receives that same value and forwards it as-is. Its own null-to-`get_the_ID()` fallback never triggers here.
+
+With Meta Box absent, `roci_get_field()` returns `''`, and the existing `empty( $items )` check emits nothing.
+
+---
+
 ## [7.0.6] — 2026-10-08
 
 **FIX (#30, latent): the site-level JSON-LD escapes `</`.**

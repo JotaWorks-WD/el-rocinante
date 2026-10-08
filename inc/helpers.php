@@ -7,7 +7,7 @@
  * and template parts throughout El Rocinante and child themes.
  *
  * File:    inc/helpers.php
- * Version: 1.15.0
+ * Version: 1.15.1
  * Updated: 2026-10-08
  *
  * @package ElRocinante
@@ -907,7 +907,11 @@ function jw_faq_schema( $post_id = null ) {
         $post_id = get_the_ID();
     }
 
-    $items = rwmb_meta( 'jw_faq_items', array(), $post_id );
+    // Through the parent's wrapper (v1.15.1), not rwmb_meta() directly: same
+    // field, same empty args, same post ID, so the value is identical while
+    // Meta Box is active — and '' (so nothing is emitted) instead of a fatal
+    // when it is not.
+    $items = roci_get_field( 'jw_faq_items', $post_id );
 
     if ( empty( $items ) || ! is_array( $items ) ) {
         return;
