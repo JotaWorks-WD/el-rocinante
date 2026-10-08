@@ -4,6 +4,22 @@ All notable changes to the El Rocinante parent theme are recorded here. Entries 
 
 ---
 
+## [7.0.3] — 2026-10-08
+
+**FIX (#28, latent): the SEO preview tab buttons no longer submit the edit form.** The four tabs in the SEO preview meta box (Google, Facebook, Twitter, SEO Health) were `<button>` elements with no `type`. Inside the post edit form a button's default type is `submit`, and the tab click handler does not cancel it, so a tab click could submit the post form.
+
+**Latent:** it affects the classic editor only. It is not reproducible in the block editor.
+
+PHP markup only. **No CSS change**, and no JavaScript or handler change.
+
+### What changed
+
+`inc/metabox/metabox-seo-preview.php` **v1.2.0 → v1.2.1**: `type="button"` on each of the four tab buttons. No other markup, class or handler changed; `preventDefault()` is deliberately not added, because `type="button"` is the fix.
+
+`inc/metabox/metabox-seo-health.php` was checked and has no `<button>` elements, so it is unchanged.
+
+---
+
 ## [7.0.2] — 2026-10-08
 
 **FIX (#27): `index.php` paginates.** The parent's listing fallback had no pagination call, so a posts index it served (the posts page on a child with no `home.php`, or a front page showing latest posts) reached only the first `posts_per_page` posts. Every older post was unreachable from the listing.

@@ -11,8 +11,8 @@
  * title/description); the Google tab reads the meta fields directly.
  *
  * File:    inc/metabox/metabox-seo-preview.php
- * Version: 1.2.0
- * Updated: 2026-09-04
+ * Version: 1.2.1
+ * Updated: 2026-10-08
  *
  * @package ElRocinante
  */
@@ -106,10 +106,10 @@ function roci_seo_preview_html( $default_og_image ) {
 
         <div class="roci-preview-wrap">
             <div class="roci-preview-tabs">
-                <button class="roci-preview-tab active" data-tab="google">Google Preview</button>
-                <button class="roci-preview-tab" data-tab="facebook">Facebook Preview</button>
-                <button class="roci-preview-tab" data-tab="twitter">Twitter Preview</button>
-                <button class="roci-preview-tab" data-tab="health">SEO Health</button>
+                <button type="button" class="roci-preview-tab active" data-tab="google">Google Preview</button>
+                <button type="button" class="roci-preview-tab" data-tab="facebook">Facebook Preview</button>
+                <button type="button" class="roci-preview-tab" data-tab="twitter">Twitter Preview</button>
+                <button type="button" class="roci-preview-tab" data-tab="health">SEO Health</button>
             </div>
 
             <!-- Google -->
