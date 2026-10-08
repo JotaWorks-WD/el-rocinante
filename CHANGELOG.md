@@ -4,6 +4,22 @@ All notable changes to the El Rocinante parent theme are recorded here. Entries 
 
 ---
 
+## [7.0.2] — 2026-10-08
+
+**FIX (#27): `index.php` paginates.** The parent's listing fallback had no pagination call, so a posts index it served (the posts page on a child with no `home.php`, or a front page showing latest posts) reached only the first `posts_per_page` posts. Every older post was unreachable from the listing.
+
+PHP only. **No CSS change**, no JavaScript.
+
+### What changed
+
+`index.php` **v1.2.0 → v1.2.1**: `the_posts_pagination()` is added after the loop, inside `if ( have_posts() )`. That is the same placement, with the same call and no arguments, as `archive.php` and `search.php`. Nothing else in the template changed: the listing still prints `the_content()`, and the markup and classes are untouched. On a one-page listing core prints nothing, so those pages are byte-identical.
+
+### Child impact
+
+A child that ships its own `index.php` or `home.php` is unaffected; those routes never reach the parent's file.
+
+---
+
 ## [7.0.1] — 2026-10-08
 
 **FIX: no more empty `content=""` tags in the `<head>`, and no large-image Twitter card without an image.** Observed on a live child (7.0.0): `/?s=fishing` printed `<meta name="description" content="">`.

@@ -21,8 +21,8 @@
  * The entry title is an <h1> (index: one listing <h1>, per-post <h2>); a child controls it with the roci_entry_title_mode filter ('visible' | 'hidden' | 'none').
  *
  * File:    index.php
- * Version: 1.2.0
- * Updated: 2026-10-06
+ * Version: 1.2.1
+ * Updated: 2026-10-08
  *
  * @package ElRocinante
  */
@@ -67,6 +67,8 @@ if ( $roci_is_listing ) {
             </article>
             <?php
         endwhile;
+
+        the_posts_pagination();
     endif;
     ?>
 
