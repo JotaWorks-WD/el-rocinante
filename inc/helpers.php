@@ -7,8 +7,8 @@
  * and template parts throughout El Rocinante and child themes.
  *
  * File:    inc/helpers.php
- * Version: 1.13.0
- * Updated: 2026-10-06
+ * Version: 1.14.0
+ * Updated: 2026-10-08
  *
  * @package ElRocinante
  *
@@ -25,6 +25,7 @@
  *   jw_link_atts()                 — Returns target + rel attribute string for external links
  *   jw_new_tab_note()              — SR-only "(opens in a new tab)" for links that open a new tab
  *   roci_is_external_link()        — (internal) The one external-link test behind the three link helpers
+ *   roci_is_svg_attachment()       — (internal) The one SVG test behind the image helpers (mime image/svg+xml)
  *   roci_current_atts()            — Returns aria-current for the link to the page being viewed
  *   roci_current_path()            — (internal) Normalised path of the current page, once per request
  *   roci_normalize_url_path()      — (internal) Normalises a URL path for comparison
@@ -62,6 +63,13 @@
  * @return string|null            WebP URL if found, null if not.
  */
 function jw_get_webp_url( $attachment_id, $size = 'full' ) {
+
+    // An SVG is never WebP (v1.14.0). Core hands back the bare .svg URL, which
+    // the extension swap below leaves unchanged — and "unchanged" reads as
+    // "already WebP". Answer before the size pipeline is touched.
+    if ( roci_is_svg_attachment( $attachment_id ) ) {
+        return null;
+    }
 
     $src = wp_get_attachment_image_url( $attachment_id, $size );
 
@@ -102,6 +110,10 @@ function jw_get_webp_url( $attachment_id, $size = 'full' ) {
  * do). sizes is "100vw" for eager images and WordPress's default for lazy
  * ones. src / width / height are unchanged, so srcset-unaware browsers
  * behave exactly as before.
+ *
+ * SVG (v1.14.0): an SVG attachment renders as a plain <img> inside <picture> —
+ * no WebP <source>, no srcset/sizes, $size ignored — with width/height read
+ * from the file by jw_logo_dimensions(). Raster output is unchanged.
  *
  * Usage:
  *   echo jw_picture( $attachment_id, 'large', 'Alt text', 'venue__image', 'lazy' );
@@ -173,6 +185,17 @@ function jw_picture( $attachment_id, $size = 'full', $alt = null, $class = '', $
         } elseif ( isset( $metadata['sizes'][ $size ] ) ) {
             $width  = (int) $metadata['sizes'][ $size ]['width'];
             $height = (int) $metadata['sizes'][ $size ]['height'];
+        }
+    }
+
+    // SVG (v1.14.0): WordPress stores no width/height for an SVG, so size it
+    // from the file itself — the same reader the loader logo uses. Raster
+    // sources never carry the 'svg' flag, so this cannot run for them.
+    if ( ( ! $width || ! $height ) && ! empty( $sources['svg'] ) ) {
+        $svg_dims = jw_logo_dimensions( $attachment_id );
+
+        if ( $svg_dims ) {
+            list( $width, $height ) = $svg_dims;
         }
     }
 
@@ -277,6 +300,31 @@ function jw_picture_sources( $attachment_id, $size = 'full', $loading = 'lazy', 
 
     if ( ! $attachment_id ) {
         return [];
+    }
+
+    // SVG (v1.14.0): one file, no WebP sibling, no generated sizes — so no
+    // <source>, no srcset, no sizes, and $size is moot. The URL comes from
+    // wp_get_attachment_url(), never the image-size pipeline. jw_picture()
+    // then renders a plain <img> inside <picture> and sizes it from the file
+    // ('svg' => true is the flag it reads); roci_hero_preload() falls through
+    // to a plain href preload of the same URL. Raster images never reach this
+    // branch, so their sources are unchanged.
+    if ( roci_is_svg_attachment( $attachment_id ) ) {
+        $img_src = wp_get_attachment_url( $attachment_id );
+
+        if ( ! $img_src ) {
+            return [];
+        }
+
+        return [
+            'img_src'     => $img_src,
+            'webp_src'    => null,
+            'loading'     => in_array( $loading, [ 'lazy', 'eager' ], true ) ? $loading : 'lazy',
+            'srcset'      => false,
+            'sizes'       => false,
+            'webp_srcset' => '',
+            'svg'         => true,
+        ];
     }
 
     $img_src = wp_get_attachment_image_url( $attachment_id, $size );
@@ -391,6 +439,16 @@ function jw_picture_sources( $attachment_id, $size = 'full', $loading = 'lazy', 
  */
 function jw_hero_picture( $desktop_id, $mobile_id, $alt = null, $class = '', $loading = 'eager' ) {
 
+    // ART-DIRECTED SVG IS DECLINED (v1.14.0). The desktop <source> below carries
+    // a LITERAL type="image/webp" on a line laid out around the closing-tag
+    // newline trap, so it cannot be made conditional without risking every
+    // raster hero's bytes — and a vector rarely needs a separate mobile crop.
+    // jw_hero_picture_sources() returns [] for an SVG crop too, so the preload
+    // agrees. '' in production; a pointer under WP_DEBUG.
+    if ( roci_is_svg_attachment( $desktop_id ) || roci_is_svg_attachment( $mobile_id ) ) {
+        return jw_debug_comment( 'jw_hero_picture: SVG crops are not supported — render the SVG with jw_picture().' );
+    }
+
     // Both crops' URLs, srcsets and sizes come from jw_hero_picture_sources()
     // — the SAME function roci_hero_preload() uses (v1.9.0), so the preload can
     // never disagree with this markup. Nothing below changes a byte of output.
@@ -491,6 +549,12 @@ function jw_hero_picture( $desktop_id, $mobile_id, $alt = null, $class = '', $lo
 function jw_hero_picture_sources( $desktop_id, $mobile_id, $loading = 'eager' ) {
 
     if ( ! $desktop_id || ! $mobile_id ) {
+        return [];
+    }
+
+    // SVG crops are declined (v1.14.0) — see jw_hero_picture(). Empty sources
+    // also make roci_hero_preload()'s art-directed branch emit nothing.
+    if ( roci_is_svg_attachment( $desktop_id ) || roci_is_svg_attachment( $mobile_id ) ) {
         return [];
     }
 
@@ -957,6 +1021,27 @@ function roci_is_external_link( $url ) {
     }
 
     return false;
+}
+
+
+/**
+ * roci_is_svg_attachment()
+ *
+ * Internal (v1.14.0). True when the attachment's stored mime type is
+ * image/svg+xml — what inc/media/svg-support.php assigns on upload. The one SVG
+ * test behind jw_get_webp_url(), jw_picture_sources() and the
+ * jw_hero_picture() pair, so the image path detects SVG BEFORE it touches the
+ * image-size pipeline.
+ *
+ * Mime, not file extension: it is what the upload filter sets and what core
+ * keys on. .svgz is included deliberately — browsers render it from a URL;
+ * only jw_logo_dimensions() declines it (no size, so the tag is unsized).
+ *
+ * @param  int  $attachment_id Attachment ID.
+ * @return bool                True for an SVG attachment.
+ */
+function roci_is_svg_attachment( $attachment_id ) {
+    return 'image/svg+xml' === get_post_mime_type( (int) $attachment_id );
 }
 
 

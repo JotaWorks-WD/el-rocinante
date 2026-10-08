@@ -4,6 +4,45 @@ All notable changes to the El Rocinante parent theme are recorded here. Entries 
 
 ---
 
+## [6.41.0] — 2026-10-08
+
+**SVG-aware image helpers.** An SVG attachment passed to `jw_picture()` used to come out as a `<picture>` whose `<source type="image/webp">` pointed at the SVG, with no width or height. The hero preload described it as WebP too. It now renders as a plain, sized `<img>` and preloads by its real URL.
+
+PHP only. **No CSS change**, no JavaScript. **Raster output is byte-identical.** Every new branch is keyed on the attachment being an SVG, and no template line was touched.
+
+### Root cause
+
+Confirmed on a live child: for an SVG attachment, core's `wp_get_attachment_image_url()` returns **the bare `.svg` URL**, with zero dimensions and no generated sizes. Every helper in the image path starts from that call.
+
+- `jw_get_webp_url()` swaps only `.jpe?g|png|gif` for `.webp`. An `.svg` URL comes back **unchanged**, and an unchanged URL is read as "already WebP", so it returned the SVG as the WebP URL.
+- `jw_picture_sources()` therefore set `webp_src` to the SVG. `jw_picture()` printed `<source type="image/webp" srcset="….svg">`, and `roci_hero_preload()` printed `type="image/webp" href="….svg"`. Both are mislabelled. Browsers fetched the file anyway, so it worked by accident rather than by design.
+- WordPress stores no `width`/`height` for an SVG, so `jw_picture()`'s metadata read found nothing and the `<img>` rendered **unsized** (a layout shift, and an "unsized images" audit failure).
+- `jw_hero_picture()` had the same flaw, with the desktop `<source>`'s `type="image/webp"` hard-coded in the template.
+
+### What changed
+
+`inc/helpers.php` **v1.13.0 → v1.14.0**:
+
+- **`roci_is_svg_attachment( $id )`** (new, internal): `'image/svg+xml' === get_post_mime_type()`, the mime type `inc/media/svg-support.php` assigns on upload. It is the one SVG test, run **before** the image-size pipeline is touched.
+- **`jw_get_webp_url()`** returns `null` for an SVG.
+- **`jw_picture_sources()`** has an SVG early return. The URL comes from `wp_get_attachment_url()`; `webp_src` is `null`, `srcset`/`sizes` are `false`, `webp_srcset` is `''`, and a new `'svg' => true` flag is set. `$size` is moot for a vector.
+- **`jw_picture()`**: when the sources carry `'svg'`, width/height come from **`jw_logo_dimensions()`**, reused rather than duplicated: metadata, then the SVG's own `width`/`height`, then its `viewBox`. The template is untouched. With no `webp_src` it already skips the `<source>`, and with no `srcset` it prints no `srcset`/`sizes`. An SVG renders as `<picture><img src="….svg" … width height></picture>`. The wrapper is kept, so child CSS sees one DOM shape for every image.
+- **`jw_hero_picture()` / `jw_hero_picture_sources()` decline SVG crops.** The sources function returns `[]`. The picture function returns `jw_debug_comment( 'jw_hero_picture: SVG crops are not supported — render the SVG with jw_picture().' )`, which is `''` in production. The desktop `<source>`'s literal `type="image/webp"` sits on a line laid out around the PHP closing-tag newline trap, so it is not made conditional, and every raster hero stays byte-identical.
+
+`inc/lcp-preload.php` **v1.0.0 → v1.0.1**: **docblock only.** No code changed. With `webp_src` null and no `srcset`, the standard branch already falls through to `<link rel="preload" as="image" fetchpriority="high" href="….svg">`, the exact URL the `<img>` requests. **No `type` attribute**, because every browser decodes SVG and the non-WebP raster path sets none either. An art-directed SVG descriptor emits nothing.
+
+### What a child can do now
+
+Render an SVG hero or content image through `jw_picture()`, and preload it through `roci_lcp_image` with `array( 'id' => $id, 'size' => 'full' )`. `[roci_image]` / `[roci_pair]` accept SVG attachments.
+
+### Not in this release
+
+- **AVIF** (and any other non-jpg/png/gif original) is still read as "already WebP" by the same unchanged-URL rule.
+- **`og:image:type`** is hard-coded to `image/webp`.
+- **The Theme Settings logo/icon previews, the schema `logo` and the Bunny poster** read `wp_get_attachment_image_url()` with no `wp_get_attachment_url()` fallback.
+
+---
+
 ## [6.40.4] — 2026-10-08
 
 **SEO: search results are never indexed.** These are the two follow-ups to 6.40.3.

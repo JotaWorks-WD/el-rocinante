@@ -4,7 +4,7 @@ Theme URI: https://jota.works
 Author: JotaWorks
 Author URI: https://jota.works
 Description: A lean, professional WordPress base theme by JotaWorks. Built for service businesses, tourism, and property management — with a custom SEO layer, schema markup, and no page builder bloat.
-Version: 6.40.4
+Version: 6.41.0
 License: Private
 License URI: https://jota.works
 Text Domain: rocinante
@@ -14,11 +14,11 @@ GitHub Branch: main
 
 /*
 Changelog (newest first, rolling 6):
+v6.41.0 — 2026-10-08 — MINOR — SVG-aware image helpers: new internal roci_is_svg_attachment() (mime image/svg+xml). jw_get_webp_url() returns null for SVG; jw_picture_sources() returns the plain file URL (no WebP, no srcset); jw_picture() renders <picture><img> sized from the file via jw_logo_dimensions(); the hero preload falls through to a plain href. jw_hero_picture() declines SVG crops (WP_DEBUG comment). Raster output byte-identical. helpers.php, lcp-preload.php docblock.
 v6.40.4 — 2026-10-08 — PATCH — SEO: search results force <meta name="robots" content="noindex, follow"> (core's wp_robots_noindex_search was lost with the unhooked wp_robots(); results inherited the first result's field). Order per-page → search → blog_public, site-wide switch last. Dead remove_filter( 'wp_robots', 'wp_robots_max_image_preview', 9 ) deleted (wrong name + priority). header.php, functions.php.
 v6.40.3 — 2026-10-08 — PATCH — FIX (staging safety): "Discourage search engines" (blog_public = 0) now forces <meta name="robots" content="noindex, nofollow"> on every page, overriding the per-page roci_robots field. The theme unhooks core's wp_robots() and its own tag never read blog_public, so discouraged sites published "index". Public sites byte-identical. header.php only (+ a pointer comment in functions.php).
 v6.40.2 — 2026-10-08 — PATCH — FIX: SVG uploads sniffed as another type (e.g. text/plain — a valid SVG with no <?xml prolog) were refused. WP sets ext to false on a failed sniff; the strict '' check missed it, so the filename fallback never ran. Now empty(). inc/media/svg-support.php only.
 v6.40.1 — 2026-10-07 — PATCH — A11Y/RESILIENCE: CSS-only loader failsafe — #loader.roci-loader fades out and hides itself 8s after it first paints (roci-loader-failsafe, also in the inline critical copy), so slow/blocked dismissal JS can no longer strand a visitor. Survives the reduced-motion reset (delay untouched). Child dismissal JS running after it should skip its inert step.
 v6.40.0 — 2026-10-06 — MINOR — A11Y (AAA 3.2.5): jw_new_tab_note() — SR-only "(opens in a new tab)" for links that open a new tab; jw_wysiwyg_body() appends it automatically; one shared external-link predicate behind jw_link_atts(), the note and the wysiwyg rewrite.
-v6.39.1 — 2026-10-06 — PATCH — A11Y: role="list" on parent lists that drop markers (footer menu, [roci_expect]) so VoiceOver/Safari keep list semantics.
 */
 

@@ -42,9 +42,17 @@
  * each gated by the matching media query, so the browser still fetches only
  * one of them.
  *
+ * SVG HEROES (helpers v1.14.0). A jw_picture() hero may be an SVG attachment:
+ * jw_picture_sources() returns no WebP and no srcset for it, so the standard
+ * branch below falls through to a plain <link rel="preload" as="image"
+ * fetchpriority="high" href="….svg"> — the exact URL the <img> requests, one
+ * download. No type attribute: every browser decodes SVG, and the non-WebP
+ * raster path sets none either. An art-directed (jw_hero_picture()) SVG is
+ * declined by the helpers, so its descriptor emits nothing.
+ *
  * File:    inc/lcp-preload.php
- * Version: 1.0.0
- * Updated: 2026-09-23
+ * Version: 1.0.1
+ * Updated: 2026-10-08
  *
  * @package ElRocinante
  */
