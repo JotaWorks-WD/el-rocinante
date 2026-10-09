@@ -5,7 +5,8 @@
  *
  * Powers the inline folder creation UI on:
  *   - Media Library admin list  (upload.php)
- *   - Pages admin list          (edit.php?post_type=page)
+ *   - the list screen of every registered folder post type (pages, posts, child
+ *     CPTs), as enqueued by roci_enqueue_admin_folders_js()
  *
  * On success the AJAX handler returns a rebuilt term list; this script
  * uses it to refresh both the filter dropdown and the modal parent

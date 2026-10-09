@@ -4,7 +4,8 @@
  *
  * Renders the left folder-tree sidebar on:
  *   - upload.php (Media Library — list view and grid view)
- *   - edit.php?post_type=page (Pages list)
+ *   - the list screen of every post type in roci_get_folder_registry() (pages,
+ *     posts and any child CPT registered via roci_register_folder_type())
  *
  * NOT rendered inside the modal media picker; the existing toolbar dropdown
  * in dist/js/folders/media-folder-filter.js remains the only filter mechanism there.

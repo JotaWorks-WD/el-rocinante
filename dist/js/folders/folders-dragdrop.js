@@ -21,6 +21,10 @@
  *   window.rociIncrementSidebarCount and window.rociDecrementSidebarCount
  *   are exposed by folders-sidebar.js and called here to update count badges
  *   without duplicating the DOM-mutation logic.
+ *   window.rociWatchForReAdd (wp-media-refresh-shim.js) guards the library
+ *   against an in-flight re-add of the moved item.
+ *   window.rociIsBulkSelectMode (folders-bulk.js) suppresses single drags
+ *   while bulk select is on.
  *
  * Scope:
  *   Grid view on upload.php only. List-view drag-drop, modal drag-drop,

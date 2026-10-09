@@ -5,11 +5,14 @@
  * Wires up folder filter dropdowns in the admin list views and the media
  * picker modal. Includes:
  *
- *   - restrict_manage_posts dropdowns for upload.php and edit.php?post_type=page
+ *   - restrict_manage_posts dropdowns for upload.php and for the list screen of every
+ *     registered folder post type (roci_cpt_folder_filter_dropdown())
  *   - admin_init hook that converts numeric folder query vars (term_id) to slug so WP's auto-registered taxonomy query var builds the correct tax_query
  *   - ajax_query_attachments_args filter for the media picker modal
  *   - JS enqueue (dist/js/folders/media-folder-filter.js) that injects a separate
  *     folder filter into the AttachmentsBrowser toolbar (after the type + date filters)
+ *   - JS enqueue (dist/js/folders/folders-bulk.js, roci_enqueue_bulk_organize_js())
+ *     for bulk organize on the Media Library
  *
  * File:    inc/folders/filters.php
  * Version: 2.7.0

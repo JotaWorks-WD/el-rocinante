@@ -3,11 +3,14 @@
  * Folder System — Count Helpers
  *
  * Three helpers used by the sidebar tree and dropdown filter to show item
- * counts next to folder names without running per-folder COUNT queries.
+ * counts next to folder names without running per-folder COUNT queries,
+ * plus one admin_init maintenance hook.
  *
  *   roci_get_folder_count()    — direct-item count for a single term
  *   roci_get_unassigned_count() — items with NO folder in the given taxonomy
  *   roci_get_all_count()        — total items for the taxonomy's post type
+ *   roci_maybe_recount_folder_terms() — admin_init: one-time recount of every folder
+ *                                     taxonomy, gated by an option flag
  *
  * IMPORTANT — status scope:
  *   WordPress maintains term_taxonomy.count via _update_post_term_count():

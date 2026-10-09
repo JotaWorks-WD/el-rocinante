@@ -8,13 +8,15 @@
  *
  * Read wrappers in El Rocinante:
  *
- *   - roci_get_field( $field_id, $object_id )       — postmeta (see helpers)
- *   - roci_get_setting( $page, $field, $default )   — MB Pro Settings Pages
+ *   - roci_get_field( $field_id, $object_id )       — postmeta (defined in functions.php)
+ *   - roci_get_setting( $page, $field, $default )   — MB Pro Settings Pages, hydrated
+ *   - roci_get_setting_raw( $page, $field, $default ) — the same option row, raw
  *   - roci_setting( $tab, $key, $default )          — legacy Theme Settings
  *
- * This file currently houses roci_get_setting() only. The other two
- * wrappers live in their existing locations for backward compatibility
- * and may be consolidated here in a future refactor.
+ * This file houses roci_page_option_prefix(), roci_get_setting() and
+ * roci_get_setting_raw(). roci_get_field() and roci_setting() live in their
+ * existing locations for backward compatibility and may be consolidated here
+ * in a future refactor.
  *
  * File:    inc/metabox/metabox-readers.php
  * Version: 1.2.0

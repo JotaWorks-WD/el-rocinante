@@ -12,10 +12,12 @@
  *   media-folder-filter.js updates the Backbone model via AJAX.
  *
  * Collapse state is persisted to localStorage (survives tab close):
- *   roci_sidebar_collapsed_media / _pages
+ *   roci_sidebar_collapsed_{screenKey}
  * Expanded-folder state is persisted to sessionStorage (resets on tab close,
  * survives within-tab navigation and refresh):
- *   roci_folder_expanded_media / _pages
+ *   roci_folder_expanded_{screenKey}
+ * screenKey (localized by sidebar.php) is 'media', 'pages', or the post-type
+ * slug of any other registered folder type.
  * The collapsed class is applied to
  * <html> by an early inline script in admin_head before first paint so
  * there is no visible flicker.
@@ -24,10 +26,14 @@
  * the sidebar tree at the correct alphabetical position. If the folder has
  * a parent, the parent is upgraded to a branch node and auto-expanded.
  *
- * Public cross-script helpers (for folders-dragdrop.js count updates):
+ * Public cross-script helpers:
  *   window.rociIncrementSidebarCount( termKey ) — increment a badge by 1
  *   window.rociDecrementSidebarCount( termKey ) — decrement a badge by 1 (floor 0)
  *   termKey accepts an integer term ID or the sentinels '__all__' / '__unassigned__'.
+ *   Count updates come from folders-dragdrop.js, folders-bulk.js and
+ *   folders-list-dragdrop.js.
+ *   window.rociHandleAttachmentUploaded( attachment ) — badge updates after an
+ *   upload; called by wp-media-refresh-shim.js's uploader patch.
  *
  * File:    dist/js/folders/folders-sidebar.js
  * Version: 2.8.2

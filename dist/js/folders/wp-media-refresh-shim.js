@@ -9,6 +9,8 @@
  *      was removed in v2.9.7.
  *
  * Also exposes global helpers shared by the fauxlders JS modules:
+ *   rociCancelAllReAddGuards() — cancels every live guard before a deliberate
+ *       requery; called by folders-bulk.js and media-folder-filter.js.
  *   rociWatchForReAdd( library, idSet ) — guards a Backbone library
  *       collection against re-addition of specific attachment IDs by
  *       in-flight more() XHRs (see inline JSDoc). Used by both
@@ -19,12 +21,14 @@
  * v2.10.9: rociCancelAllReAddGuards() added — cancels all active guards before
  *          a deliberate _requery(true) so post-move folder-switch repopulation
  *          isn't evicted by the 3-second guard window.
- * v2.9.10: rociForceLibraryRefresh() removed. It had been an empty no-op since
+ * v2.10.10: rociForceLibraryRefresh() removed. It had been an empty no-op since
  *          v2.9.7; its export, its call in the uploader patch and its three
  *          callers (folders-dragdrop.js, folders-sidebar.js ×2) went with it.
+ *          (Shipped in 7.4.0 as "2.9.10", a number lower than the 2.10.x
+ *          history above; corrected to 2.10.10 in 7.4.1.)
  *
  * File:    dist/js/folders/wp-media-refresh-shim.js
- * Version: 2.9.10
+ * Version: 2.10.10
  * Updated: 2026-10-09
  *
  * @package ElRocinante

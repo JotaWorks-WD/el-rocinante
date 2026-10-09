@@ -15,6 +15,8 @@
  *   roci_folder_drag_column_filter()       — manage_{post_type}_posts_columns
  *   roci_folder_drag_column_render()       — manage_{post_type}_posts_custom_column
  *   roci_enqueue_dragdrop_assets()         — enqueues drag JS for Media + CPT list screens
+ *   roci_folder_type_slug()                — (internal) post type → hyphenated slug for the
+ *                                            handle class, data attribute and JS config (v1.6.0)
  *
  * File:    inc/folders/move.php
  * Version: 1.6.0

@@ -2,10 +2,10 @@
 /**
  * Theme Settings — Register Settings, Menu & Scripts
  *
- * Also contains the roci_setting() front-end helper, the canonical brand store
- * roci_brand_palette(), and the two readers that resolve through it —
- * roci_admin_brand_accent() ("what colour") and roci_has_brand_accent()
- * ("is one configured at all").
+ * Also contains the roci_setting() front-end helper, the legacy-key migration
+ * roci_migrate_design_keys(), the canonical brand store roci_brand_palette(),
+ * and the two readers that resolve through it — roci_admin_brand_accent()
+ * ("what colour") and roci_has_brand_accent() ("is one configured at all").
  *
  * File:    inc/theme-settings/settings-register.php
  * Version: 1.5.3

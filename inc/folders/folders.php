@@ -16,6 +16,10 @@
  *   roci_get_post_type_for_folder_taxonomy( $taxonomy_slug )
  *   roci_get_folder_taxonomies()                — every folder taxonomy name
  *
+ * Asset helpers:
+ *   roci_asset_version( $relative_path )        — filemtime() cache-buster for a theme asset
+ *   roci_register_folders_toast()               — registers the shared folders-toast.js handle
+ *
  * Loads all folder-system sub-files in dependency order.
  * This file is the single require_once target in functions.php;
  * adding a new phase means adding one more require_once here

@@ -8,6 +8,8 @@
  *
  *   roci_get_folder_order_query_args()    — shared get_terms sort args
  *   roci_maybe_initialize_folder_order()  — lazy term-meta seed (idempotent)
+ *   roci_assign_default_folder_order()    — created_roci_media_folder, and created_{taxonomy}
+ *                                           per registered folder type (folders.php)
  *   roci_ajax_reorder_folders()           — wp_ajax_roci_reorder_folders
  *   roci_enqueue_reorder_assets()         — enqueues dist/js/folders/folders-reorder.js
  *

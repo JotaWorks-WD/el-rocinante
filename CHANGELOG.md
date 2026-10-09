@@ -4,6 +4,48 @@ All notable changes to the El Rocinante parent theme are recorded here. Entries 
 
 ---
 
+## [7.4.1] — 2026-10-09
+
+**FIX: `twitter:url` attribute spacing. DOCS: header docblock corrections from the docs-drift sweep.**
+
+PHP markup fix plus comments. **No CSS change**: every `dist/css` file rebuilds byte-identical (SHA256). No JavaScript behaviour change.
+
+### Fix
+
+- **`header.php`** (v2.2.3 → v2.2.4): the 7.3.1 `property=` → `name=` edit on the `twitter:url` tag dropped the space before `content=`. The tag rendered as `<meta name="twitter:url"content="…">`, an HTML parse error ("missing whitespace between attributes"). The space is restored. A sweep of the parent's PHP for any other attribute run against its neighbour found none.
+
+### Header docblock corrections
+
+Comment-only, so these files keep their own versions under the format-only rule:
+
+- **`inc/folders/move.php`** lists `roci_folder_type_slug()`.
+- **`inc/folders/folders.php`** lists its asset helpers, `roci_asset_version()` and `roci_register_folders_toast()`.
+- **`inc/folders/counts.php`** lists `roci_maybe_recount_folder_terms()`.
+- **`inc/folders/order.php`** lists `roci_assign_default_folder_order()`.
+- **`inc/folders/filters.php`**:
+  - the dropdowns cover every registered folder post type;
+  - the file also enqueues `folders-bulk.js`.
+- **`inc/folders/sidebar.php`** and **`dist/js/folders/admin-folders.js`**: they run on the list screen of every registered folder type, not only Pages.
+- **`inc/metabox/metabox-readers.php`**:
+  - `roci_get_field()` lives in `functions.php`;
+  - this file holds `roci_page_option_prefix()`, `roci_get_setting()` and `roci_get_setting_raw()`.
+- **`inc/theme-settings/settings-register.php`** lists `roci_migrate_design_keys()`.
+- **`dist/js/folders/folders-sidebar.js`**:
+  - lists `rociHandleAttachmentUploaded`;
+  - names every caller of the count helpers;
+  - storage keys are per screenKey.
+- **`dist/js/folders/folders-dragdrop.js`** lists `rociWatchForReAdd` and `rociIsBulkSelectMode`.
+- **`dist/js/folders/wp-media-refresh-shim.js`**:
+  - lists `rociCancelAllReAddGuards()`;
+  - **version corrected to 2.10.10**. 7.4.0 shipped it as 2.9.10, below its own 2.10.x history.
+- **Build `scss/admin/_admin-folders-dragdrop.scss`** and **`_folders-sidebar.scss`**: the PHP / JS references and screen lists match the code.
+
+### Also
+
+The `style.css` rolling changelog's closing `*/` had been joined to its last entry again by the 7.4.0 trim. It is back on its own line.
+
+---
+
 ## [7.4.0] — 2026-10-09
 
 **FEAT: a filterable, neutral blog icon set (`roci_blog_icons`). FIX: drag handles for post types with an underscore.**
