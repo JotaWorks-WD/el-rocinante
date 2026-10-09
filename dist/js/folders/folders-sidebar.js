@@ -30,8 +30,8 @@
  *   termKey accepts an integer term ID or the sentinels '__all__' / '__unassigned__'.
  *
  * File:    dist/js/folders/folders-sidebar.js
- * Version: 2.8.1
- * Updated: 2026-05-17
+ * Version: 2.8.2
+ * Updated: 2026-10-09
  */
 
 ( function () {
@@ -459,9 +459,6 @@
 				decrementDropdownOption( termId );
 			} );
 
-			if ( typeof window.rociForceLibraryRefresh === 'function' ) {
-				window.rociForceLibraryRefresh();
-			}
 			return;
 		}
 
@@ -495,10 +492,6 @@
 		} else {
 			// Empty captured + no filter context = unassigned.
 			decrementSidebarCount( '__unassigned__' );
-		}
-
-		if ( typeof window.rociForceLibraryRefresh === 'function' ) {
-			window.rociForceLibraryRefresh();
 		}
 	}
 

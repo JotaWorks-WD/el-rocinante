@@ -8,9 +8,7 @@
  *      restoring upload-to-grid sync that was lost when mirroring.fetch()
  *      was removed in v2.9.7.
  *
- * Also exposes two global helpers shared by the fauxlders JS modules:
- *   rociForceLibraryRefresh() — retained as a no-op since v2.9.7; callers
- *       in folders-sidebar.js and folders-dragdrop.js continue to work.
+ * Also exposes global helpers shared by the fauxlders JS modules:
  *   rociWatchForReAdd( library, idSet ) — guards a Backbone library
  *       collection against re-addition of specific attachment IDs by
  *       in-flight more() XHRs (see inline JSDoc). Used by both
@@ -21,10 +19,13 @@
  * v2.10.9: rociCancelAllReAddGuards() added — cancels all active guards before
  *          a deliberate _requery(true) so post-move folder-switch repopulation
  *          isn't evicted by the 3-second guard window.
+ * v2.9.10: rociForceLibraryRefresh() removed. It had been an empty no-op since
+ *          v2.9.7; its export, its call in the uploader patch and its three
+ *          callers (folders-dragdrop.js, folders-sidebar.js ×2) went with it.
  *
  * File:    dist/js/folders/wp-media-refresh-shim.js
- * Version: 2.9.9
- * Updated: 2026-05-21
+ * Version: 2.9.10
+ * Updated: 2026-10-09
  *
  * @package ElRocinante
  */
@@ -32,9 +33,6 @@
 ( function () {
 
 	'use strict';
-
-	// No-op since v2.9.7 — see file docblock.
-	function rociForceLibraryRefresh() {}
 
 	// All guards currently live; used by rociCancelAllReAddGuards().
 	var activeReAddGuards = [];
@@ -161,7 +159,6 @@
 		var origSuccess = wp.Uploader.prototype.success;
 		wp.Uploader.prototype.success = function ( attachment ) {
 			var result = origSuccess.apply( this, arguments );
-			rociForceLibraryRefresh();
 			if ( typeof window.rociHandleAttachmentUploaded === 'function' ) {
 				window.rociHandleAttachmentUploaded( attachment );
 			}
@@ -172,7 +169,6 @@
 		return true;
 	}
 
-	window.rociForceLibraryRefresh  = rociForceLibraryRefresh;
 	window.rociWatchForReAdd        = rociWatchForReAdd;
 	window.rociCancelAllReAddGuards = rociCancelAllReAddGuards;
 

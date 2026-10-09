@@ -8,8 +8,8 @@
  * ("is one configured at all").
  *
  * File:    inc/theme-settings/settings-register.php
- * Version: 1.5.2
- * Updated: 2026-07-31
+ * Version: 1.5.3
+ * Updated: 2026-10-09
  *
  * @package ElRocinante
  */
@@ -58,18 +58,22 @@ add_action( 'admin_menu', 'roci_add_settings_menu' );
 
 
 // ============================================================
-// ENQUEUE COLOR PICKER & ADMIN SCRIPTS
+// ENQUEUE ADMIN SCRIPTS
 // ============================================================
+//
+// No wp-color-picker (v1.5.3). The Design tab's colours are locked displays and
+// nothing on any tab initialises a picker, so its style and script dependency
+// loaded for nothing. wp_enqueue_media() below is what the media/logo uploaders
+// need; it never depended on the picker.
 
 function roci_settings_enqueue( $hook ) {
     if ( strpos( $hook, 'roci' ) === false ) return;
 
-    wp_enqueue_style( 'wp-color-picker' );
     wp_enqueue_media();
     wp_enqueue_script(
         'roci-settings-js',
         get_template_directory_uri() . '/dist/js/theme-settings.js',
-        array( 'jquery', 'wp-color-picker' ),
+        array( 'jquery' ),
         filemtime( get_template_directory() . '/dist/js/theme-settings.js' ),
         true
     );

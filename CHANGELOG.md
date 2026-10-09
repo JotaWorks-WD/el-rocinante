@@ -4,6 +4,59 @@ All notable changes to the El Rocinante parent theme are recorded here. Entries 
 
 ---
 
+## [7.3.1] — 2026-10-09
+
+**CHORE: the parent drift recon's leftover items (5.10, 5.5, 4.2, 4.5, 4.4, 4.7, 4.3, 1.6). No design change.**
+
+Each item was re-verified against 7.3.0 source before it was changed. `style.css` and all eight `page-*.css` compile **byte-identical**. `admin-folders.css` changes only in the rules named below.
+
+### Changes
+
+- **5.10 — `twitter:url` uses `name=`** (`header.php`), like every other Twitter tag. It was the only `property=` among them. Nothing else in `<head>` changed.
+- **5.5 — the footer copyright is one translatable string** (`template-parts/footer/site-footer.php`).
+  - It is `'&copy; %1$s %2$s. All rights reserved.'` through `esc_html__()` + `sprintf()`, so a translation can reorder the year and the name.
+  - The year comes from `wp_date( 'Y' )` (the site's timezone, not the server's).
+  - The name comes from `get_bloginfo( 'name', 'display' )`, which is what `bloginfo()` printed.
+  - Both values are escaped. The rendered English text is unchanged.
+- **4.2 — dead SCSS removed:** `.roci-sidebar-divider` (`_folders-sidebar.scss`). It had zero PHP or JS references.
+- **4.5 — dead local removed:** `defaultOgImg` in `metabox-seo-health.php`'s inline JS was never read.
+  - `roci_seo_health_html( $default_og_image )` therefore no longer uses its parameter.
+  - **The signature is kept:** `metabox-seo-fields.php` passes the same value to the preview panel, which does use it.
+- **4.4 — `rociForceLibraryRefresh()` removed** (`wp-media-refresh-shim.js`). It had been an empty no-op since v2.9.7.
+  - Removed with it: its export, its call inside the uploader patch, and its three guarded callers (`folders-dragdrop.js` ×1, `folders-sidebar.js` ×2).
+  - The shim keeps the uploader patch, `rociWatchForReAdd()`, `rociCancelAllReAddGuards()` and `rociAddUploadToLibrary()`.
+- **4.7 — `wp-color-picker` dropped** from `roci_settings_enqueue()`, both the style enqueue and the script dependency.
+  - Nothing in the parent initialises a picker. The Design tab's colours are locked displays.
+  - `theme-settings.js` had called the dependency deliberate, for fear of breaking the media/logo uploader. That uploader depends on `wp_enqueue_media()`, which stays. The comment is updated.
+- **4.3 — shared drag-handle hooks:**
+  - `move.php` adds `roci-drag-handle` beside `roci-{post_type}-drag-handle` on every handle.
+  - `folders-list-dragdrop.js` adds `roci-dragging-list-item` to `<body>` beside the per-type class.
+  - `_admin-folders-dragdrop.scss` targets the shared pair instead of `.roci-page-drag-handle` / `body.roci-dragging-page`.
+  - Pages render as before. Posts and CPTs now get the same handle styling.
+- **1.6 — docblocks:** the eight `Build/scss/pages/page-*.scss` entries gain the house `File:` / `Version:` / `Updated:` header. Their content is unchanged, and they still compile to 0 bytes.
+- **`style.css` rolling block:** the 7.3.0 edit had left the block's closing `*/` on the last entry's line. It is back on its own line.
+
+### Files
+
+| File | Version |
+|---|---|
+| `header.php` | v2.2.2 → v2.2.3 |
+| `template-parts/footer/site-footer.php` | v1.0.0 → v1.0.1 |
+| `inc/metabox/metabox-seo-health.php` | v1.2.2 → v1.2.3 |
+| `inc/theme-settings/settings-register.php` | v1.5.2 → v1.5.3 |
+| `inc/folders/move.php` | v1.5.0 → v1.5.1 |
+| `dist/js/folders/wp-media-refresh-shim.js` | v2.9.9 → v2.9.10 |
+| `dist/js/folders/folders-dragdrop.js` | v1.7.0 → v1.7.1 |
+| `dist/js/folders/folders-sidebar.js` | v2.8.1 → v2.8.2 |
+| `dist/js/folders/folders-list-dragdrop.js` | v1.1.0 → v1.1.1 |
+| `dist/js/theme-settings.js` | v1.4.0 → v1.4.1 |
+| `dist/css/admin-folders.css` | regenerated |
+| Build: `scss/admin/_folders-sidebar.scss` | v1.8.5 → v1.8.6 |
+| Build: `scss/admin/_admin-folders-dragdrop.scss` | v1.4.1 → v1.4.2 |
+| Build: `scss/pages/page-*.scss` (8) | docblock added, v1.0.0 |
+
+---
+
 ## [7.3.0] — 2026-10-09
 
 **FEAT (G2a, G1d): `roci_get_page_url()`, and `focusable="false"` on the blog icons.**

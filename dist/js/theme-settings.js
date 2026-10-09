@@ -6,8 +6,8 @@
  * repeatable amenity rows within it.
  *
  * File:    theme-settings.js
- * Version: 1.4.0
- * Updated: 2026-08-08
+ * Version: 1.4.1
+ * Updated: 2026-10-09
  *
  * @package ElRocinante
  */
@@ -21,11 +21,10 @@ jQuery(document).ready(function ($) {
   // is an editable colour input, so there is nothing left to initialise and the
   // wpColorPicker() call that stood here matched zero elements.
   //
-  // The wp-color-picker dependency is deliberately LEFT in place on the
-  // roci-settings-js enqueue (roci_settings_enqueue() in settings-register.php). It is a few KB on
-  // admin settings screens only, and that enqueue is shared by all seven tabs —
-  // removing it to save nothing risks the Identity tab's media/logo uploader for
-  // no gain. Keeping it is harmless; removing it wrongly is not.
+  // The wp-color-picker style and script dependency were removed from
+  // roci_settings_enqueue() at v1.4.1 (parent 7.3.1). Nothing initialises a
+  // picker on any tab, and the media/logo uploader depends on
+  // wp_enqueue_media(), not on the picker.
   // --------------------------------------------------------
 
   // --------------------------------------------------------

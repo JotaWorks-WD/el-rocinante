@@ -18,8 +18,13 @@
  * strips its markers, and WebKit (Safari + VoiceOver) then drops its list
  * semantics unless the role is explicit.
  *
+ * The copyright line is ONE translatable string with placeholders (v1.0.1),
+ * so a translation can reorder the year and the name. The year comes from
+ * wp_date() (the site's timezone, not the server's), and every value is
+ * escaped. The rendered English text is unchanged.
+ *
  * File:    template-parts/footer/site-footer.php
- * Version: 1.0.0
+ * Version: 1.0.1
  * Updated: 2026-10-09
  *
  * @package ElRocinante
@@ -31,9 +36,14 @@
         <div class="u-row">
             <div class="u-col-half">
                 <p class="footer-copy">
-                    &copy; <?php echo date( 'Y' ); ?>
-                    <?php bloginfo( 'name' ); ?>.
-                    <?php esc_html_e( 'All rights reserved.', 'rocinante' ); ?>
+                    <?php
+                    echo sprintf(
+                        /* translators: 1: the current year, 2: the site name. */
+                        esc_html__( '&copy; %1$s %2$s. All rights reserved.', 'rocinante' ),
+                        esc_html( wp_date( 'Y' ) ),
+                        esc_html( get_bloginfo( 'name', 'display' ) )
+                    );
+                    ?>
                 </p>
             </div>
             <div class="u-col-half u-text-right-md">

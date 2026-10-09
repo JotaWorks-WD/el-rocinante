@@ -12,8 +12,8 @@
  * for children that opt into multilingual output with add_theme_support('roci-i18n').
  *
  * File:    header.php
- * Version: 2.2.2
- * Updated: 2026-10-08
+ * Version: 2.2.3
+ * Updated: 2026-10-09
  *
  * @package ElRocinante
  */
@@ -378,7 +378,7 @@
     <meta name="twitter:description" content="<?php echo esc_attr( $roci_og_description ); ?>">
 <?php endif; ?>
 <?php if ( '' !== $roci_canonical ) : ?>
-    <meta property="twitter:url" content="<?php echo esc_url( $roci_canonical ); ?>">
+    <meta name="twitter:url"content="<?php echo esc_url( $roci_canonical ); ?>">
 <?php endif; ?>
     <?php if ( $roci_og_image_url ) : ?>
     <meta name="twitter:image" content="<?php echo esc_url( $roci_og_image_url ); ?>">

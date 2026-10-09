@@ -18,6 +18,11 @@
  *   bodyDragClass — CSS class added to <body> during a drag
  *   ajaxUrl, nonce, i18n — same as the former per-post-type files
  *
+ * During a drag <body> also gets the shared class roci-dragging-list-item
+ * (v1.1.1), whatever the post type. The stylesheet targets that class and the
+ * shared .roci-drag-handle (added by move.php), so every list table shares the
+ * styling that used to be written for pages only.
+ *
  * Drag type is kept distinct per post type ('text/x-roci-page',
  * 'text/x-roci-post', etc.) so drop handlers can discriminate during
  * dragover/dragenter without reading the payload (blocked until drop).
@@ -30,8 +35,8 @@
  * type and ignores other drags.
  *
  * File:    dist/js/folders/folders-list-dragdrop.js
- * Version: 1.1.0
- * Updated: 2026-08-09
+ * Version: 1.1.1
+ * Updated: 2026-10-09
  *
  * @package ElRocinante
  */
@@ -94,14 +99,14 @@
 		e.dataTransfer.effectAllowed = 'move';
 		e.dataTransfer.setData( config.dragType, draggedItemId );
 
-		document.body.classList.add( config.bodyDragClass );
+		document.body.classList.add( config.bodyDragClass, 'roci-dragging-list-item' );
 	}, false );
 
 	document.addEventListener( 'dragend', function ( e ) {
 		if ( ! e.target.closest( '.' + config.handleClass ) ) {
 			return;
 		}
-		document.body.classList.remove( config.bodyDragClass );
+		document.body.classList.remove( config.bodyDragClass, 'roci-dragging-list-item' );
 		// Defensive: clear any orphaned drop-target highlights.
 		document.querySelectorAll( '.roci-folder-item.is-drop-target' ).forEach( function ( el ) {
 			el.classList.remove( 'is-drop-target' );

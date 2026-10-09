@@ -11,9 +11,14 @@
  * renders inside the meta box, so it works identically in Gutenberg and
  * the classic editor, and it reports before the save rather than after.
  *
+ * v1.2.3: the unused JS variable defaultOgImg is removed. The health panel
+ * never read it, so $default_og_image is now unused in this file. The
+ * signature is kept: metabox-seo-fields.php passes the same value to this
+ * panel and to the preview, which does use it.
+ *
  * File:    inc/metabox/metabox-seo-health.php
- * Version: 1.2.2
- * Updated: 2026-10-08
+ * Version: 1.2.3
+ * Updated: 2026-10-09
  *
  * @package ElRocinante
  */
@@ -94,7 +99,6 @@ function roci_seo_health_html( $default_og_image ) {
         <script>
         document.addEventListener("DOMContentLoaded", function() {
 
-            var defaultOgImg = "' . esc_js( $default_og_image ) . '";
             var cachedSlug   = "";
             var slugFetched  = false;
             var slugFetching = false;

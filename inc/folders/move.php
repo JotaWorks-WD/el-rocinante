@@ -17,8 +17,8 @@
  *   roci_enqueue_dragdrop_assets()         — enqueues drag JS for Media + CPT list screens
  *
  * File:    inc/folders/move.php
- * Version: 1.5.0
- * Updated: 2026-08-09
+ * Version: 1.5.1
+ * Updated: 2026-10-09
  *
  * @package ElRocinante
  */
@@ -460,6 +460,10 @@ function roci_folder_drag_column_filter( $columns ) {
  *   post  → .roci-post-drag-handle  data-post-id
  *   tour  → .roci-tour-drag-handle  data-tour-id
  *
+ * Every handle also carries the shared class .roci-drag-handle (v1.5.1), which
+ * is the one the stylesheet targets, so posts and CPTs get the same handle
+ * styling pages always had. The per-type class stays: the JS finds handles by it.
+ *
  * @param string $column_name  Current column slug.
  * @param int    $post_id      Current post ID.
  */
@@ -468,7 +472,7 @@ function roci_folder_drag_column_render( $column_name, $post_id ) {
 		return;
 	}
 	$post_type    = get_post_type( $post_id );
-	$handle_class = 'roci-' . $post_type . '-drag-handle';
+	$handle_class = 'roci-drag-handle roci-' . $post_type . '-drag-handle';
 	$data_attr    = 'data-' . $post_type . '-id';
 	echo '<span class="' . esc_attr( $handle_class ) . '" draggable="true" '
 		. esc_attr( $data_attr ) . '="' . esc_attr( $post_id ) . '" aria-hidden="true">'

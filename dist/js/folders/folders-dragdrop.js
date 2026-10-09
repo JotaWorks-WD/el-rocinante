@@ -14,7 +14,7 @@
  *
  * Drop targets:
  *   All .roci-folder-item nodes except [data-term="__all__"] accept drops.
- *   On drop: optimistic count update → AJAX move → rociForceLibraryRefresh
+ *   On drop: optimistic count update → AJAX move → remove from the grid
  *   on success, rollback on failure.
  *
  * Cross-script helpers:
@@ -27,8 +27,8 @@
  *   multi-select drag, and folder reordering are out of scope for Phase 6.
  *
  * File:    dist/js/folders/folders-dragdrop.js
- * Version: 1.7.0
- * Updated: 2026-05-20
+ * Version: 1.7.1
+ * Updated: 2026-10-09
  *
  * @package ElRocinante
  */
@@ -264,9 +264,6 @@
 						? resp.data.new_terms
 						: [];
 					rociRemoveFromGrid( attachmentId, newTerms );
-					if ( typeof window.rociForceLibraryRefresh === 'function' ) {
-						window.rociForceLibraryRefresh();
-					}
 					return;
 				}
 				// success:false — server rejected (shouldn't normally reach here with
