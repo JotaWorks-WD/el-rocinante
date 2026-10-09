@@ -4,6 +4,58 @@ All notable changes to the El Rocinante parent theme are recorded here. Entries 
 
 ---
 
+## [7.1.0] — 2026-10-09
+
+**FEAT (G3): listing templates split into overridable template parts, with a unified class contract.**
+
+PHP only. **No CSS change**, no JavaScript. Minor: new extension points, no contract removed.
+
+### Why
+
+A child that wanted to change one thing on a parent listing route (the loop item, the heading, the empty state) had to copy the whole template, `<main>` landmark included. The copy then froze every later parent fix to that route: the child-template diff recon found FP's `archive.php` still missing #32 and RJK's `index.php` still missing #27. Now a child overrides a part, or hooks a filter, and the template stays the parent's.
+
+### New template parts (all v1.0.0)
+
+- **`template-parts/listing-header.php`** — the listing `<h1>` for index, archive, search and 404, with each template's title logic moved here unchanged. That covers archive's full #32 chain (taxonomy terms, date by granularity with `esc_html()`, `the_archive_title()` as the last resort), search's "Search Results for: %s" with the query span, 404's heading, and index's Posts-page title / site name. It also keeps archive's description.
+  - It applies `roci_entry_title_mode()` with the new contexts `'archive'`, `'search'` and `'404'`. `'hidden'` adds `.screen-reader-text`. `'none'` drops the `<h1>` and skips the eyebrow action; the `<header>` is omitted unless an archive description fills it.
+- **`template-parts/content.php`** — the shared loop item: `<article post_class()>`, `h2.entry-title > a`, the date, the excerpt, and Read More with the 6.37 SR-only " about {title}".
+- **`template-parts/content-index.php`, `content-archive.php`, `content-search.php`** — the per-context items. Each loads `content.php`, so a child overrides one context or all three.
+- **`template-parts/content-none.php`** — the empty state for 404 and every no-results branch: the context's copy, `get_search_form()` (not on search, which already prints one above the results) and a link home.
+- **`template-parts/footer/site-footer.php`** — the visible footer markup, moved out of `footer.php` byte-for-byte.
+
+### New extension points
+
+- **`roci_listing_classes( $classes, $context )`** — `array( 'wrapper' => [], 'results' => [] )` for the listing wrapper and the results container. The defaults keep every existing class: `archive-posts` and `search-results` are still there, and `error-404` moves from an inner div to the 404 results container.
+- **`roci_pagination_args( $args, $context )`** — passed to `the_posts_pagination()`. The default is `array()`, so output is unchanged. Core prints the `<nav>`, so a child wraps it in a `<div>` if anything.
+- **`roci_search_form_classes( $classes )`** — `array( 'form', 'input', 'button' )` on `searchform.php`. The defaults are today's classes, so output is unchanged when nothing hooks it.
+- **`roci_before_listing_title`** (action, `$context`) — fires immediately before the listing `<h1>`. This is the eyebrow slot.
+- **`roci_after_loop`** (action, `$context`) — fires after the results and pagination, or the empty state, in index, archive and search, and after the content in 404.
+
+### Template changes
+
+- **`index.php` v1.2.1 → v1.3.0** — the listing branch uses the parts and is wrapped in `.u-container`.
+  - **The posts index now lists excerpts with a date and Read More, instead of full `the_content()`.** No live child reaches this branch.
+  - It gains an empty state.
+  - The defensive singular branch is unchanged.
+- **`archive.php` v1.1.1 → v1.2.0** — uses the parts. The `<h1>` and item `<h2>` gain `.entry-title`, and the date is escaped.
+- **`search.php` v1.1.0 → v1.2.0** — uses the parts. The `<h1>` and item `<h2>` gain `.entry-title`, and the empty state gains a link home.
+- **`404.php` v1.0.0 → v1.1.0** — uses the parts. The `<h1>` gains `.entry-title` and a `<header>`, and the page gains the search form.
+- **`page.php` v1.2.0 → v1.3.0** and **`single.php` v1.2.0 → v1.3.0** — the entry is wrapped in `<article id="post-N" post_class()>`, and `wp_link_pages()` follows `the_content()`. `single.php` gains an `if ( have_posts() )` guard. The header and content markup are otherwise unchanged.
+- **`footer.php` v1.1.1 → v1.2.0** — loads `template-parts/footer/site-footer.php`, then `wp_footer()` and the close. Output is byte-identical when no child overrides the part.
+- **`searchform.php` v1.1.0 → v1.2.0** — `roci_search_form_classes`.
+- **`inc/helpers.php` v1.15.1 → v1.16.0**
+  - New: `roci_get_listing_classes()` and `roci_get_pagination_args()`.
+  - New internal helpers: `roci_listing_context()`, `roci_resolve_class_slots()` and `roci_class_attr()`.
+  - `roci_entry_title_mode()`'s docblock now covers the listing contexts. Its body is unchanged.
+
+### Class contract (now uniform)
+
+- `.u-container` on every listing wrapper. This is new on index.
+- `<article post_class()>` on every listing item, and around the entry in `page.php` and `single.php`.
+- `.entry-title` on every listing `<h1>`, every item `<h2>` and the singular `<h1>`. On archive, search and 404 this is new.
+
+---
+
 ## [7.0.10] — 2026-10-09
 
 **REFACTOR: obsolete `!important` removed from the admin folder styles.**

@@ -7,8 +7,8 @@
  * and template parts throughout El Rocinante and child themes.
  *
  * File:    inc/helpers.php
- * Version: 1.15.1
- * Updated: 2026-10-08
+ * Version: 1.16.0
+ * Updated: 2026-10-09
  *
  * @package ElRocinante
  *
@@ -32,7 +32,12 @@
  *   jw_wysiwyg_body()              — Expands shortcodes + targets external links inside stored wysiwyg HTML
  *   roci_sanitize_object_position() — Whitelists a CSS object-position value (strict)
  *   roci_get_hero_focus()          — Resolves the sanitized hero focal point for a post
- *   roci_entry_title_mode()        — How the parent's content templates render the entry title (filterable)
+ *   roci_entry_title_mode()        — How the parent's templates render the page's <h1> (filterable)
+ *   roci_listing_context()         — (internal) Normalises a listing context to index / archive / search / 404
+ *   roci_get_listing_classes()     — Wrapper + results classes for a listing template (roci_listing_classes)
+ *   roci_get_pagination_args()     — the_posts_pagination() args for a listing (roci_pagination_args)
+ *   roci_resolve_class_slots()     — (internal) Validates + sanitises a filtered slot => classes map
+ *   roci_class_attr()              — (internal) Escaped class="" value from a class list
  *
  * Future expansion:
  *   If this file grows significantly, split into:
@@ -1518,23 +1523,28 @@ function roci_get_hero_focus( $post_id = null ) {
 
 
 // ============================================================
-// ENTRY TITLE — parent content templates (page, single, index)
+// ENTRY TITLE — parent content templates and the listing header
 // ============================================================
 
 /**
  * roci_entry_title_mode()
  *
- * How the parent's content templates (page, single, index) render the entry
- * title: 'visible' (default), 'hidden' (visually hidden — .screen-reader-text,
- * still in the heading outline) or 'none' (the child renders its own <h1>).
- * Filterable via roci_entry_title_mode; an unknown value falls back to
- * 'visible' so a typo fails toward a correct outline, not away from it.
+ * How the parent's templates render the page's <h1>: 'visible' (default),
+ * 'hidden' (visually hidden — .screen-reader-text, still in the heading
+ * outline) or 'none' (the child renders its own <h1>). Filterable via
+ * roci_entry_title_mode; an unknown value falls back to 'visible' so a typo
+ * fails toward a correct outline, not away from it.
+ *
+ * Callers: page.php and single.php ('page', 'single', the entry <h1>), and
+ * template-parts/listing-header.php (v1.16.0) for the listing <h1> of
+ * 'index', 'archive', 'search' and '404'.
  *
  * Not memoized — the filter runs on every call, so per-post logic works.
  *
- * @param  string $template 'page', 'single' or 'index'.
- * @param  int    $post_id  The post whose title is rendered (index listing:
- *                          the Posts page ID, or 0 for latest-posts-on-front).
+ * @param  string $template 'page', 'single', 'index', 'archive', 'search' or '404'.
+ * @param  int    $post_id  The post whose title is rendered: the singular
+ *                          post, the Posts page ID on the posts index, or 0
+ *                          (latest-posts-on-front, archive, search, 404).
  * @return string           'visible', 'hidden' or 'none'.
  */
 function roci_entry_title_mode( $template, $post_id = 0 ) {
@@ -1548,4 +1558,126 @@ function roci_entry_title_mode( $template, $post_id = 0 ) {
     );
 
     return in_array( $mode, array( 'visible', 'hidden', 'none' ), true ) ? $mode : 'visible';
+}
+
+
+// ============================================================
+// LISTING TEMPLATES — class and pagination seams (v1.16.0)
+// ============================================================
+
+/**
+ * roci_listing_context()
+ *
+ * (internal) Normalises a listing context passed to a template part, so an
+ * unknown or missing value falls back to 'index' rather than emitting a class
+ * or a heading built from arbitrary input.
+ *
+ * @param  mixed $context The context from the part's $args.
+ * @return string         'index', 'archive', 'search' or '404'.
+ */
+function roci_listing_context( $context ) {
+    return in_array( $context, array( 'index', 'archive', 'search', '404' ), true ) ? $context : 'index';
+}
+
+/**
+ * roci_get_listing_classes()
+ *
+ * Classes for a listing template's two containers: 'wrapper' (the element
+ * inside <main> that holds the whole listing) and 'results' (the element that
+ * holds the loop items — on 404, the empty state). Filterable via
+ * roci_listing_classes( $classes, $context ).
+ *
+ * The defaults keep every class these templates carried before v7.1.0, so
+ * existing child CSS still matches. '404' cannot be a class prefix that
+ * starts a CSS selector cleanly, so that context's names use 'error-404'.
+ *
+ * A filter that drops a key gets the default back for that key; every class
+ * is passed through sanitize_html_class() (roci_resolve_class_slots()).
+ *
+ * @param  string $context 'index', 'archive', 'search' or '404'.
+ * @return array           array( 'wrapper' => string[], 'results' => string[] ).
+ */
+function roci_get_listing_classes( $context ) {
+    $context = roci_listing_context( $context );
+
+    $defaults = array(
+        'index'   => array(
+            'wrapper' => array( 'u-container', 'index-listing' ),
+            'results' => array( 'index-results' ),
+        ),
+        'archive' => array(
+            'wrapper' => array( 'u-container', 'archive-listing' ),
+            'results' => array( 'archive-posts', 'archive-results' ),
+        ),
+        'search'  => array(
+            'wrapper' => array( 'u-container', 'search-listing' ),
+            'results' => array( 'search-results' ),
+        ),
+        '404'     => array(
+            'wrapper' => array( 'u-container', 'error-404-listing' ),
+            'results' => array( 'error-404', 'error-404-results' ),
+        ),
+    );
+
+    return roci_resolve_class_slots(
+        apply_filters( 'roci_listing_classes', $defaults[ $context ], $context ),
+        $defaults[ $context ]
+    );
+}
+
+/**
+ * roci_resolve_class_slots()
+ *
+ * (internal) Validates a filtered slot => class-list map against its
+ * defaults: a slot the filter dropped, or returned as a non-array, gets its
+ * default back, and every class is passed through sanitize_html_class().
+ * Shared by roci_get_listing_classes() and searchform.php.
+ *
+ * @param  mixed $classes  The filtered map.
+ * @param  array $defaults The default map, slot => string[].
+ * @return array           slot => string[], one entry per default slot.
+ */
+function roci_resolve_class_slots( $classes, $defaults ) {
+    $classes  = is_array( $classes ) ? $classes : array();
+    $resolved = array();
+
+    foreach ( $defaults as $slot => $default ) {
+        $list              = isset( $classes[ $slot ] ) && is_array( $classes[ $slot ] ) ? $classes[ $slot ] : $default;
+        $resolved[ $slot ] = array_values( array_filter( array_map( 'sanitize_html_class', $list ) ) );
+    }
+
+    return $resolved;
+}
+
+/**
+ * roci_get_pagination_args()
+ *
+ * Arguments for the_posts_pagination() on a listing template. Filterable via
+ * roci_pagination_args( $args, $context ). The default is an empty array, so
+ * an unfiltered site gets core's output unchanged.
+ *
+ * ⚠ CORE ALREADY PRINTS THE <nav> (class "navigation pagination", with its
+ * own aria-label). A child that wants a styling hook wraps the call in a
+ * <div>, never another <nav> — two nested navigation landmarks announce one
+ * control twice.
+ *
+ * @param  string $context 'index', 'archive' or 'search'.
+ * @return array           Arguments for the_posts_pagination().
+ */
+function roci_get_pagination_args( $context ) {
+    $args = apply_filters( 'roci_pagination_args', array(), roci_listing_context( $context ) );
+
+    return is_array( $args ) ? $args : array();
+}
+
+/**
+ * roci_class_attr()
+ *
+ * (internal) Joins a class list into an escaped class="" value.
+ *
+ * @param  string[] $classes Class names.
+ * @return string            Escaped, space-separated class list.
+ */
+function roci_class_attr( $classes ) {
+    return esc_attr( implode( ' ', (array) $classes ) );
 }

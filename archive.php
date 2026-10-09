@@ -2,86 +2,52 @@
 /**
  * Archive — Archive Page Template
  *
- * Displays posts for category, tag, author, date, and post-type archives.
+ * Displays posts for category, tag, author, date, taxonomy and post-type
+ * archives.
  *
- * Each "Read More" carries a screen-reader-only " about {title}", so its
- * accessible name is unique and makes sense out of context (WCAG 2.4.4).
+ * Built from overridable parts (v1.2.0):
+ *   template-parts/listing-header.php — the <h1> (the full title chain:
+ *     category, tag, author, date by granularity, taxonomy term, post-type,
+ *     the_archive_title() as the last resort) and the archive description.
+ *   template-parts/content-archive.php — one item per post, with a "Read More"
+ *     whose screen-reader-only " about {title}" makes its accessible name
+ *     unique out of context (WCAG 2.4.4).
+ *   template-parts/content-none.php — the empty state.
+ * Seams: roci_listing_classes, roci_pagination_args, roci_after_loop.
  *
  * File:    archive.php
- * Version: 1.1.1
- * Updated: 2026-10-08
+ * Version: 1.2.0
+ * Updated: 2026-10-09
  *
  * @package ElRocinante
  */
+
+$roci_classes = roci_get_listing_classes( 'archive' );
+
 get_header(); ?>
 
 <main id="main-content" class="site-main">
-    <div class="u-container">
+    <div class="<?php echo roci_class_attr( $roci_classes['wrapper'] ); ?>">
 
-        <header class="archive-header">
-            <h1>
-                <?php
-                if ( is_category() ) {
-                    single_cat_title();
-                } elseif ( is_tag() ) {
-                    single_tag_title();
-                } elseif ( is_author() ) {
-                    echo esc_html( get_the_author() );
-                } elseif ( is_date() ) {
-                    // By granularity (v1.1.1): a single "F Y" label misnamed
-                    // year and day archives.
-                    if ( is_year() ) {
-                        echo esc_html( get_the_date( 'Y' ) );
-                    } elseif ( is_month() ) {
-                        echo esc_html( get_the_date( 'F Y' ) );
-                    } else {
-                        echo esc_html( get_the_date() ); // is_day(): the site date format
-                    }
-                } elseif ( is_tax() ) {
-                    // Custom-taxonomy term archives (v1.1.1) — they used to fall
-                    // to post_type_archive_title(), which prints nothing there.
-                    single_term_title();
-                } elseif ( is_post_type_archive() ) {
-                    post_type_archive_title();
-                } else {
-                    // Last resort, so the <h1> is never empty.
-                    the_archive_title();
-                }
-                ?>
-            </h1>
-            <?php if ( get_the_archive_description() ) : ?>
-                <div class="archive-description">
-                    <?php the_archive_description(); ?>
-                </div>
-            <?php endif; ?>
-        </header>
+        <?php get_template_part( 'template-parts/listing-header', null, array( 'context' => 'archive' ) ); ?>
 
         <?php if ( have_posts() ) : ?>
-            <div class="archive-posts">
-                <?php while ( have_posts() ) : the_post(); ?>
-                    <article id="post-<?php the_ID(); ?>" <?php post_class(); ?>>
-                        <h2><a href="<?php the_permalink(); ?>"><?php the_title(); ?></a></h2>
-                        <div class="post-meta">
-                            <time datetime="<?php echo get_the_date( 'c' ); ?>"><?php echo get_the_date(); ?></time>
-                        </div>
-                        <div class="post-excerpt">
-                            <?php the_excerpt(); ?>
-                        </div>
-                        <a href="<?php the_permalink(); ?>" class="read-more">
-                            <?php esc_html_e( 'Read More', 'rocinante' ); ?><span class="screen-reader-text"> <?php
-                                /* translators: %s: post title */
-                                printf( esc_html__( 'about %s', 'rocinante' ), esc_html( get_the_title() ) );
-                            ?></span>
-                        </a>
-                    </article>
-                <?php endwhile; ?>
+            <div class="<?php echo roci_class_attr( $roci_classes['results'] ); ?>">
+                <?php
+                while ( have_posts() ) :
+                    the_post();
+                    get_template_part( 'template-parts/content', 'archive' );
+                endwhile;
+                ?>
             </div>
 
-            <?php the_posts_pagination(); ?>
+            <?php the_posts_pagination( roci_get_pagination_args( 'archive' ) ); ?>
 
         <?php else : ?>
-            <p><?php esc_html_e( 'No posts found.', 'rocinante' ); ?></p>
+            <?php get_template_part( 'template-parts/content', 'none', array( 'context' => 'archive' ) ); ?>
         <?php endif; ?>
+
+        <?php do_action( 'roci_after_loop', 'archive' ); ?>
 
     </div>
 </main>

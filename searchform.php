@@ -22,8 +22,8 @@
  * the label is correctly hidden everywhere with no child CSS at all.
  *
  * File:    searchform.php
- * Version: 1.1.0
- * Updated: 2026-09-11
+ * Version: 1.2.0
+ * Updated: 2026-10-09
  *
  * @package ElRocinante
  */
@@ -54,9 +54,35 @@ $roci_search_placeholder = apply_filters(
 	'roci_search_placeholder',
 	__( 'Search this site…', 'rocinante' )
 );
+
+/**
+ * Classes on the form, the input and the button (v1.2.0).
+ *
+ * The defaults are the classes this form has always carried, so output is
+ * unchanged when nothing hooks the filter. A child whose design system uses
+ * different names returns its own instead of forking the template:
+ *
+ *   add_filter( 'roci_search_form_classes', function ( $classes ) {
+ *       $classes['input']  = array( 'site-search__input' );
+ *       $classes['button'] = array( 'site-search__submit' );
+ *       return $classes;
+ *   } );
+ *
+ * A key the filter drops gets its default back; every class is passed
+ * through sanitize_html_class().
+ */
+$roci_search_class_defaults = array(
+	'form'   => array( 'search-form' ),
+	'input'  => array( 'form__input', 'search-form__input' ),
+	'button' => array( 'btn', 'btn--secondary', 'search-form__submit' ),
+);
+$roci_search_classes = roci_resolve_class_slots(
+	apply_filters( 'roci_search_form_classes', $roci_search_class_defaults ),
+	$roci_search_class_defaults
+);
 ?>
 
-<form role="search" method="get" class="search-form" action="<?php echo esc_url( home_url( '/' ) ); ?>">
+<form role="search" method="get" class="<?php echo roci_class_attr( $roci_search_classes['form'] ); ?>" action="<?php echo esc_url( home_url( '/' ) ); ?>">
 
 	<label class="screen-reader-text" for="<?php echo esc_attr( $roci_search_id ); ?>">
 		<?php esc_html_e( 'Search this site', 'rocinante' ); ?>
@@ -65,13 +91,13 @@ $roci_search_placeholder = apply_filters(
 	<input
 		type="search"
 		id="<?php echo esc_attr( $roci_search_id ); ?>"
-		class="form__input search-form__input"
+		class="<?php echo roci_class_attr( $roci_search_classes['input'] ); ?>"
 		name="s"
 		value="<?php echo esc_attr( get_search_query() ); ?>"
 		placeholder="<?php echo esc_attr( $roci_search_placeholder ); ?>"
 	>
 
-	<button type="submit" class="btn btn--secondary search-form__submit">
+	<button type="submit" class="<?php echo roci_class_attr( $roci_search_classes['button'] ); ?>">
 		<?php esc_html_e( 'Search', 'rocinante' ); ?>
 	</button>
 
