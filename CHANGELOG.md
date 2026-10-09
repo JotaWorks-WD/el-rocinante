@@ -4,6 +4,39 @@ All notable changes to the El Rocinante parent theme are recorded here. Entries 
 
 ---
 
+## [7.0.10] — 2026-10-09
+
+**REFACTOR: obsolete `!important` removed from the admin folder styles.**
+
+Admin CSS only (`dist/css/admin-folders.css`). No PHP, no JavaScript, no front-end change. **No intended visual change.** `style.css` and every `page-*.css` compile byte-identical.
+
+### Why
+
+The drag-drop partial justified its `!important` with a child-theme pattern: each child would compile its own `admin-folders.css` with its brand colour and enqueue it after the parent's. That pattern is gone. `--folders-highlight` now arrives as an inline token from the folders branding bridge, so no sheet has to out-rank another to recolour. A recon checked each `!important` against the rule it competes with. This release removes only the ones that already win without it.
+
+### What changed
+
+- **`_admin-folders-dragdrop.scss` v1.4.0 → v1.4.1**
+  - `.roci-folder-item.is-drop-target`: `!important` removed from `background-color` and `outline`. No rule competes with them.
+  - Uploader suppression: the redundant `pointer-events: none` is deleted. `display: none !important` stays, because it beats the inline display that `UploaderWindow.show()` writes.
+  - `.column-roci_drag_handle`: `!important` removed from `width`, which no desktop rule competes with. The `padding` `!important` stays, against core's `.widefat td` / `.widefat th`.
+  - Header comment rewritten. The obsolete child-theme rationale is replaced by the core rule or inline style that each remaining `!important` beats.
+- **`_admin-folders-reorder.scss` v1.2.0 → v1.2.1**
+  - `.roci-action-toggle[aria-pressed="true"]`, the organize-mode hover border and `.roci-drop-indicator`: `!important` removed. Each already wins on specificity or source order.
+  - `.roci-action-toggle:focus`: `!important` removed and the rule moved after `[aria-pressed="true"]`. The two have equal specificity, so source order keeps a pressed-and-focused toggle shadow-free, as before.
+- **`_folders-sidebar.scss` v1.8.4 → v1.8.5**
+  - Active, parent-direct-hover and active-plus-hover row backgrounds: `!important` removed from all three together. The active-plus-hover rule (0,4,0) now beats the hover rule (0,3,0) on specificity, and its comment says so.
+
+### Not changed
+
+- The draggable focus suppression, the uploader `display`, the drag-handle padding and `.is-active-filter` keep their `!important`, because each competes with a core rule or an inline style.
+- The five button classes keep theirs for the same reason; all five carry core's `.button`. They are `.roci-bulk-organize-btn`, `.roci-sidebar-new-folder-btn`, `.roci-bulk-move-btn`, `.roci-bulk-delete-btn` and `.roci-modal-destructive`.
+- `_admin-folders-bulk.scss` is untouched, including the sanctioned `.select-mode-toggle-button` suppression.
+
+The compiled `!important` count in `admin-folders.css` goes from 47 to 34.
+
+---
+
 ## [7.0.9] — 2026-10-08
 
 **FIX (#35): Meta Box field data and folder term IDs are gated in REST post responses.**
