@@ -17,7 +17,7 @@
  *   roci_enqueue_dragdrop_assets()         — enqueues drag JS for Media + CPT list screens
  *
  * File:    inc/folders/move.php
- * Version: 1.5.1
+ * Version: 1.6.0
  * Updated: 2026-10-09
  *
  * @package ElRocinante
@@ -432,6 +432,19 @@ add_action( 'wp_ajax_roci_move_item_to_folder', 'roci_ajax_move_item_to_folder' 
 // ============================================================
 
 /**
+ * The one normalisation of a post type for drag-handle hooks: underscores to
+ * hyphens. Used for the handle's class and data attribute and for the JS
+ * config (handleClass, datasetAttr, dragType, bodyDragClass), so PHP and JS
+ * cannot disagree. Internal.
+ *
+ * @param  string $post_type Post type key, e.g. 'page' or 'my_cpt'.
+ * @return string            'page', 'my-cpt'.
+ */
+function roci_folder_type_slug( $post_type ) {
+	return str_replace( '_', '-', (string) $post_type );
+}
+
+/**
  * Insert the drag-handle column immediately after the checkbox column.
  *
  * Hooked to manage_{post_type}_posts_columns for each post type registered
@@ -464,6 +477,13 @@ function roci_folder_drag_column_filter( $columns ) {
  * is the one the stylesheet targets, so posts and CPTs get the same handle
  * styling pages always had. The per-type class stays: the JS finds handles by it.
  *
+ * The type is normalised by roci_folder_type_slug() (v1.6.0), the same function
+ * that builds the JS config in roci_enqueue_dragdrop_assets(), so the class and
+ * data attribute always match what the script looks for. A type with an
+ * underscore (my_cpt → .roci-my-cpt-drag-handle, data-my-cpt-id → dataset
+ * myCptId) used to render the raw slug here and the hyphenated one in the JS
+ * config, and its handles never dragged. page and post are unchanged.
+ *
  * @param string $column_name  Current column slug.
  * @param int    $post_id      Current post ID.
  */
@@ -471,9 +491,9 @@ function roci_folder_drag_column_render( $column_name, $post_id ) {
 	if ( 'roci_drag_handle' !== $column_name ) {
 		return;
 	}
-	$post_type    = get_post_type( $post_id );
-	$handle_class = 'roci-drag-handle roci-' . $post_type . '-drag-handle';
-	$data_attr    = 'data-' . $post_type . '-id';
+	$type_slug    = roci_folder_type_slug( get_post_type( $post_id ) );
+	$handle_class = 'roci-drag-handle roci-' . $type_slug . '-drag-handle';
+	$data_attr    = 'data-' . $type_slug . '-id';
 	echo '<span class="' . esc_attr( $handle_class ) . '" draggable="true" '
 		. esc_attr( $data_attr ) . '="' . esc_attr( $post_id ) . '" aria-hidden="true">'
 		. '<span class="dashicons dashicons-move"></span>'
@@ -537,8 +557,9 @@ function roci_enqueue_dragdrop_assets( $hook_suffix ) {
 		return;
 	}
 
-	// Derive per-post-type config from the slug.
-	$slug_hyphen  = str_replace( '_', '-', $current_post_type );
+	// Derive per-post-type config from the slug — the same normalisation the
+	// handle markup uses (roci_folder_drag_column_render()).
+	$slug_hyphen  = roci_folder_type_slug( $current_post_type );
 	$parts        = explode( '-', $slug_hyphen );
 	$dataset_attr = $parts[0] . implode( '', array_map( 'ucfirst', array_slice( $parts, 1 ) ) ) . 'Id';
 

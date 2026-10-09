@@ -9,14 +9,20 @@
  * so the functions are available, but registration is left to the child.
  *
  * File:    inc/blog-shortcodes.php
- * Version: 1.1.2
+ * Version: 1.2.0
  * Updated: 2026-10-09
  *
  * @package ElRocinante
  *
  * Public API:
- *   roci_blog_icon( $name )          — Inline SVG by name (anchor|helm-wheel|external-link|wave|info)
+ *   roci_blog_icon( $name )          — Inline SVG by name (check|external-link|info, plus any
+ *                                      child icon added through the roci_blog_icons filter)
  *   roci_register_blog_shortcodes() — Registers all seven shortcodes with WordPress
+ *
+ * v1.2.0: the icon set is filterable (roci_blog_icons) and neutral. anchor,
+ *   helm-wheel and wave left the parent; a child that uses them registers them
+ *   through the filter. [roci_expect]'s default icon is now 'check' (was
+ *   'anchor'); [roci_notes]'s stays 'info'.
  *
  * Shortcodes registered by roci_register_blog_shortcodes():
  *   [roci_image id="" caption="" alt=""]
@@ -43,7 +49,7 @@
  *
  *   function roci_blog_config() {
  *       return [
- *           'expect' => [ 'label' => 'What to Expect', 'icon' => 'anchor' ],
+ *           'expect' => [ 'label' => 'What to Expect', 'icon' => 'check' ],
  *           'notes'  => [ 'label' => 'Note',           'icon' => 'info'   ],
  *       ];
  *   }
@@ -67,36 +73,27 @@
  * so legacy IE/Edge never makes the <svg> a tab stop. No <title>.
  * Returns empty string for unknown names.
  *
- * @param  string $name  anchor | helm-wheel | external-link | wave | info
+ * THE PARENT SET IS NEUTRAL (v1.2.0): check, external-link, info. The nautical
+ * icons that used to sit here (anchor, helm-wheel, wave) carried an industry
+ * and broke the content-agnostic rule; a child that wants them registers them
+ * itself through the roci_blog_icons filter.
+ *
+ * FILTER — roci_blog_icons( $icons ): name => SVG markup. A child adds or
+ * replaces icons; every icon it supplies keeps aria-hidden="true"
+ * focusable="false" (CONVENTIONS → "Icon markup"). Not memoized, so a late
+ * add_filter() still works. A non-array return is ignored (the parent set is
+ * used), and a non-string value counts as an unknown name.
+ *
+ * @param  string $name  check | external-link | info, plus any child-registered name
  * @return string        SVG markup or empty string.
  */
 function roci_blog_icon( $name ) {
     $icons = [
-        'anchor' =>
+        'check' =>
             '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24"'
             . ' fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round"'
             . ' stroke-linejoin="round" aria-hidden="true" focusable="false">'
-            . '<circle cx="12" cy="5" r="2"/>'
-            . '<line x1="12" y1="7" x2="12" y2="19"/>'
-            . '<path d="M5 12a7 7 0 0 0 14 0"/>'
-            . '<line x1="5" y1="12" x2="2" y2="12"/>'
-            . '<line x1="19" y1="12" x2="22" y2="12"/>'
-            . '</svg>',
-
-        'helm-wheel' =>
-            '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24"'
-            . ' fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round"'
-            . ' stroke-linejoin="round" aria-hidden="true" focusable="false">'
-            . '<circle cx="12" cy="12" r="3"/>'
-            . '<circle cx="12" cy="12" r="9"/>'
-            . '<line x1="12" y1="3" x2="12" y2="9"/>'
-            . '<line x1="12" y1="15" x2="12" y2="21"/>'
-            . '<line x1="3" y1="12" x2="9" y2="12"/>'
-            . '<line x1="15" y1="12" x2="21" y2="12"/>'
-            . '<line x1="5.64" y1="5.64" x2="9.17" y2="9.17"/>'
-            . '<line x1="14.83" y1="14.83" x2="18.36" y2="18.36"/>'
-            . '<line x1="18.36" y1="5.64" x2="14.83" y2="9.17"/>'
-            . '<line x1="9.17" y1="14.83" x2="5.64" y2="18.36"/>'
+            . '<polyline points="20 6 9 17 4 12"/>'
             . '</svg>',
 
         'external-link' =>
@@ -106,14 +103,6 @@ function roci_blog_icon( $name ) {
             . '<path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>'
             . '<polyline points="15 3 21 3 21 9"/>'
             . '<line x1="10" y1="14" x2="21" y2="3"/>'
-            . '</svg>',
-
-        'wave' =>
-            '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24"'
-            . ' fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round"'
-            . ' stroke-linejoin="round" aria-hidden="true" focusable="false">'
-            . '<path d="M2 12c1.5-2 3-2 4.5 0s3 2 4.5 0 3-2 4.5 0 3 2 4.5 0"/>'
-            . '<path d="M2 17c1.5-2 3-2 4.5 0s3 2 4.5 0 3-2 4.5 0 3 2 4.5 0"/>'
             . '</svg>',
 
         'info' =>
@@ -126,7 +115,12 @@ function roci_blog_icon( $name ) {
             . '</svg>',
     ];
 
-    return $icons[ $name ] ?? '';
+    $filtered = apply_filters( 'roci_blog_icons', $icons );
+    if ( is_array( $filtered ) ) {
+        $icons = $filtered;
+    }
+
+    return ( isset( $icons[ $name ] ) && is_string( $icons[ $name ] ) ) ? $icons[ $name ] : '';
 }
 
 
@@ -356,7 +350,7 @@ function roci_sc_expect( $atts, $content = '' ) {
     $level = roci_blog_heading_level( $atts['level'] );
     $cfg   = roci_blog_cfg();
     $label = $atts['title'] ? trim( $atts['title'] ) : ( $cfg['expect']['label'] ?? 'What to Expect' );
-    $icon  = roci_blog_icon_markup( $cfg['expect']['icon'] ?? '', 'anchor' );
+    $icon  = roci_blog_icon_markup( $cfg['expect']['icon'] ?? '', 'check' );
 
     // Normalise wpautop <br> variants back to newlines before stripping all tags.
     $text  = str_replace( [ '<br>', '<br/>', '<br />' ], "\n", $content );

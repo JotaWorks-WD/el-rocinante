@@ -4,6 +4,54 @@ All notable changes to the El Rocinante parent theme are recorded here. Entries 
 
 ---
 
+## [7.4.0] — 2026-10-09
+
+**FEAT: a filterable, neutral blog icon set (`roci_blog_icons`). FIX: drag handles for post types with an underscore.**
+
+PHP only. **No CSS change**, no JavaScript change. Minor: a new extension point, and a changed default (below).
+
+**This release also ships everything in [7.3.1]**, which was never deployed to the sites. Deploying 7.4.0 delivers both. Those items:
+- `twitter:url` uses `name=`;
+- the footer copyright is one translatable string;
+- dead code removed: `.roci-sidebar-divider`, `defaultOgImg`, `rociForceLibraryRefresh()` and `wp-color-picker`;
+- the shared drag-handle class and body class;
+- the Build page docblocks.
+
+The 7.3.1 entry below has the detail.
+
+### Why
+
+The blog shortcode icons included a nautical set (`anchor`, `helm-wheel`, `wave`). That breaks the content-agnostic rule (§12.4): the parent shipped one vertical's vocabulary to every site. The drift recon flagged it (5.15).
+
+The drag-handle markup built its class and data attribute from the raw post type. The JS config was built from the hyphenated one. For a type with an underscore they never matched, so its handles could not be dragged.
+
+### Changes
+
+- **`roci_blog_icons( $icons )`** (`inc/blog-shortcodes.php`, dispatched in `roci_blog_icon()`): name ⇒ SVG markup.
+  - A child adds or replaces icons, keeping `aria-hidden="true" focusable="false"`.
+  - Not memoized.
+  - A non-array return is ignored. A non-string value counts as an unknown name.
+- **The parent set is neutral:** `check` (new), `external-link` and `info`. **`anchor`, `helm-wheel` and `wave` are removed** from the parent. A child that uses them registers them through the filter.
+- **Changed default:** `[roci_expect]` without a configured icon now shows **`check`** (it was `anchor`). `[roci_notes]` still defaults to `info`.
+- **Fallback is unchanged:** an empty or unknown configured name renders the shortcode's default icon. A raw SVG config value still passes straight through.
+- **`roci_folder_type_slug( $post_type )`** (`inc/folders/move.php`, internal) is the one normalisation: underscores become hyphens. Both of these now use it:
+  - the handle's class and `data-*-id` attribute (`roci_folder_drag_column_render()`);
+  - the JS config (`roci_enqueue_dragdrop_assets()`).
+  - `my_cpt` now renders `.roci-my-cpt-drag-handle` with `data-my-cpt-id`, which the script reads as `dataset.myCptId`. `page` and `post` output is unchanged.
+
+### For children
+
+A child whose `roci_blog_config()` names `anchor`, `helm-wheel` or `wave` must register those icons through `roci_blog_icons`, or the shortcode falls back to its default icon. Fish Potrero does this from child 5.50.2, with the former markup byte for byte. A child on this parent with no icon config sees `check` instead of `anchor` on `[roci_expect]`.
+
+### Files
+
+| File | Version |
+|---|---|
+| `inc/blog-shortcodes.php` | v1.1.2 → v1.2.0 |
+| `inc/folders/move.php` | v1.5.1 → v1.6.0 |
+
+---
+
 ## [7.3.1] — 2026-10-09
 
 **CHORE: the parent drift recon's leftover items (5.10, 5.5, 4.2, 4.5, 4.4, 4.7, 4.3, 1.6). No design change.**
