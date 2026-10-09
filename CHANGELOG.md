@@ -4,6 +4,46 @@ All notable changes to the El Rocinante parent theme are recorded here. Entries 
 
 ---
 
+## [7.3.0] — 2026-10-09
+
+**FEAT (G2a, G1d): `roci_get_page_url()`, and `focusable="false"` on the blog icons.**
+
+PHP only. **No CSS change**, no JavaScript. Minor: a new child-facing helper, no contract removed.
+
+### Why
+
+The "Internal page links — resolve, don't hardcode" convention had no implementation in the parent. Three children each carried their own template-then-slug lookup, and the copies had drifted: one was uncached and would link a draft page found by its slug. The family DRY recon (G2a) promoted the most correct copy.
+
+The blog icons were the parent's only decorative SVGs without `focusable="false"` (G1d). The icon-markup convention written alongside this release (CONVENTIONS, under the accessibility conventions) requires it.
+
+### Changes
+
+- **`roci_get_page_url( $template, $slug = '' )`** (`inc/helpers.php`, new "Internal page links" section):
+  1. The newest **published** page whose `_wp_page_template` is `$template`.
+  2. Otherwise the page at `$slug`, **published only**.
+  3. Otherwise `''`, never a guessed URL.
+  - Per-request static cache keyed on both arguments; misses are cached too.
+  - An empty `$template` skips step 1. Without that guard the meta query drops its value test and matches any page with a template assigned.
+- **`roci_blog_icon()`** (`inc/blog-shortcodes.php`): each of the five SVGs gains `focusable="false"` after its existing `aria-hidden="true"`. Nothing else in the output changes. It reaches the `[roci_notes]` and `[roci_expect]` icons.
+
+### For children
+
+**Nothing breaks, and nothing has to move.** A child's own resolver keeps working. Migrate it opportunistically, the next time its file is touched:
+
+- an alias becomes `return roci_get_page_url( $template, $slug );`;
+- a single-target helper becomes one call with its template and slug.
+
+A child that calls `roci_get_page_url()` needs parent 7.3.0 or later.
+
+### Files
+
+| File | Version |
+|---|---|
+| `inc/helpers.php` | v1.17.0 → v1.18.0 |
+| `inc/blog-shortcodes.php` | v1.1.1 → v1.1.2 |
+
+---
+
 ## [7.2.0] — 2026-10-09
 
 **FEAT (S1–S6): listing seams to retire the children's listing templates.**

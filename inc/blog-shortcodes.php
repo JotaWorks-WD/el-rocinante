@@ -9,8 +9,8 @@
  * so the functions are available, but registration is left to the child.
  *
  * File:    inc/blog-shortcodes.php
- * Version: 1.1.1
- * Updated: 2026-10-06
+ * Version: 1.1.2
+ * Updated: 2026-10-09
  *
  * @package ElRocinante
  *
@@ -63,6 +63,8 @@
  *
  * Returns an inline SVG string for the given icon name.
  * All icons use stroke="currentColor" so child SCSS controls color.
+ * Every icon is decorative: aria-hidden="true" plus focusable="false" (v1.1.2),
+ * so legacy IE/Edge never makes the <svg> a tab stop. No <title>.
  * Returns empty string for unknown names.
  *
  * @param  string $name  anchor | helm-wheel | external-link | wave | info
@@ -73,7 +75,7 @@ function roci_blog_icon( $name ) {
         'anchor' =>
             '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24"'
             . ' fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round"'
-            . ' stroke-linejoin="round" aria-hidden="true">'
+            . ' stroke-linejoin="round" aria-hidden="true" focusable="false">'
             . '<circle cx="12" cy="5" r="2"/>'
             . '<line x1="12" y1="7" x2="12" y2="19"/>'
             . '<path d="M5 12a7 7 0 0 0 14 0"/>'
@@ -84,7 +86,7 @@ function roci_blog_icon( $name ) {
         'helm-wheel' =>
             '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24"'
             . ' fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round"'
-            . ' stroke-linejoin="round" aria-hidden="true">'
+            . ' stroke-linejoin="round" aria-hidden="true" focusable="false">'
             . '<circle cx="12" cy="12" r="3"/>'
             . '<circle cx="12" cy="12" r="9"/>'
             . '<line x1="12" y1="3" x2="12" y2="9"/>'
@@ -100,7 +102,7 @@ function roci_blog_icon( $name ) {
         'external-link' =>
             '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24"'
             . ' fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round"'
-            . ' stroke-linejoin="round" aria-hidden="true">'
+            . ' stroke-linejoin="round" aria-hidden="true" focusable="false">'
             . '<path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>'
             . '<polyline points="15 3 21 3 21 9"/>'
             . '<line x1="10" y1="14" x2="21" y2="3"/>'
@@ -109,7 +111,7 @@ function roci_blog_icon( $name ) {
         'wave' =>
             '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24"'
             . ' fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round"'
-            . ' stroke-linejoin="round" aria-hidden="true">'
+            . ' stroke-linejoin="round" aria-hidden="true" focusable="false">'
             . '<path d="M2 12c1.5-2 3-2 4.5 0s3 2 4.5 0 3-2 4.5 0 3 2 4.5 0"/>'
             . '<path d="M2 17c1.5-2 3-2 4.5 0s3 2 4.5 0 3-2 4.5 0 3 2 4.5 0"/>'
             . '</svg>',
@@ -117,7 +119,7 @@ function roci_blog_icon( $name ) {
         'info' =>
             '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24"'
             . ' fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round"'
-            . ' stroke-linejoin="round" aria-hidden="true">'
+            . ' stroke-linejoin="round" aria-hidden="true" focusable="false">'
             . '<circle cx="12" cy="12" r="10"/>'
             . '<line x1="12" y1="8" x2="12.01" y2="8"/>'
             . '<line x1="12" y1="12" x2="12" y2="16"/>'

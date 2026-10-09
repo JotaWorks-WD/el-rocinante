@@ -7,7 +7,7 @@
  * and template parts throughout El Rocinante and child themes.
  *
  * File:    inc/helpers.php
- * Version: 1.17.0
+ * Version: 1.18.0
  * Updated: 2026-10-09
  *
  * @package ElRocinante
@@ -29,6 +29,7 @@
  *   roci_current_atts()            — Returns aria-current for the link to the page being viewed
  *   roci_current_path()            — (internal) Normalised path of the current page, once per request
  *   roci_normalize_url_path()      — (internal) Normalises a URL path for comparison
+ *   roci_get_page_url()            — An internal page's URL, by assigned template then slug ('' on a miss)
  *   jw_wysiwyg_body()              — Expands shortcodes + targets external links inside stored wysiwyg HTML
  *   roci_sanitize_object_position() — Whitelists a CSS object-position value (strict)
  *   roci_get_hero_focus()          — Resolves the sanitized hero focal point for a post
@@ -1271,6 +1272,84 @@ function roci_normalize_url_path( $path ) {
     $path = preg_replace( '#/+#', '/', $path );
 
     return '' === $path ? '/' : '/' . $path . '/';
+}
+
+
+// ============================================================
+// INTERNAL PAGE LINKS
+// ============================================================
+
+/**
+ * roci_get_page_url()
+ *
+ * The URL of one of this site's own pages, resolved TEMPLATE FIRST, SLUG
+ * SECOND (CONVENTIONS: "Internal page links — resolve, don't hardcode"). For
+ * nav, footer and CTA links, in place of a literal home_url( '/about/' ):
+ *
+ *   roci_get_page_url( 'pages/page-contact.php', 'contact' )
+ *
+ * 1. The newest PUBLISHED page whose _wp_page_template is $template. The
+ *    template assignment is what the site keys on, so this survives a slug
+ *    change made in wp-admin for SEO reasons.
+ * 2. Otherwise the page at $slug (a full path for a child page, e.g.
+ *    'about/team'), and only if it is PUBLISHED. A draft, private
+ *    or trashed page is never linked.
+ * 3. Otherwise ''. Never a guessed URL: the caller skips the link rather than
+ *    print one that 404s.
+ *
+ * An empty $template skips step 1. Without that guard the meta query would
+ * drop its value test and match ANY page that has a template assigned.
+ *
+ * Cached per request, keyed on both arguments, so a nav and a footer resolving
+ * the same page cost one query. A miss is cached too.
+ *
+ * Pair it with roci_current_atts() and jw_link_atts() on the anchor, and skip
+ * the link when it returns ''. Only the home link is home_url( '/' ).
+ *
+ * @param  string $template Template path relative to the theme root, e.g. 'pages/page-about.php'.
+ * @param  string $slug     Fallback page path, e.g. 'about'. Optional.
+ * @return string           Permalink, or '' when neither lookup finds a published page.
+ */
+function roci_get_page_url( $template, $slug = '' ) {
+    static $cache = array();
+
+    $template = (string) $template;
+    $slug     = (string) $slug;
+    $key      = $template . '|' . $slug;
+
+    if ( isset( $cache[ $key ] ) ) {
+        return $cache[ $key ];
+    }
+
+    $url = '';
+
+    if ( '' !== $template ) {
+        $ids = get_posts( array(
+            'post_type'      => 'page',
+            'post_status'    => 'publish',
+            'meta_key'       => '_wp_page_template',
+            'meta_value'     => $template,
+            'posts_per_page' => 1,
+            'fields'         => 'ids',
+            'no_found_rows'  => true,
+        ) );
+
+        if ( $ids ) {
+            $url = (string) get_permalink( $ids[0] );
+        }
+    }
+
+    if ( '' === $url && '' !== $slug ) {
+        $page = get_page_by_path( $slug );
+
+        if ( $page && 'publish' === $page->post_status ) {
+            $url = (string) get_permalink( $page );
+        }
+    }
+
+    $cache[ $key ] = $url;
+
+    return $url;
 }
 
 
