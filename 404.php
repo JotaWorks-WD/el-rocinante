@@ -10,10 +10,13 @@
  *     roci_entry_title_mode( '404' ).
  *   template-parts/content-none.php — the copy, the search form and the link
  *     home, inside the 'results' container.
- * Seams: roci_listing_classes and roci_after_loop (after the content).
+ * Seams: roci_listing_classes (incl. the v1.2.0 inner slot; results_tag is
+ * ignored here — the results container holds the empty state), roci_after_loop
+ * (after the content), roci_empty_state_copy, and — in the header part —
+ * roci_listing_title and roci_listing_header_classes.
  *
  * File:    404.php
- * Version: 1.1.0
+ * Version: 1.2.0
  * Updated: 2026-10-09
  *
  * @package ElRocinante
@@ -26,13 +29,13 @@ get_header(); ?>
 <main id="main-content" class="site-main">
     <div class="<?php echo roci_class_attr( $roci_classes['wrapper'] ); ?>">
 
-        <?php get_template_part( 'template-parts/listing-header', null, array( 'context' => '404' ) ); ?>
+        <?php roci_listing_inner_open( $roci_classes ); get_template_part( 'template-parts/listing-header', null, array( 'context' => '404' ) ); ?>
 
-        <div class="<?php echo roci_class_attr( $roci_classes['results'] ); ?>">
+        <<?php echo tag_escape( $roci_classes['results_tag'] ); ?><?php echo roci_listing_results_atts( $roci_classes ); ?>>
             <?php get_template_part( 'template-parts/content', 'none', array( 'context' => '404' ) ); ?>
-        </div>
+        </<?php echo tag_escape( $roci_classes['results_tag'] ); ?>>
 
-        <?php do_action( 'roci_after_loop', '404' ); ?>
+        <?php do_action( 'roci_after_loop', '404' ); roci_listing_inner_close( $roci_classes ); ?>
 
     </div>
 </main>

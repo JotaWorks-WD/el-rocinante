@@ -7,7 +7,7 @@
  * and template parts throughout El Rocinante and child themes.
  *
  * File:    inc/helpers.php
- * Version: 1.16.0
+ * Version: 1.17.0
  * Updated: 2026-10-09
  *
  * @package ElRocinante
@@ -34,10 +34,17 @@
  *   roci_get_hero_focus()          — Resolves the sanitized hero focal point for a post
  *   roci_entry_title_mode()        — How the parent's templates render the page's <h1> (filterable)
  *   roci_listing_context()         — (internal) Normalises a listing context to index / archive / search / 404
- *   roci_get_listing_classes()     — Wrapper + results classes for a listing template (roci_listing_classes)
+ *   roci_get_listing_classes()     — Listing container classes + results_tag (roci_listing_classes)
+ *   roci_listing_results_atts()    — (internal) class + role attributes of the results container
+ *   roci_listing_inner_open()      — (internal) The optional 'inner' <div> open / close
+ *   roci_listing_inner_close()
+ *   roci_listing_pagination()      — (internal) the_posts_pagination() in the optional 'pagination' <div>
+ *   roci_get_listing_header_classes() — Listing <header> / <h1> / description classes (roci_listing_header_classes)
+ *   roci_listing_shows_search_form() — Whether search.php prints its top form (roci_listing_search_form)
  *   roci_get_pagination_args()     — the_posts_pagination() args for a listing (roci_pagination_args)
  *   roci_resolve_class_slots()     — (internal) Validates + sanitises a filtered slot => classes map
  *   roci_class_attr()              — (internal) Escaped class="" value from a class list
+ *   roci_class_attribute()         — (internal) Whole ' class="…"' attribute, or '' when empty
  *
  * Future expansion:
  *   If this file grows significantly, split into:
@@ -1562,7 +1569,7 @@ function roci_entry_title_mode( $template, $post_id = 0 ) {
 
 
 // ============================================================
-// LISTING TEMPLATES — class and pagination seams (v1.16.0)
+// LISTING TEMPLATES — class and pagination seams (v1.16.0; S1/S3/S4 v1.17.0)
 // ============================================================
 
 /**
@@ -1582,20 +1589,35 @@ function roci_listing_context( $context ) {
 /**
  * roci_get_listing_classes()
  *
- * Classes for a listing template's two containers: 'wrapper' (the element
- * inside <main> that holds the whole listing) and 'results' (the element that
- * holds the loop items — on 404, the empty state). Filterable via
- * roci_listing_classes( $classes, $context ).
+ * Classes for a listing template's containers. Filterable via
+ * roci_listing_classes( $classes, $context ):
+ *   'wrapper'     — the element inside <main> that holds the whole listing.
+ *   'results'     — the element that holds the loop items (on 404, the empty
+ *                   state).
+ *   'inner'       — (v1.17.0) [] by default. When non-empty, a <div> printed
+ *                   directly inside the wrapper, around the header, search form,
+ *                   results, pagination, empty state and roci_after_loop.
+ *   'pagination'  — (v1.17.0) [] by default. When non-empty, a <div> wrapped
+ *                   around the_posts_pagination(). Never a <nav>: core prints
+ *                   that already.
+ *   'results_tag' — (v1.17.0) 'div' by default; 'ul' or 'ol' make the results
+ *                   container a list with role="list", and the item part MUST
+ *                   then emit <li>. Ignored on 404, whose results container
+ *                   holds the empty state, not items — always a <div> there.
  *
  * The defaults keep every class these templates carried before v7.1.0, so
- * existing child CSS still matches. '404' cannot be a class prefix that
- * starts a CSS selector cleanly, so that context's names use 'error-404'.
+ * existing child CSS still matches, and the three v7.2.0 slots default to
+ * "print nothing extra", so the markup is byte-identical when unfiltered.
+ * '404' cannot be a class prefix that starts a CSS selector cleanly, so that
+ * context's names use 'error-404'.
  *
  * A filter that drops a key gets the default back for that key; every class
- * is passed through sanitize_html_class() (roci_resolve_class_slots()).
+ * is passed through sanitize_html_class() (roci_resolve_class_slots()), and
+ * results_tag is whitelisted.
  *
  * @param  string $context 'index', 'archive', 'search' or '404'.
- * @return array           array( 'wrapper' => string[], 'results' => string[] ).
+ * @return array           'wrapper', 'results', 'inner', 'pagination' => string[];
+ *                         'results_tag' => 'div' | 'ul' | 'ol'.
  */
 function roci_get_listing_classes( $context ) {
     $context = roci_listing_context( $context );
@@ -1619,10 +1641,137 @@ function roci_get_listing_classes( $context ) {
         ),
     );
 
-    return roci_resolve_class_slots(
-        apply_filters( 'roci_listing_classes', $defaults[ $context ], $context ),
-        $defaults[ $context ]
+    $slots = $defaults[ $context ] + array(
+        'inner'      => array(),
+        'pagination' => array(),
     );
+
+    $filtered = apply_filters( 'roci_listing_classes', $slots + array( 'results_tag' => 'div' ), $context );
+
+    $classes = roci_resolve_class_slots( $filtered, $slots );
+
+    $tag = ( is_array( $filtered ) && isset( $filtered['results_tag'] ) ) ? $filtered['results_tag'] : 'div';
+
+    $classes['results_tag'] = ( '404' !== $context && in_array( $tag, array( 'ul', 'ol' ), true ) ) ? $tag : 'div';
+
+    return $classes;
+}
+
+/**
+ * roci_listing_results_atts()
+ *
+ * (internal) The attributes of a listing's results container: its class
+ * attribute, plus role="list" when results_tag is a list (the parent's global
+ * list-style: none would otherwise strip list semantics in WebKit). Printed
+ * between the tag name and the closing ">", so a <div> default is unchanged.
+ *
+ * @param  array $classes roci_get_listing_classes() output.
+ * @return string         Leading-space attribute string.
+ */
+function roci_listing_results_atts( $classes ) {
+    $atts = ' class="' . roci_class_attr( $classes['results'] ) . '"';
+
+    return 'div' === $classes['results_tag'] ? $atts : $atts . ' role="list"';
+}
+
+/**
+ * roci_listing_inner_open() / roci_listing_inner_close()
+ *
+ * (internal) Print the optional 'inner' <div> (roci_listing_classes), or
+ * nothing at all when the slot is empty — so an unfiltered listing's markup
+ * is byte-identical to v7.1.0.
+ *
+ * @param array $classes roci_get_listing_classes() output.
+ */
+function roci_listing_inner_open( $classes ) {
+    if ( $classes['inner'] ) {
+        echo '<div class="' . roci_class_attr( $classes['inner'] ) . '">';
+    }
+}
+
+function roci_listing_inner_close( $classes ) {
+    if ( $classes['inner'] ) {
+        echo '</div>';
+    }
+}
+
+/**
+ * roci_listing_pagination()
+ *
+ * (internal) the_posts_pagination() with roci_pagination_args( $context ),
+ * inside the optional 'pagination' <div> (roci_listing_classes). Nothing is
+ * added around core's <nav> when the slot is empty.
+ *
+ * @param string $context 'index', 'archive' or 'search'.
+ * @param array  $classes roci_get_listing_classes() output.
+ */
+function roci_listing_pagination( $context, $classes ) {
+    if ( $classes['pagination'] ) {
+        echo '<div class="' . roci_class_attr( $classes['pagination'] ) . '">';
+    }
+
+    the_posts_pagination( roci_get_pagination_args( $context ) );
+
+    if ( $classes['pagination'] ) {
+        echo '</div>';
+    }
+}
+
+/**
+ * roci_get_listing_header_classes()
+ *
+ * (v1.17.0) Classes for template-parts/listing-header.php. Filterable via
+ * roci_listing_header_classes( $classes, $context ):
+ *   'header'      — the <header> element: '{context}-header' ('archive-header'
+ *                   for index and archive, 'search-header', 'error-404-header').
+ *                   An EXPLICIT [] omits the <header> element entirely — the
+ *                   eyebrow action, the <h1> and the description then print
+ *                   directly in their container.
+ *   'title'       — the <h1>: array( 'entry-title' ). roci_entry_title_mode()
+ *                   still adds .screen-reader-text for 'hidden'.
+ *   'description' — the archive description: array( 'archive-description' ).
+ *
+ * A missing key falls back to its default; every class goes through
+ * sanitize_html_class() (roci_resolve_class_slots()).
+ *
+ * @param  string $context 'index', 'archive', 'search' or '404'.
+ * @return array           'header', 'title', 'description' => string[].
+ */
+function roci_get_listing_header_classes( $context ) {
+    $context = roci_listing_context( $context );
+
+    $header = array(
+        'index'   => 'archive-header',
+        'archive' => 'archive-header',
+        'search'  => 'search-header',
+        '404'     => 'error-404-header',
+    );
+
+    $defaults = array(
+        'header'      => array( $header[ $context ] ),
+        'title'       => array( 'entry-title' ),
+        'description' => array( 'archive-description' ),
+    );
+
+    return roci_resolve_class_slots(
+        apply_filters( 'roci_listing_header_classes', $defaults, $context ),
+        $defaults
+    );
+}
+
+/**
+ * roci_listing_shows_search_form()
+ *
+ * (v1.17.0) Whether search.php prints its search form above the results.
+ * Filterable via roci_listing_search_form( $show, $context ), default true.
+ * When false, template-parts/content-none.php prints the form in the search
+ * empty state instead, so a search page is never left without one.
+ *
+ * @param  string $context 'search' (the only context that prints a top form).
+ * @return bool
+ */
+function roci_listing_shows_search_form( $context ) {
+    return (bool) apply_filters( 'roci_listing_search_form', true, roci_listing_context( $context ) );
 }
 
 /**
@@ -1630,8 +1779,10 @@ function roci_get_listing_classes( $context ) {
  *
  * (internal) Validates a filtered slot => class-list map against its
  * defaults: a slot the filter dropped, or returned as a non-array, gets its
- * default back, and every class is passed through sanitize_html_class().
- * Shared by roci_get_listing_classes() and searchform.php.
+ * default back, and every class is passed through sanitize_html_class(). An
+ * explicit empty array is kept — that is how a slot is switched off.
+ * Shared by roci_get_listing_classes(), roci_get_listing_header_classes() and
+ * searchform.php.
  *
  * @param  mixed $classes  The filtered map.
  * @param  array $defaults The default map, slot => string[].
@@ -1680,4 +1831,18 @@ function roci_get_pagination_args( $context ) {
  */
 function roci_class_attr( $classes ) {
     return esc_attr( implode( ' ', (array) $classes ) );
+}
+
+/**
+ * roci_class_attribute()
+ *
+ * (internal, v1.17.0) A whole leading-space class="" attribute, or '' when
+ * the list is empty — for elements whose class slot a filter may empty, so
+ * they print no empty class="" attribute.
+ *
+ * @param  string[] $classes Class names.
+ * @return string            ' class="…"' or ''.
+ */
+function roci_class_attribute( $classes ) {
+    return $classes ? ' class="' . roci_class_attr( $classes ) . '"' : '';
 }

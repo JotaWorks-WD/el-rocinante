@@ -22,7 +22,7 @@
  * the label is correctly hidden everywhere with no child CSS at all.
  *
  * File:    searchform.php
- * Version: 1.2.0
+ * Version: 1.3.0
  * Updated: 2026-10-09
  *
  * @package ElRocinante
@@ -70,9 +70,17 @@ $roci_search_placeholder = apply_filters(
  *
  * A key the filter drops gets its default back; every class is passed
  * through sanitize_html_class().
+ *
+ * Two more slots since v1.3.0, both defaulting to the markup above:
+ *   'label' — the <label>: array( 'screen-reader-text' ). Replace it to show
+ *             the label; an empty array prints no class attribute at all.
+ *   'row'   — array() by default. When non-empty, a <div> wraps the input and
+ *             the button, for a design that lays them out as one row.
  */
 $roci_search_class_defaults = array(
 	'form'   => array( 'search-form' ),
+	'label'  => array( 'screen-reader-text' ),
+	'row'    => array(),
 	'input'  => array( 'form__input', 'search-form__input' ),
 	'button' => array( 'btn', 'btn--secondary', 'search-form__submit' ),
 );
@@ -84,10 +92,13 @@ $roci_search_classes = roci_resolve_class_slots(
 
 <form role="search" method="get" class="<?php echo roci_class_attr( $roci_search_classes['form'] ); ?>" action="<?php echo esc_url( home_url( '/' ) ); ?>">
 
-	<label class="screen-reader-text" for="<?php echo esc_attr( $roci_search_id ); ?>">
+	<label<?php echo roci_class_attribute( $roci_search_classes['label'] ); ?> for="<?php echo esc_attr( $roci_search_id ); ?>">
 		<?php esc_html_e( 'Search this site', 'rocinante' ); ?>
 	</label>
 
+<?php if ( $roci_search_classes['row'] ) : ?>
+	<div class="<?php echo roci_class_attr( $roci_search_classes['row'] ); ?>">
+<?php endif; ?>
 	<input
 		type="search"
 		id="<?php echo esc_attr( $roci_search_id ); ?>"
@@ -100,5 +111,8 @@ $roci_search_classes = roci_resolve_class_slots(
 	<button type="submit" class="<?php echo roci_class_attr( $roci_search_classes['button'] ); ?>">
 		<?php esc_html_e( 'Search', 'rocinante' ); ?>
 	</button>
+<?php if ( $roci_search_classes['row'] ) : ?>
+	</div>
+<?php endif; ?>
 
 </form>

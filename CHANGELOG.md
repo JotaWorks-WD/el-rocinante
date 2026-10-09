@@ -4,6 +4,50 @@ All notable changes to the El Rocinante parent theme are recorded here. Entries 
 
 ---
 
+## [7.2.0] — 2026-10-09
+
+**FEAT (S1–S6): listing seams to retire the children's listing templates.**
+
+PHP only. **No CSS change**, no JavaScript. Minor: new extension points, no contract removed. **Every default prints the v7.1.0 markup byte for byte**: each new element or attribute is emitted only when a filter asks for it.
+
+### Why
+
+A seam gap map against the two live children found their `search.php`, `archive.php` and `404.php` overrides could not be reproduced on 7.1.0:
+
+- the `<h1>` text and classes had no seam;
+- neither did nested wrappers, list-shaped results, a pagination wrapper, a visible search label, or a search form that appears only when there are no results.
+
+These six seams close every gap. A child can now drop those templates for filters plus, at most, item and empty-state part overrides.
+
+### New seams
+
+- **S1 — `roci_listing_classes` gains three slots** (`inc/helpers.php`):
+  - `inner` (`[]`): when non-empty, a `<div>` directly inside the wrapper, around the header, search form, results, pagination, empty state and `roci_after_loop`.
+  - `pagination` (`[]`): when non-empty, a `<div>` around `the_posts_pagination()`.
+  - `results_tag` (`'div'`): `'ul'` or `'ol'` makes the results container a list with `role="list"`, and the item part must then emit `<li>`. It is ignored on 404, where the results container holds the empty state.
+- **S2 — `roci_listing_title( null, $context )`** (`template-parts/listing-header.php`): a string replaces the `<h1>`'s contents, through `wp_kses_post()`. `null` runs the per-context logic unchanged.
+- **S3 — `roci_listing_header_classes( $classes, $context )`** (`roci_get_listing_header_classes()`): `header`, `title` and `description` class slots, defaulting to `{ctx}-header`, `entry-title` and `archive-description`. An explicit `'header' => []` omits the `<header>` element. An empty `title` or `description` prints no `class` attribute. `roci_entry_title_mode()` is unchanged.
+- **S4 — `roci_listing_search_form( true, $context )`** (`roci_listing_shows_search_form()`): returning `false` makes `search.php` skip its top form, and `content-none.php` then prints the form in the search empty state.
+- **S5 — `roci_search_form_classes` gains `label` (`screen-reader-text`) and `row` (`[]`)** (`searchform.php`). `row`, when non-empty, wraps the input and the button in a `<div>`. An empty `label` prints no `class` attribute.
+- **S6 — `roci_empty_state_copy( null, $context )`** (`template-parts/content-none.php`): a string replaces just the copy paragraph's text, through `wp_kses_post()`. The form, the home link and the markup stay.
+
+### Files
+
+| File | Version |
+|---|---|
+| `inc/helpers.php` | v1.16.0 → v1.17.0 |
+| `index.php` | v1.3.0 → v1.4.0 |
+| `archive.php` | v1.2.0 → v1.3.0 |
+| `search.php` | v1.2.0 → v1.3.0 |
+| `404.php` | v1.1.0 → v1.2.0 |
+| `template-parts/listing-header.php` | v1.0.0 → v1.1.0 |
+| `template-parts/content-none.php` | v1.0.0 → v1.1.0 |
+| `searchform.php` | v1.2.0 → v1.3.0 |
+
+New helpers in `inc/helpers.php`: `roci_get_listing_header_classes()` and `roci_listing_shows_search_form()`. Internal helpers: `roci_listing_results_atts()`, `roci_listing_inner_open()` / `roci_listing_inner_close()`, `roci_listing_pagination()` and `roci_class_attribute()`.
+
+---
+
 ## [7.1.0] — 2026-10-09
 
 **FEAT (G3): listing templates split into overridable template parts, with a unified class contract.**
