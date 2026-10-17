@@ -7,8 +7,8 @@
  * and template parts throughout El Rocinante and child themes.
  *
  * File:    inc/helpers.php
- * Version: 1.18.0
- * Updated: 2026-10-09
+ * Version: 1.19.0
+ * Updated: 2026-10-17
  *
  * @package ElRocinante
  *
@@ -21,7 +21,8 @@
  *   jw_logo_dimensions()           — Intrinsic [w, h] of a logo attachment, SVG-aware
  *   jw_bunny_video()               — Clean Bunny Stream iframe embed (always titled)
  *   jw_debug_comment()             — WP_DEBUG-only HTML comment flagging a content problem
- *   jw_faq_schema()                — FAQPage JSON-LD schema output from jw_faq_items field
+ *   roci_get_faq_items()           — A post's complete FAQ pairs (jw_faq_items), the part's and the schema's one source
+ *   jw_faq_schema()                — FAQPage JSON-LD for those pairs, once per post per request
  *   jw_link_atts()                 — Returns target + rel attribute string for external links
  *   jw_new_tab_note()              — SR-only "(opens in a new tab)" for links that open a new tab
  *   roci_is_external_link()        — (internal) The one external-link test behind the three link helpers
@@ -902,31 +903,100 @@ function jw_bunny_video( $library_id, $video_id, $poster_id = 0, $class = '', $t
 // ============================================================
 
 /**
+ * roci_get_faq_items()
+ *
+ * The complete FAQ pairs of a post: the jw_faq_items cloneable group
+ * (inc/metabox/metabox-faq-fields.php), each row trimmed, and only rows that
+ * have BOTH a question and an answer. array() when there are none, or when
+ * Meta Box is inactive (roci_get_field() returns '').
+ *
+ * ONE SOURCE, THREE CONSUMERS: template-parts/faq.php (renders these rows),
+ * jw_faq_schema() (publishes these rows), and any child that gates a wrapper
+ * or an anchor-nav link on "this page has a FAQ". All three read this
+ * function, so the accordion and the FAQPage always describe the same set.
+ *
+ * Values are returned AS STORED (Meta Box keeps a bare & as &amp;): the part
+ * escapes them for HTML, jw_faq_schema() decodes them for JSON.
+ *
+ * DEFAULT POST: the queried object on a singular route, else get_the_ID().
+ * Not get_the_ID() alone — on a page template a secondary loop (a card grid,
+ * a related list) can leave the global post on another post.
+ *
+ * @param  int $post_id Post ID; 0 for the default above.
+ * @return array        List of array( 'question' => string, 'answer' => string ).
+ */
+function roci_get_faq_items( $post_id = 0 ) {
+
+    $post_id = (int) $post_id;
+
+    if ( ! $post_id ) {
+        $post_id = is_singular() ? get_queried_object_id() : (int) get_the_ID();
+    }
+
+    if ( ! $post_id ) {
+        return array();
+    }
+
+    $raw   = roci_get_field( 'jw_faq_items', $post_id );
+    $items = array();
+
+    if ( ! is_array( $raw ) ) {
+        return $items;
+    }
+
+    foreach ( $raw as $row ) {
+        $question = ( is_array( $row ) && isset( $row['faq_question'] ) ) ? trim( (string) $row['faq_question'] ) : '';
+        $answer   = ( is_array( $row ) && isset( $row['faq_answer'] ) )   ? trim( (string) $row['faq_answer'] )   : '';
+
+        if ( '' === $question || '' === $answer ) {
+            continue;
+        }
+
+        $items[] = array(
+            'question' => $question,
+            'answer'   => $answer,
+        );
+    }
+
+    return $items;
+}
+
+/**
  * jw_faq_schema()
  *
- * Reads the jw_faq_items cloneable group for the current post
- * and outputs a FAQPage JSON-LD schema block.
- * Outputs nothing if no FAQ items are found.
+ * Outputs the FAQPage JSON-LD for a post's complete FAQ pairs
+ * (roci_get_faq_items()). Outputs nothing if there are none.
  *
- * Called inside template-parts/faq.php in the child theme.
- * Do not call directly in page templates — let the partial handle it.
+ * Called by the parent's template-parts/faq.php after the accordion, so a
+ * page publishes FAQPage exactly when it shows the questions. Do not also call
+ * it from a page template.
  *
- * @param  int|null $post_id  Post ID. Defaults to current post.
+ * ⚠ ONCE PER POST PER REQUEST (v1.19.0). A second call for the same post
+ * prints nothing, so two renders of the FAQ part on one page cannot publish
+ * two FAQPage blocks. A different post still gets its own. (A FAQPage pasted
+ * into the page's roci_schema_json field is a separate block this cannot see —
+ * keep that field free of FAQ markup.)
+ *
+ * @param  int|null $post_id  Post ID. Defaults as roci_get_faq_items().
  * @return void               Echoes directly — do not echo the return value.
  */
 function jw_faq_schema( $post_id = null ) {
 
+    static $emitted = array();
+
+    $post_id = (int) $post_id;
+
     if ( ! $post_id ) {
-        $post_id = get_the_ID();
+        $post_id = is_singular() ? get_queried_object_id() : (int) get_the_ID();
     }
 
-    // Through the parent's wrapper (v1.15.1), not rwmb_meta() directly: same
-    // field, same empty args, same post ID, so the value is identical while
-    // Meta Box is active — and '' (so nothing is emitted) instead of a fatal
-    // when it is not.
-    $items = roci_get_field( 'jw_faq_items', $post_id );
+    if ( ! $post_id || isset( $emitted[ $post_id ] ) ) {
+        return;
+    }
 
-    if ( empty( $items ) || ! is_array( $items ) ) {
+    $items = roci_get_faq_items( $post_id );
+
+    if ( ! $items ) {
         return;
     }
 
@@ -940,10 +1010,10 @@ function jw_faq_schema( $post_id = null ) {
     // roci_schema_json_for_output() in inc/schema/schema-tokens.php. The
     // stored values, and what editors see, are unchanged.
     foreach ( $items as $item ) {
-        $question = isset( $item['faq_question'] ) ? trim( html_entity_decode( (string) $item['faq_question'], ENT_QUOTES | ENT_HTML5, 'UTF-8' ) ) : '';
-        $answer   = isset( $item['faq_answer'] )   ? trim( html_entity_decode( (string) $item['faq_answer'],   ENT_QUOTES | ENT_HTML5, 'UTF-8' ) ) : '';
+        $question = trim( html_entity_decode( $item['question'], ENT_QUOTES | ENT_HTML5, 'UTF-8' ) );
+        $answer   = trim( html_entity_decode( $item['answer'],   ENT_QUOTES | ENT_HTML5, 'UTF-8' ) );
 
-        if ( ! $question || ! $answer ) {
+        if ( '' === $question || '' === $answer ) {
             continue;
         }
 
@@ -977,6 +1047,8 @@ function jw_faq_schema( $post_id = null ) {
     if ( ! is_string( $json ) || '' === $json ) {
         return;
     }
+
+    $emitted[ $post_id ] = true;
 
     echo '<script type="application/ld+json">' . str_replace( '</', '<\/', $json ) . '</script>' . "\n";
 }

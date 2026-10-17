@@ -6,7 +6,7 @@
  * loads includes, and outputs analytics/integration scripts.
  *
  * File:    functions.php
- * Version: 1.17.0
+ * Version: 1.18.0
  * Updated: 2026-10-17
  *
  * @package ElRocinante
@@ -69,9 +69,9 @@ add_action( 'after_setup_theme', 'el_rocinante_setup' );
 // puts it ahead of anything a plugin or child hooks at 10.
 //
 // ⚠ THE PARENT SUPPLIES NO DISMISSAL. It renders the overlay and styles it;
-// removing it is the child's job, because the parent ships zero front-end
-// JavaScript by design (see §8 of CLAUDE.md) and that rule is not broken
-// for this feature. A child that opts in WITHOUT shipping dismissal JS gets
+// removing it is the child's job: the parent enqueues no front-end
+// JavaScript unconditionally (see §8 of CLAUDE.md; its one script is the FAQ
+// part's), and ships none for this feature. A child that opts in WITHOUT shipping dismissal JS gets
 // an overlay that never goes away. The reference child's dismissal lives in
 // its own front-end script.
 
@@ -102,8 +102,7 @@ add_action( 'wp_body_open', 'el_rocinante_render_loader', 5 );
 // changes nothing the loader's own priority note protects.
 //
 // HTML ONLY. The visibility comes from .screen-reader-text and its :focus
-// reveal in base/_utilities.scss; no JavaScript is involved, so the
-// zero-front-end-JS rule stands.
+// reveal in base/_utilities.scss; no JavaScript is involved.
 
 function el_rocinante_render_skip_link() {
     ?>
@@ -124,6 +123,20 @@ function el_rocinante_enqueue_assets() {
         get_template_directory_uri() . '/dist/css/style.css',
         array(),
         filemtime( get_template_directory() . '/dist/css/style.css' )
+    );
+
+    // THE PARENT'S ONE FRONT-END SCRIPT (v7.6.0) — REGISTERED, NEVER ENQUEUED
+    // HERE. template-parts/faq.php enqueues it only when it renders an
+    // accordion, so no other page requests it. FOOTER, so the part (which runs
+    // in the body, before wp_footer()) can still enqueue it, and the script
+    // runs after the markup it binds. The rule this keeps: the parent enqueues
+    // no front-end JavaScript unconditionally (CONVENTIONS hard rules).
+    wp_register_script(
+        'el-rocinante-faq-accordion',
+        get_template_directory_uri() . '/dist/js/faq-accordion.js',
+        array(),
+        filemtime( get_template_directory() . '/dist/js/faq-accordion.js' ),
+        true
     );
 
 }

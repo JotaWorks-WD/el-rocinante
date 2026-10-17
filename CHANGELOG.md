@@ -4,6 +4,72 @@ All notable changes to the El Rocinante parent theme are recorded here. Entries 
 
 ---
 
+## [7.6.0] — 2026-10-17
+
+**FEAT: the FAQ display (markup, accordion script, styles) moves into the parent. FIX: `jw_faq_schema()` prints once per post per request.**
+
+Minor: a new template part, helper, filter, field and script. **No child's output changes on deploy:** the parent's styles and script reach only markup carrying `.roci-faq`, which only the new parent part prints, and a child's own `template-parts/faq.php` still overrides the part child-first. Children switch in their own follow-up commits.
+
+### Why
+
+Two children carried their own copy of the same accordion: the markup, the script and the styles, differing in colours and details. The parent already owned the data (`jw_faq_items`) and the schema (`jw_faq_schema()`). The display now joins them, so every child gets it from one call.
+
+### The part — `template-parts/faq.php` (new, 1.0.0)
+
+- **One call:** `get_template_part( 'template-parts/faq' )`, with optional `$args`: `heading`, `id` (an id on the `<section>`, for an anchor) and `post_id` (default: the queried page on a singular route).
+- **Renders nothing** unless the page has at least one item with both a question and an answer: no section, no heading, no script, no schema.
+- **The ARIA contract** is the children's, unchanged: `button[aria-expanded][aria-controls]` inside an `h3`, a `div[role="region"][aria-labelledby][hidden]` panel. The section is named by its `h2` (`aria-labelledby`). Ids are unique per render (`faq-…`, then `faq-2-…`).
+- **`.roci-faq` on the section** is the scope of the parent's styles and script.
+- **Answers** go through `wpautop()` then `wp_kses_post()`.
+- **The heading** resolves default → `heading` arg → the page's FAQ Heading field → **`roci_faq_heading( $heading, $context )`**, the last word. `$context` carries `post_id` and `source` (`default` / `arg` / `field`), so a callback can set a site default without overriding a page's own heading. Default "Frequently Asked Questions", translatable.
+- **The schema** is printed after the markup, from the same rows.
+
+### The data and the schema — `inc/helpers.php` (1.18.0 → 1.19.0)
+
+- **New `roci_get_faq_items( $post_id = 0 )`:** a post's complete pairs, trimmed, as stored. One source for the part, `jw_faq_schema()` and any child that gates an anchor or wrapper on "this page has a FAQ".
+- **FIX — `jw_faq_schema()` prints once per post per request.** Two renders of the part on one page used to print two FAQPage blocks. A different post still gets its own. Signature unchanged.
+- **Changed default:** with no `$post_id`, `jw_faq_schema()` now reads the queried page on a singular route (was `get_the_ID()`, which a secondary loop can move). Off singular routes it still uses `get_the_ID()`.
+
+### The heading field — `inc/metabox/metabox-faq-fields.php` (1.2.2 → 1.3.0)
+
+- **New `roci_faq_heading_field()`** adds an optional "FAQ Heading" text field (post meta `jw_faq_heading`, no default) to the top of the FAQ Items box, on `rwmb_meta_boxes` **priority 30**.
+- **It is skipped when the box already has a `jw_faq_heading` field.** A child that injects its own at a lower priority keeps its field and sees no duplicate. When the child drops its injector, the parent's field reads the same meta key, so saved headings survive.
+
+### The script — `dist/js/faq-accordion.js` (new, 1.0.0)
+
+- **The parent's first front-end script file.** Registered in `el_rocinante_enqueue_assets()` (`functions.php` 1.17.0 → 1.18.0) as `el-rocinante-faq-accordion`, footer, `filemtime()`. **Enqueued only by the part**, so a page without an accordion never requests it.
+- Binds only `.roci-faq .faq-accordion`. One panel open per container; height animates 0 ↔ `scrollHeight` and is released to `auto`.
+- `TRANSITION_FALLBACK_MS = 400` stays above the panel's `--t-250` transition; under reduced motion the timer does the cleanup.
+- **Rule amended:** the parent still enqueues no front-end JavaScript unconditionally. A component may ship one script, registered by the parent and enqueued only by the part that renders it.
+
+### The styles — Build `scss/components/_faq.scss` (new, 1.0.0)
+
+- **Every rule is under `:where(.roci-faq)`.** That matches only the parent part's markup and adds no specificity, so any child rule on the BEM classes wins.
+- **Roles only.** No palette value, and no colour in a data URI:
+  - the band is `--color-surface`;
+  - the h2 and the question are `--color-heading`, closed and open;
+  - the open item's background is `var(--color-surface-tint, var(--color-surface-alt))`;
+  - the chevron is a `mask-image` shape painted `--color-action-hover`;
+  - the answer text is `--color-text`;
+  - answer links are `--color-action-hover`, `--color-heading` on hover;
+  - the item border is `--color-border`.
+- **Forced colors:** the masked chevron is repainted `ButtonText` (the UA would otherwise paint it Canvas on Canvas).
+- **Structure:** an 82rem column; padding 5.6rem → 7rem (sm) → `--gutter-v` / `--gutter-h` (md); h2 `--fs-7`; button `min-height: var(--target-min)`.
+- **New optional token slot `--color-surface-tint`** (`base/_tokens.scss` 1.5.0 → 1.5.1, comment only; the parent emits no value). A child sets it to a pale palette step on `:root`.
+- `main.scss` 1.1.0 → 1.2.0 loads it after the loader.
+- `dist/css/style.css` grows from 5,514 to 9,077 bytes. `!important` count unchanged (5). Autoprefixer emits `-webkit-mask-*` beside each `mask-*`.
+
+### Also
+
+- `template-parts/loader.php` and two `functions.php` comments no longer say the parent ships no front-end JavaScript. The loader comment is comment-only, so that file keeps its version.
+
+### Children
+
+- **Fish Potrero and Coco:** unchanged by this release. Each keeps its own part, script and styles until its migration commit (delete the copy, keep or switch the call, set `--color-surface-tint`). **Deploy the parent first.** A child that switches before 7.6.0 is on its server renders no FAQ.
+- **Other children:** not checked. Before deploying, grep each for `template-parts/faq`, `faq-accordion`, `jw_faq_schema` and `jw_faq_heading`.
+
+---
+
 ## [7.5.0] — 2026-10-17
 
 **FEAT: business hours, emitted as `openingHoursSpecification`. FIX: WhatsApp no longer published in `sameAs`; an empty `sameAs` is omitted.**

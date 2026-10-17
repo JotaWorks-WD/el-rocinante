@@ -14,7 +14,7 @@
  * of unstyled "loading" text). The same rules are also inlined just above the
  * markup, wrapped in :where(), for the case where that sheet arrives after
  * first paint — see the note beside the <style> block. DISMISSAL IS THE CHILD'S —
- * the parent ships no front-end JavaScript. #loader is the agreed hook; a
+ * the parent ships no loader JavaScript. #loader is the agreed hook; a
  * child toggles .is-dismissed on it and then hides it.
  *
  * ⚠ THE LOGO IS THE SITE IDENTITY custom_logo, NOT loader_logo. Earlier
