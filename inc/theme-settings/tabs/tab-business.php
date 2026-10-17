@@ -5,8 +5,8 @@
  * Included by settings-page.php inside roci_settings_page().
  *
  * File:    inc/theme-settings/tabs/tab-business.php
- * Version: 1.7.0
- * Updated: 2026-08-08
+ * Version: 1.8.0
+ * Updated: 2026-10-17
  *
  * @package ElRocinante
  */
@@ -138,6 +138,71 @@ $roci_biz_type          = isset( $business['type'] ) && '' !== $business['type']
         <td>
             <input type="text" name="roci_business[price_range]" id="roci_biz_price_range" class="large-text" value="<?php echo esc_attr( isset( $business['price_range'] ) ? $business['price_range'] : '' ); ?>">
             <p class="roci-note"><?php esc_html_e( 'Optional. e.g. $$, $$$, or a range like $150–$400. Leave blank if not applicable.', 'rocinante' ); ?></p>
+        </td>
+    </tr>
+</table>
+
+<?php
+/*
+ * BUSINESS HOURS (v7.5.0) — seven fixed rows, emitted as
+ * openingHoursSpecification.
+ *
+ * UNIVERSAL, NEVER INSIDE A .roci-type-group. Hours apply to every business
+ * type, so this table renders and submits on every request regardless of the
+ * selected type — the per-type hazard described below does not touch it.
+ *
+ * Rows come from roci_business_days() and each select's options from
+ * roci_business_hours_states() — the same maps the sanitiser whitelists
+ * against. Never a local list.
+ *
+ * A STATE SELECT, NOT A "CLOSED" CHECKBOX. A checkbox has no blank state and an
+ * unchecked one submits nothing (the petsAllowed trap); the select's "Not set"
+ * is what lets a day publish no property at all.
+ *
+ * THE TIME INPUTS STAY ENABLED AT EVERY STATE, with no JS toggling. A disabled
+ * input does not submit, and hiding by JS is the pattern this file warns
+ * against. The sanitiser ignores the times unless the state is Open.
+ *
+ * type="time" submits 24-hour HH:MM whatever the browser displays, so the
+ * sanitiser sees one format; an old browser's text fallback is normalised too.
+ *
+ * Read from the raw option, not roci_get_business_hours(): the reader applies
+ * the roci_business_hours filter, and a child's code-supplied hours must not
+ * appear here as if saved, then be written into the option on the next save.
+ */
+$roci_hours_saved = ( isset( $business['hours'] ) && is_array( $business['hours'] ) ) ? $business['hours'] : array();
+$roci_hour_states = roci_business_hours_states();
+?>
+<h2 class="roci-section-title"><?php esc_html_e( 'Business Hours', 'rocinante' ); ?></h2>
+<table class="form-table">
+    <?php foreach ( roci_business_days() as $roci_day_key => $roci_day ) :
+
+        $roci_day_row    = ( isset( $roci_hours_saved[ $roci_day_key ] ) && is_array( $roci_hours_saved[ $roci_day_key ] ) ) ? $roci_hours_saved[ $roci_day_key ] : array();
+        $roci_day_state  = isset( $roci_day_row['state'] ) ? $roci_day_row['state'] : '';
+        $roci_day_opens  = isset( $roci_day_row['opens'] ) ? $roci_day_row['opens'] : '';
+        $roci_day_closes = isset( $roci_day_row['closes'] ) ? $roci_day_row['closes'] : '';
+        $roci_day_id     = 'roci_biz_hours_' . $roci_day_key;
+        $roci_day_name   = 'roci_business[hours][' . $roci_day_key . ']';
+        ?>
+        <tr>
+            <th><label for="<?php echo esc_attr( $roci_day_id . '_state' ); ?>"><?php echo esc_html( $roci_day['label'] ); ?></label></th>
+            <td>
+                <select name="<?php echo esc_attr( $roci_day_name . '[state]' ); ?>" id="<?php echo esc_attr( $roci_day_id . '_state' ); ?>">
+                    <?php foreach ( $roci_hour_states as $roci_state_value => $roci_state_label ) : ?>
+                        <option value="<?php echo esc_attr( $roci_state_value ); ?>" <?php selected( $roci_day_state, $roci_state_value ); ?>><?php echo esc_html( $roci_state_label ); ?></option>
+                    <?php endforeach; ?>
+                </select>
+                <label for="<?php echo esc_attr( $roci_day_id . '_opens' ); ?>"><?php esc_html_e( 'Opens', 'rocinante' ); ?></label>
+                <input type="time" step="60" name="<?php echo esc_attr( $roci_day_name . '[opens]' ); ?>" id="<?php echo esc_attr( $roci_day_id . '_opens' ); ?>" value="<?php echo esc_attr( $roci_day_opens ); ?>">
+                <label for="<?php echo esc_attr( $roci_day_id . '_closes' ); ?>"><?php esc_html_e( 'Closes', 'rocinante' ); ?></label>
+                <input type="time" step="60" name="<?php echo esc_attr( $roci_day_name . '[closes]' ); ?>" id="<?php echo esc_attr( $roci_day_id . '_closes' ); ?>" value="<?php echo esc_attr( $roci_day_closes ); ?>">
+            </td>
+        </tr>
+    <?php endforeach; ?>
+    <tr>
+        <th></th>
+        <td>
+            <p class="roci-note"><?php esc_html_e( '24-hour clock. The times are used only when a day is set to Open. Closed and Not set both publish nothing for that day. A day set to Open with a missing time, or the same opening and closing time, is discarded on save and comes back as Not set. Closing after midnight is entered as an earlier closing time, e.g. opens 18:00, closes 02:00. Identical consecutive days are grouped automatically.', 'rocinante' ); ?></p>
         </td>
     </tr>
 </table>

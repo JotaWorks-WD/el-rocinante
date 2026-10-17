@@ -6,8 +6,8 @@
  * loads includes, and outputs analytics/integration scripts.
  *
  * File:    functions.php
- * Version: 1.16.4
- * Updated: 2026-10-08
+ * Version: 1.17.0
+ * Updated: 2026-10-17
  *
  * @package ElRocinante
  */
@@ -209,13 +209,15 @@ add_filter( 'pre_get_document_title', function( $title ) {
 //
 // Loaded ahead of the settings system because the Business and Social tabs, the
 // settings sanitizers and header.php's schema assembly all resolve their lists
-// from roci_business_types() and roci_social_platforms(). Every require in this
+// from roci_business_types(), roci_social_platforms() and (v7.5.0)
+// roci_business_days() in business-hours.php. Every require in this
 // file completes before any template renders or any admin screen is built, so
 // the ordering is belt-and-braces rather than load-bearing — but it puts the
 // definitions above their consumers, which is how it reads.
 
 require_once get_template_directory() . '/inc/schema/business-types.php';
 require_once get_template_directory() . '/inc/schema/social-platforms.php';
+require_once get_template_directory() . '/inc/schema/business-hours.php';
 require_once get_template_directory() . '/inc/schema/schema-tokens.php';
 
 

@@ -5,8 +5,8 @@
  * Included by settings-page.php inside roci_settings_page().
  *
  * File:    inc/theme-settings/tabs/tab-social.php
- * Version: 1.2.0
- * Updated: 2026-08-08
+ * Version: 1.3.0
+ * Updated: 2026-10-17
  *
  * @package ElRocinante
  */
@@ -26,6 +26,12 @@ $social = get_option( 'roci_social', array() );
  * is now the single source all three read.
  */
 $platforms = roci_social_platforms();
+
+/*
+ * Keys saved here but never published in sameAs — read from the same getter
+ * header.php skips them with, so the note and the output cannot disagree.
+ */
+$roci_sameas_exclude = roci_schema_sameas_exclude();
 ?>
 <h2 class="roci-section-title"><?php esc_html_e( 'Social Profiles', 'rocinante' ); ?></h2>
 <p class="roci-note" style="margin-bottom:16px;"><?php _e( 'Child themes can add additional platforms via the <code>roci_social_platforms</code> filter.', 'rocinante' ); ?></p>
@@ -33,7 +39,12 @@ $platforms = roci_social_platforms();
     <?php foreach ( $platforms as $key => $label ) : ?>
         <tr>
             <th><label for="roci_social_<?php echo esc_attr( $key ); ?>"><?php echo esc_html( $label ); ?></label></th>
-            <td><input type="url" name="roci_social[<?php echo esc_attr( $key ); ?>]" id="roci_social_<?php echo esc_attr( $key ); ?>" class="large-text" value="<?php echo esc_attr( isset( $social[ $key ] ) ? $social[ $key ] : '' ); ?>"></td>
+            <td>
+                <input type="url" name="roci_social[<?php echo esc_attr( $key ); ?>]" id="roci_social_<?php echo esc_attr( $key ); ?>" class="large-text" value="<?php echo esc_attr( isset( $social[ $key ] ) ? $social[ $key ] : '' ); ?>">
+                <?php if ( in_array( $key, $roci_sameas_exclude, true ) ) : ?>
+                    <p class="roci-note"><?php esc_html_e( 'Chat link: used by the site\'s contact links, not published in the structured data (sameAs).', 'rocinante' ); ?></p>
+                <?php endif; ?>
+            </td>
         </tr>
     <?php endforeach; ?>
 </table>

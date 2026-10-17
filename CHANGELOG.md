@@ -4,6 +4,65 @@ All notable changes to the El Rocinante parent theme are recorded here. Entries 
 
 ---
 
+## [7.5.0] — 2026-10-17
+
+**FEAT: business hours, emitted as `openingHoursSpecification`. FIX: WhatsApp no longer published in `sameAs`; an empty `sameAs` is omitted.**
+
+PHP only. **No CSS change** (`dist/css` untouched, byte-identical), **no JavaScript change** (`theme-settings.js` untouched). Minor: new fields, helpers and two filters.
+
+### Business hours
+
+- **Business tab → new "Business Hours" table** (`tab-business.php` v1.7.0 → v1.8.0), after Business Information. One row per day, Monday first. Each row has a state select (**Not set / Open / Closed / Open 24 hours**) and two `type="time"` inputs.
+  - Universal: it sits outside every per-type group, so it renders and saves on every business type.
+  - The times stay enabled at every state. The sanitiser ignores them unless the day is Open.
+  - A note under the table explains the save rules below.
+- **Storage:** `roci_business['hours']`, nested like `amenities`. Always all seven day keys (`mon` … `sun`), each `array( 'state', 'opens', 'closes' )`. Times are `''` unless the state is `open`.
+- **Save rules** (`roci_sanitize_business()`, `settings-sanitize.php` v1.8.1 → v1.9.0):
+  - the state is whitelisted (`''`, `open`, `closed`, `24h`); anything else becomes `''`;
+  - times are normalised to 24-hour `HH:MM` (`9:00` → `09:00`, seconds dropped); `24:00` and non-times are rejected;
+  - an Open day with a missing or invalid time, or the same opening and closing time, is **discarded to Not set**. This is a quiet discard, matching coordinates and rooms;
+  - a closing time earlier than the opening time is **accepted as overnight** (e.g. Fri 18:00 → 02:00);
+  - every pre-existing `roci_business` key is still saved unchanged.
+- **Output** (`header.php` v2.2.4 → v2.3.0), inside the existing Business → Name gate, after `description` and before the type-specific properties:
+  - consecutive days with identical hours share one `OpeningHoursSpecification`; there is **no Sunday → Monday wrap**;
+  - `dayOfWeek` is always a list of schema.org `DayOfWeek` URLs (`https://schema.org/Monday` …), even for one day;
+  - Open 24 hours emits `00:00`–`23:59`; overnight emits as stored, on the opening day;
+  - Closed and Not set days are omitted. With no open day the key is **omitted**, never `[]`;
+  - not gated by type: all four built-in types are schema.org Places. A child mapping a non-Place `@type` unsets the key in `roci_schema_data` (noted in `business-types.php`, v1.0.1 → v1.0.2).
+- **New file `inc/schema/business-hours.php`** (v1.0.0), required from `functions.php` (v1.16.4 → v1.17.0) beside the other schema files:
+  - `roci_business_days()` — the day map (key ⇒ label + schema URL). The one source for the tab, the sanitiser and the reader. Not filterable.
+  - `roci_business_hours_states()` — the state map (`''` / `open` / `closed` / `24h` ⇒ label). The one source for the tab's select, the sanitiser's whitelist and the reader's. Not filterable.
+  - `roci_get_business_hours()` — the normalised week, seven rows of `state` / `opens` / `closes` / `label` / `overnight`.
+  - `roci_group_business_hours( $hours )` — the consecutive runs, for the spec and for any later display.
+  - `roci_business_hours_spec( $hours )` — the node list, or `array()`.
+  - `roci_sanitize_business_time( $raw )` — `'HH:MM'` or `''`. Internal.
+- **New filter `roci_business_hours`** (dispatched in `roci_get_business_hours()`): receives the stored day rows **before** normalisation, so hours a child supplies in code pass the same rules. It reaches the schema and any later display at once. Not memoized.
+- **No front-end display** is shipped: no shortcode, template part or CSS.
+
+### sameAs
+
+- **WhatsApp is no longer published in `sameAs`.** `sameAs` asserts "this URL is the same entity"; a chat link is a contact channel, not a profile.
+- **New `roci_schema_sameas_exclude()`** (`social-platforms.php` v1.0.0 → v1.1.0), filterable through **`roci_schema_sameas_exclude`**. Default `array( 'whatsapp' )`. Matching is by platform key, not by URL host. A child that registers another chat-type platform adds its key; returning `array()` restores the 7.4.1 output.
+- **Social tab** (`tab-social.php` v1.2.0 → v1.3.0): each excluded platform shows a note that it is used by the site's contact links and not published in the structured data. The note reads the same getter.
+- **An empty `sameAs` is omitted.** A site with no profile URL used to emit `"sameAs": []`. When it has values, the key order is unchanged.
+- **Nothing else that reads WhatsApp changes.** The platform stays in `roci_social_platforms()`, is still saved, still renders in the Social tab, and `roci_setting( 'social', 'whatsapp' )` returns the same value. Business → WhatsApp Number is untouched and was never in `sameAs`.
+
+### Output changes (intended)
+
+- Every site with Social → WhatsApp filled **loses that URL from `sameAs`** on deploy.
+- A site whose only social value was WhatsApp, or that had none, **no longer emits a `sameAs` key**.
+- `openingHoursSpecification` appears only after hours are saved on the Business tab. A site that never sets them is otherwise unchanged.
+
+### Rollback note
+
+After hours are saved on 7.5.0, rolling back to 7.4.1 **and then saving the Business tab** erases `hours`: the old sanitiser rebuilds the row without it. Rolling back without saving is harmless.
+
+### Children
+
+FP and Coco were checked: neither hooks `roci_schema_data` or `roci_social_platforms`, neither emits its own `openingHoursSpecification`, and both read WhatsApp only through `roci_setting( 'social', 'whatsapp' )`. Nothing to change. Brasilito and CRWW are not in this workspace and were not checked. Before deploying to them, grep each for `roci_schema_data`, `openingHoursSpecification`, `sameAs` and `roci_social_platforms`.
+
+---
+
 ## [7.4.1] — 2026-10-09
 
 **FIX: `twitter:url` attribute spacing. DOCS: header docblock corrections from the docs-drift sweep.**

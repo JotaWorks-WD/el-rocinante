@@ -7,13 +7,16 @@
  * Twitter Card, schema JSON-LD, and the primary navigation.
  * Nav output is controlled per child theme via do_action('roci_nav').
  * Site-level business JSON-LD is filterable via apply_filters('roci_schema_data');
- * its @type resolves from roci_business_types() (inc/schema/business-types.php).
+ * its @type resolves from roci_business_types() (inc/schema/business-types.php),
+ * its sameAs skips the keys apply_filters('roci_schema_sameas_exclude') lists, and
+ * its openingHoursSpecification comes from roci_get_business_hours(), filterable
+ * via apply_filters('roci_business_hours') (inc/schema/business-hours.php).
  * hreflang alternates are filterable via apply_filters('roci_hreflang_alternates')
  * for children that opt into multilingual output with add_theme_support('roci-i18n').
  *
  * File:    header.php
- * Version: 2.2.4
- * Updated: 2026-10-09
+ * Version: 2.3.0
+ * Updated: 2026-10-17
  *
  * @package ElRocinante
  */
@@ -471,9 +474,20 @@
      * array_filter() drops platforms with no URL saved; array_values()
      * reindexes so the result encodes as a JSON list rather than an object
      * keyed by the surviving positions.
+     *
+     * SAVED IS NOT PUBLISHED (v2.3.0). A key listed by
+     * roci_schema_sameas_exclude() is skipped: sameAs asserts an identity, and
+     * a chat link (WhatsApp, by default) is a contact channel, not a profile.
+     * The value stays saved and readable through roci_setting() for the
+     * site's own contact links. The same getter drives the Social tab's note,
+     * so the two cannot disagree.
      */
-    $roci_same_as = array();
+    $roci_same_as         = array();
+    $roci_sameas_excluded = roci_schema_sameas_exclude();
     foreach ( array_keys( roci_social_platforms() ) as $roci_social_key ) {
+        if ( in_array( $roci_social_key, $roci_sameas_excluded, true ) ) {
+            continue;
+        }
         $roci_same_as[] = roci_setting( 'social', $roci_social_key );
     }
     $roci_same_as = array_values( array_filter( $roci_same_as ) );
@@ -497,6 +511,13 @@
             'email'     => $roci_biz_email,
             'sameAs'    => $roci_same_as,
         ];
+
+        // NO EMPTY "sameAs": [] (v2.3.0). The key stays in the base array so
+        // the key order is unchanged whenever it has values; with no profile
+        // URL saved it is removed, like every other gated key in this block.
+        if ( ! $roci_same_as ) {
+            unset( $roci_local_schema['sameAs'] );
+        }
 
         /*
          * LOGO — the brand mark, sourced from the Site Icon (favicon).
@@ -587,6 +608,23 @@
         }
 
         /*
+         * OPENING HOURS → openingHoursSpecification[] (v2.3.0).
+         *
+         * UNIVERSAL, NOT GATED BY $roci_type_fields. Every built-in @type is a
+         * schema.org Place, where the property is valid. A child mapping a
+         * type to a non-Place @type unsets the key in roci_schema_data.
+         *
+         * Consecutive days with identical hours share one node; closed and
+         * unset days are omitted; no open day at all = key omitted (the
+         * builder returns array()), never an empty list. Shape, grouping, 24h
+         * and overnight rules: inc/schema/business-hours.php.
+         */
+        $roci_hours_spec = roci_business_hours_spec( roci_get_business_hours() );
+        if ( $roci_hours_spec ) {
+            $roci_local_schema['openingHoursSpecification'] = $roci_hours_spec;
+        }
+
+        /*
          * TYPE-SPECIFIC PROPERTIES — gated on the vertical declaring them.
          *
          * numberOfRooms follows the usual rule: blank omits the key, and the
@@ -656,13 +694,17 @@
         /*
          * roci_schema_data — the site-level JSON-LD, filtered before encode.
          *
-         * Receives the fully assembled LocalBusiness array: the eight base
-         * keys plus whichever of image / priceRange / address survived their
-         * gates above. A child may modify it, add to it, or replace it
-         * outright — change '@type' to the vertical it actually is, add
-         * openingHoursSpecification / geo / aggregateRating, swap a value
-         * the Business tab cannot express — and return it. Whatever comes
-         * back is what gets encoded.
+         * Receives the fully assembled LocalBusiness array: the base keys
+         * (@context, @type, @id, name, url, telephone, email, and sameAs when
+         * at least one profile URL survives) plus whichever of logo / image /
+         * priceRange / address / geo / description / openingHoursSpecification
+         * and the type-specific properties survived their gates above. A child
+         * may modify it, add to it, or replace it outright — change '@type' to
+         * the vertical it actually is, add aggregateRating, swap a value the
+         * Business tab cannot express — and return it. Whatever comes back is
+         * what gets encoded. openingHoursSpecification is built in since
+         * v2.3.0: a child that sets the key here overwrites the parent's (one
+         * PHP key, so no duplicate is possible); set hours in one place only.
          *
          * Returning the array unchanged is the default: with no listener
          * this dispatch is transparent and the emitted JSON-LD is identical

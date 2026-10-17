@@ -15,8 +15,8 @@
  * that lists types MUST read this function so the filter reaches all three.
  *
  * File:    inc/schema/business-types.php
- * Version: 1.0.1
- * Updated: 2026-08-08
+ * Version: 1.0.2
+ * Updated: 2026-10-17
  *
  * @package ElRocinante
  */
@@ -41,6 +41,12 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
  *   fields Type-specific field keys this vertical adds on top of the universal
  *          set. An empty array means the type contributes no extra fields and
  *          differs from the others only by @type.
+ *
+ * EVERY BUILT-IN schema TYPE IS A schema.org Place, and header.php relies on
+ * it: openingHoursSpecification is emitted for every type, ungated, because it
+ * is valid on every Place. A child mapping a vertical to a non-Place @type
+ * (a plain Organization, say) unsets that key in its
+ * roci_schema_data callback.
  *
  * Verticals are generic by design — CLAUDE.md §12.4 forbids client names or
  * client vocabulary in the parent.

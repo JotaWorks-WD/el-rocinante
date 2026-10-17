@@ -3,8 +3,8 @@
  * Theme Settings — Sanitize Callbacks
  *
  * File:    inc/theme-settings/settings-sanitize.php
- * Version: 1.8.1
- * Updated: 2026-08-09
+ * Version: 1.9.0
+ * Updated: 2026-10-17
  *
  * @package ElRocinante
  */
@@ -172,6 +172,54 @@ function roci_sanitize_business( $input ) {
         }
     }
 
+    /*
+     * BUSINESS HOURS (v7.5.0) — seven fixed rows, one per day, nested under
+     * 'hours' like amenities.
+     *
+     * The day keys come from roci_business_days(), NEVER a local list of seven
+     * (the one-source rule). Always all seven keys, always all three sub-keys.
+     *
+     * Per day:
+     * 1. state is whitelisted against roci_business_hours_states() ('' not set
+     *    | open | closed | 24h). Anything else is ''.
+     * 2. Times go through roci_sanitize_business_time(): 'HH:MM' 24-hour, or ''.
+     *    '24:00' is rejected; a close at midnight is '00:00'.
+     * 3. An 'open' row missing a time, or with opens === closes, is DISCARDED to
+     *    not set. Quiet discard, the coordinates / rooms precedent: this screen
+     *    has no settings-error display, and the tab's note explains the rule.
+     * 4. closes < opens is ACCEPTED as overnight (Google's documented form for
+     *    hours past midnight: one specification on the opening day).
+     * 5. A row that is not 'open' stores both times as ''.
+     */
+    $roci_hours_input = ( isset( $input['hours'] ) && is_array( $input['hours'] ) ) ? $input['hours'] : array();
+    $roci_hours       = array();
+
+    foreach ( array_keys( roci_business_days() ) as $roci_day_key ) {
+
+        $roci_day_row = ( isset( $roci_hours_input[ $roci_day_key ] ) && is_array( $roci_hours_input[ $roci_day_key ] ) ) ? $roci_hours_input[ $roci_day_key ] : array();
+        $roci_state   = ( isset( $roci_day_row['state'] ) && is_string( $roci_day_row['state'] ) ) ? sanitize_key( $roci_day_row['state'] ) : '';
+        $roci_state   = array_key_exists( $roci_state, roci_business_hours_states() ) ? $roci_state : '';
+        $roci_opens   = '';
+        $roci_closes  = '';
+
+        if ( 'open' === $roci_state ) {
+            $roci_opens  = roci_sanitize_business_time( isset( $roci_day_row['opens'] ) ? $roci_day_row['opens'] : '' );
+            $roci_closes = roci_sanitize_business_time( isset( $roci_day_row['closes'] ) ? $roci_day_row['closes'] : '' );
+
+            if ( '' === $roci_opens || '' === $roci_closes || $roci_opens === $roci_closes ) {
+                $roci_state  = '';
+                $roci_opens  = '';
+                $roci_closes = '';
+            }
+        }
+
+        $roci_hours[ $roci_day_key ] = array(
+            'state'  => $roci_state,
+            'opens'  => $roci_opens,
+            'closes' => $roci_closes,
+        );
+    }
+
     return array(
         'type'     => $roci_type,
         'name'     => isset( $input['name'] )     ? sanitize_text_field( $input['name'] )     : '',
@@ -181,6 +229,7 @@ function roci_sanitize_business( $input ) {
         'numberOfRooms' => $roci_rooms,
         'petsAllowed'   => $roci_pets,
         'amenities'     => $roci_amenities,
+        'hours'         => $roci_hours,
         'phone'    => isset( $input['phone'] )    ? sanitize_text_field( $input['phone'] )    : '',
         'email'    => isset( $input['email'] )    ? sanitize_email( $input['email'] )         : '',
         'street'   => sanitize_text_field( $input['street'] ?? '' ),
