@@ -13,11 +13,20 @@
  * v1.3.0 adds the optional per-page FAQ Heading (jw_faq_heading) at the top
  * of the same box — see roci_faq_heading_field() below.
  *
+ * v1.4.0 adds an optional Section (faq_section) to each item, last in the row
+ * so existing rows look unchanged. Items that share a section render under
+ * that section's own heading when a template renders the FAQ by section
+ * (roci_get_faq_sections(), the part's 'section' arg); a row saved before
+ * v1.4.0 has no faq_section key and reads as unsectioned.
+ *
+ * STORAGE: one post-meta row, jw_faq_items — a serialized list of arrays
+ * keyed by the sub-field ids (faq_question, faq_answer, faq_section).
+ *
  * Note: collapsible groups require Meta Box Pro — not used here.
  *
  * File:    inc/metabox/metabox-faq-fields.php
- * Version: 1.3.0
- * Updated: 2026-10-17
+ * Version: 1.4.0
+ * Updated: 2026-10-21
  *
  * @package ElRocinante
  */
@@ -65,6 +74,15 @@ add_filter( 'rwmb_meta_boxes', function( $meta_boxes ) {
                         ),
                     ),
 
+                    // No 'std': a blank section must save blank (unsectioned).
+                    array(
+                        'id'   => 'faq_section',
+                        'name' => __( 'Section', 'rocinante' ),
+                        'type' => 'text',
+                        'size' => 40,
+                        'desc' => __( 'Optional. Questions with the same section are grouped under that heading, in the order the section first appears. Leave blank for the page\'s main FAQ.', 'rocinante' ),
+                    ),
+
                 ),
             ),
 
@@ -85,7 +103,9 @@ add_filter( 'rwmb_meta_boxes', function( $meta_boxes ) {
  *
  * Stored as post meta jw_faq_heading. template-parts/faq.php uses it as the
  * section's H2 when set; blank keeps the default (see the part's docblock for
- * the full order and the roci_faq_heading filter).
+ * the full order and the roci_faq_heading filter). It never applies to a
+ * render of a NAMED section (v1.4.0) — that H2 is the section's name — only to
+ * an unsectioned render.
  *
  * ⚠ PRIORITY 30, AND SKIPPED WHEN THE BOX ALREADY HAS THE FIELD. A child may
  *   still inject its own jw_faq_heading field into this box at priority 20
@@ -127,7 +147,7 @@ function roci_faq_heading_field( $meta_boxes ) {
                 'name' => __( 'FAQ Heading', 'rocinante' ),
                 'type' => 'text',
                 'size' => 80,
-                'desc' => __( 'Optional. The heading above this page\'s questions. Leave blank for the default.', 'rocinante' ),
+                'desc' => __( 'Optional. The heading above this page\'s main (unsectioned) questions. Leave blank for the default.', 'rocinante' ),
             )
         );
 

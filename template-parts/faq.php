@@ -9,7 +9,32 @@
  *         'heading' => 'Before You Book', // optional — the H2
  *         'id'      => 'faq',             // optional — an id on the <section>, for an anchor
  *         'post_id' => 123,               // optional — default: the queried page
+ *         'section' => 'On the Tour',     // optional (v1.1.0) — only that section's items
  *     ) );
+ *
+ * SECTIONS (v1.1.0). Each FAQ item may carry an optional Section
+ * (faq_section). The 'section' arg picks which items this render shows:
+ *   absent      — every item, exactly as v1.0.0 (the output is byte-identical);
+ *   'Name'      — only that section (trimmed, case-insensitive), under its own
+ *                 H2 — the section's name, see THE HEADING;
+ *   ''          — only the items with no section (the "main" FAQ).
+ * Tested with array_key_exists(), so '' is a filter, not "absent".
+ *
+ * ⚠ THE PARITY CONTRACT. The FAQPage always publishes EVERY item (see THE
+ * SCHEMA), so a page that renders by section must render every section and
+ * then the unsectioned remainder — or it publishes questions it does not
+ * show. roci_get_faq_sections() makes that the easy loop:
+ *
+ *     foreach ( roci_get_faq_sections() as $section ) {
+ *         get_template_part( 'template-parts/faq', null, array(
+ *             'section' => $section,
+ *             'id'      => sanitize_title( $section ), // optional anchor
+ *         ) );
+ *     }
+ *     get_template_part( 'template-parts/faq', null, array( 'section' => '' ) );
+ *
+ * A section anchor without the faq- prefix can never collide with the ids
+ * this part generates (see IDS below).
  *
  * THE DATA is the parent's jw_faq_items group — post meta on the page itself
  * (Pages → {page} → "FAQ Items"), on every type roci_get_faq_post_types()
@@ -20,10 +45,11 @@
  * script, no schema.
  *
  * THE SCHEMA. jw_faq_schema() prints the FAQPage JSON-LD after the markup,
- * from the same rows, and only once per post per request — a second render of
- * this part prints the accordion again but never a second FAQPage. (Keep the
- * page's own Schema JSON-LD field free of FAQ markup; that would be a second
- * block.)
+ * from EVERY complete item of the post (all sections), and only once per post
+ * per request — a second render of this part prints the accordion again but
+ * never a second FAQPage. The first render that prints anything publishes it.
+ * (Keep the page's own Schema JSON-LD field free of FAQ markup; that would be
+ * a second block.)
  *
  * THE HEADING — an H2 that names the section — resolves in this order, the
  * last non-empty value winning:
@@ -31,10 +57,16 @@
  *   2. $args['heading'];
  *   3. the page's FAQ Heading field (post meta jw_faq_heading);
  *   4. apply_filters( 'roci_faq_heading', $heading, $context ) — the last word.
- *      $context = array( 'post_id' => int, 'source' => 'default' | 'arg' | 'field' ),
+ *      $context = array( 'post_id' => int, 'source' => 'default' | 'arg' | 'field' | 'section' ),
  *      so a callback can supply a site default only when nothing more specific
  *      set one: `if ( 'default' !== $context['source'] ) return $heading;`.
  *      Return plain text; it is escaped here.
+ *
+ * A NAMED SECTION (v1.1.0) has its own order: default → the section's name
+ * (source 'section', spelled as its first item stores it) → $args['heading']
+ * → the filter. The FAQ Heading field is NOT consulted: one page-level field
+ * would otherwise print the same H2 over every section. It still applies to
+ * an absent or '' section.
  *
  * THE SCRIPT. dist/js/faq-accordion.js is REGISTERED by
  * el_rocinante_enqueue_assets() and ENQUEUED HERE, so only a page that renders
@@ -72,37 +104,51 @@
  * the arguments, the field and the filter cannot express.
  *
  * File:    template-parts/faq.php
- * Version: 1.0.0
- * Updated: 2026-10-17
+ * Version: 1.1.0
+ * Updated: 2026-10-21
  *
  * @package ElRocinante
  */
 
 $roci_faq_post_id = isset( $args['post_id'] ) ? (int) $args['post_id'] : 0;
 $roci_faq_post_id = $roci_faq_post_id ? $roci_faq_post_id : ( is_singular() ? get_queried_object_id() : (int) get_the_ID() );
-$roci_faq_items   = roci_get_faq_items( $roci_faq_post_id );
+
+// THE SECTION — absent: every item; '': unsectioned only; a name: that section.
+$roci_faq_has_section = is_array( $args ) && array_key_exists( 'section', $args );
+$roci_faq_section     = $roci_faq_has_section ? trim( (string) $args['section'] ) : '';
+$roci_faq_items       = roci_get_faq_items( $roci_faq_post_id, $roci_faq_has_section ? $roci_faq_section : null );
 
 if ( ! $roci_faq_items ) {
     return;
 }
 
+$roci_faq_named = '' !== $roci_faq_section;
+
 global $roci_faq_instance;
 $roci_faq_instance = isset( $roci_faq_instance ) ? (int) $roci_faq_instance + 1 : 1;
 $roci_faq_prefix   = ( $roci_faq_instance > 1 ) ? 'faq-' . $roci_faq_instance : 'faq';
 
-// THE HEADING — default → arg → field → filter (see the docblock).
+// THE HEADING — default → arg → field → filter; a named section: default →
+// section name → arg → filter, no field (see the docblock).
 $roci_faq_heading = __( 'Frequently Asked Questions', 'rocinante' );
 $roci_faq_source  = 'default';
+
+if ( $roci_faq_named ) {
+    $roci_faq_heading = $roci_faq_items[0]['section'];
+    $roci_faq_source  = 'section';
+}
 
 if ( isset( $args['heading'] ) && '' !== trim( (string) $args['heading'] ) ) {
     $roci_faq_heading = trim( (string) $args['heading'] );
     $roci_faq_source  = 'arg';
 }
 
-$roci_faq_field = roci_get_field( 'jw_faq_heading', $roci_faq_post_id );
-if ( is_string( $roci_faq_field ) && '' !== trim( $roci_faq_field ) ) {
-    $roci_faq_heading = trim( $roci_faq_field );
-    $roci_faq_source  = 'field';
+if ( ! $roci_faq_named ) {
+    $roci_faq_field = roci_get_field( 'jw_faq_heading', $roci_faq_post_id );
+    if ( is_string( $roci_faq_field ) && '' !== trim( $roci_faq_field ) ) {
+        $roci_faq_heading = trim( $roci_faq_field );
+        $roci_faq_source  = 'field';
+    }
 }
 
 $roci_faq_heading = (string) apply_filters(

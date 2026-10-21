@@ -7,8 +7,8 @@
  * and template parts throughout El Rocinante and child themes.
  *
  * File:    inc/helpers.php
- * Version: 1.19.0
- * Updated: 2026-10-17
+ * Version: 1.20.0
+ * Updated: 2026-10-21
  *
  * @package ElRocinante
  *
@@ -21,7 +21,8 @@
  *   jw_logo_dimensions()           — Intrinsic [w, h] of a logo attachment, SVG-aware
  *   jw_bunny_video()               — Clean Bunny Stream iframe embed (always titled)
  *   jw_debug_comment()             — WP_DEBUG-only HTML comment flagging a content problem
- *   roci_get_faq_items()           — A post's complete FAQ pairs (jw_faq_items), the part's and the schema's one source
+ *   roci_get_faq_items()           — A post's complete FAQ pairs (jw_faq_items), the part's and the schema's one source; optional section filter
+ *   roci_get_faq_sections()        — A post's named FAQ sections, in order of first appearance
  *   jw_faq_schema()                — FAQPage JSON-LD for those pairs, once per post per request
  *   jw_link_atts()                 — Returns target + rel attribute string for external links
  *   jw_new_tab_note()              — SR-only "(opens in a new tab)" for links that open a new tab
@@ -922,10 +923,25 @@ function jw_bunny_video( $library_id, $video_id, $poster_id = 0, $class = '', $t
  * Not get_the_ID() alone — on a page template a secondary loop (a card grid,
  * a related list) can leave the global post on another post.
  *
- * @param  int $post_id Post ID; 0 for the default above.
- * @return array        List of array( 'question' => string, 'answer' => string ).
+ * SECTIONS (v1.20.0). Each row may carry an optional faq_section; every item
+ * returns it as 'section' (trimmed, '' when blank). $section filters AFTER the
+ * complete-pair test:
+ *   null   — every complete pair (the v1.19.0 set, plus the 'section' key);
+ *   ''     — only the pairs with no section;
+ *   string — only that section, matched trimmed and case-insensitively, so
+ *            "On the tour" and "On the Tour" are one section (multibyte-aware
+ *            when mbstring is loaded, ASCII-only otherwise).
+ * The result is re-indexed from 0 either way.
+ *
+ * jw_faq_schema() always reads the null set: the FAQPage covers every section,
+ * so a page that renders by section must render them all — see
+ * roci_get_faq_sections() and template-parts/faq.php.
+ *
+ * @param  int         $post_id Post ID; 0 for the default above.
+ * @param  string|null $section Section filter; null for every pair (see above).
+ * @return array                List of array( 'question' => string, 'answer' => string, 'section' => string ).
  */
-function roci_get_faq_items( $post_id = 0 ) {
+function roci_get_faq_items( $post_id = 0, $section = null ) {
 
     $post_id = (int) $post_id;
 
@@ -944,17 +960,29 @@ function roci_get_faq_items( $post_id = 0 ) {
         return $items;
     }
 
+    // ⚠ mbstring is recommended, not required, by WordPress — and core shims
+    // mb_substr() / mb_strlen() but NOT mb_strtolower(). Without it the match
+    // falls back to strtolower(): ASCII case-folding only, never a fatal.
+    $lower = function_exists( 'mb_strtolower' ) ? 'mb_strtolower' : 'strtolower';
+    $match = ( null === $section ) ? null : $lower( trim( (string) $section ) );
+
     foreach ( $raw as $row ) {
-        $question = ( is_array( $row ) && isset( $row['faq_question'] ) ) ? trim( (string) $row['faq_question'] ) : '';
-        $answer   = ( is_array( $row ) && isset( $row['faq_answer'] ) )   ? trim( (string) $row['faq_answer'] )   : '';
+        $question  = ( is_array( $row ) && isset( $row['faq_question'] ) ) ? trim( (string) $row['faq_question'] ) : '';
+        $answer    = ( is_array( $row ) && isset( $row['faq_answer'] ) )   ? trim( (string) $row['faq_answer'] )   : '';
+        $row_label = ( is_array( $row ) && isset( $row['faq_section'] ) )  ? trim( (string) $row['faq_section'] )  : '';
 
         if ( '' === $question || '' === $answer ) {
+            continue;
+        }
+
+        if ( null !== $match && $lower( $row_label ) !== $match ) {
             continue;
         }
 
         $items[] = array(
             'question' => $question,
             'answer'   => $answer,
+            'section'  => $row_label,
         );
     }
 
@@ -962,10 +990,52 @@ function roci_get_faq_items( $post_id = 0 ) {
 }
 
 /**
+ * roci_get_faq_sections()
+ *
+ * The named FAQ sections of a post, in order of FIRST APPEARANCE among its
+ * complete pairs (roci_get_faq_items()). Names group case-insensitively and
+ * keep the first spelling seen. '' (no section) is never listed. array() when
+ * there are none.
+ *
+ * THE CANONICAL LOOP for a page that renders its FAQ by section — every named
+ * section, then the unsectioned remainder, so the page shows every question
+ * the single FAQPage publishes:
+ *
+ *     foreach ( roci_get_faq_sections() as $section ) {
+ *         get_template_part( 'template-parts/faq', null, array( 'section' => $section ) );
+ *     }
+ *     get_template_part( 'template-parts/faq', null, array( 'section' => '' ) );
+ *
+ * @param  int $post_id Post ID; 0 for roci_get_faq_items()'s default.
+ * @return string[]     Section names, display spelling.
+ */
+function roci_get_faq_sections( $post_id = 0 ) {
+
+    $sections = array();
+    $lower    = function_exists( 'mb_strtolower' ) ? 'mb_strtolower' : 'strtolower'; // as roci_get_faq_items()
+
+    foreach ( roci_get_faq_items( $post_id ) as $item ) {
+        if ( '' === $item['section'] ) {
+            continue;
+        }
+
+        $key = $lower( $item['section'] );
+
+        if ( ! isset( $sections[ $key ] ) ) {
+            $sections[ $key ] = $item['section'];
+        }
+    }
+
+    return array_values( $sections );
+}
+
+/**
  * jw_faq_schema()
  *
  * Outputs the FAQPage JSON-LD for a post's complete FAQ pairs
- * (roci_get_faq_items()). Outputs nothing if there are none.
+ * (roci_get_faq_items()) — ALL of them, whatever section each belongs to
+ * (v1.20.0), so one FAQPage covers a page rendered section by section.
+ * Outputs nothing if there are none.
  *
  * Called by the parent's template-parts/faq.php after the accordion, so a
  * page publishes FAQPage exactly when it shows the questions. Do not also call

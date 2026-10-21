@@ -4,6 +4,55 @@ All notable changes to the El Rocinante parent theme are recorded here. Entries 
 
 ---
 
+## [7.7.0] — 2026-10-21
+
+**FEAT: grouped FAQ sections. One page can show its FAQ as several accordions, each under its own H2, while one FAQPage still covers every question.**
+
+Minor and additive: an optional sub-field, an optional helper parameter, a new helper, a new part argument and a new `source` value. **A render without `section` is byte-identical to 7.6.0**, and rows saved before 7.7.0 read as unsectioned, so no child's output changes on deploy.
+
+### Why
+
+A FAQ page with many questions reads better grouped ("Before You Book", "On the Tour", …). The part rendered one accordion per post, and the FAQ Heading field beat the `heading` arg, so several renders on one page printed the same questions under the same H2.
+
+### The field — `inc/metabox/metabox-faq-fields.php` (1.3.0 → 1.4.0)
+
+- **New optional sub-field `faq_section`** ("Section", text, no default), last in each `jw_faq_items` row so existing rows look unchanged. Items that share a section are grouped under it.
+- The FAQ Heading field's description now says it heads the page's main (unsectioned) questions, which is what it does under the new chain.
+- Storage is unchanged in kind: one post-meta row, `jw_faq_items`, a serialized list keyed `faq_question` / `faq_answer` / `faq_section`.
+
+### The data — `inc/helpers.php` (1.19.0 → 1.20.0)
+
+- **`roci_get_faq_items( $post_id = 0, $section = null )`.** Every item now carries `'section'` (trimmed, `''` when blank or absent). `$section` filters after the complete-pair test: `null` returns every pair (7.6.0's set), `''` only the unsectioned, a name only that section. Names match trimmed and case-insensitively (multibyte with mbstring, ASCII otherwise; core shims no `mb_strtolower()`, so this never fatals without it). Re-indexed from 0.
+- **New `roci_get_faq_sections( $post_id = 0 )`:** the named sections in order of first appearance among the complete pairs, first spelling kept, `''` never listed. Its docblock carries the canonical loop.
+- **`jw_faq_schema()` is unchanged** and still reads every pair, so one FAQPage covers every section, once per post per request.
+
+### The part — `template-parts/faq.php` (1.0.0 → 1.1.0)
+
+- **New `section` arg**, tested with `array_key_exists()`: absent = every item (7.6.0, byte-identical); `''` = unsectioned only; a name = that section.
+- **A named section's heading:** default → **the section's name** (as its first item stores it; `source` `'section'`) → `heading` arg → `roci_faq_heading`. **The FAQ Heading field is not consulted**, or one page-level value would head every section. An absent or `''` section keeps 7.6.0's chain, field included.
+- **The parity contract:** the FAQPage publishes every item, so a page that renders by section must render every section and then the unsectioned remainder:
+
+  ```php
+  foreach ( roci_get_faq_sections() as $section ) {
+      get_template_part( 'template-parts/faq', null, array( 'section' => $section, 'id' => sanitize_title( $section ) ) );
+  }
+  get_template_part( 'template-parts/faq', null, array( 'section' => '' ) );
+  ```
+
+- A section with no complete items renders nothing (no section, no enqueue). The first render that prints anything publishes the FAQPage.
+- Unchanged: the ARIA contract, the per-render ids (`faq-…`, `faq-2-…`), the enqueue (WordPress prints the script once however many renders call it). A section anchor without the `faq-` prefix cannot collide with the generated ids.
+
+### The styles — Build `scss/components/_faq.scss` (1.0.0 → 1.1.0)
+
+- **Consecutive FAQ bands share one gap:** `:where(.roci-faq) + :where(.roci-faq) { padding-top: 0; }`. Zero specificity, so a child skin that re-sets the band's padding overrides it and needs its own adjacent rule.
+- `dist/css/style.css` grows from 9,077 to 9,127 bytes. `!important` count unchanged (5).
+
+### Unchanged
+
+`dist/js/faq-accordion.js` (already one accordion per container), `el_rocinante_enqueue_assets()`, the `jw_faq_heading` meta key, the once-per-post schema guard.
+
+---
+
 ## [7.6.0] — 2026-10-17
 
 **FEAT: the FAQ display (markup, accordion script, styles) moves into the parent. FIX: `jw_faq_schema()` prints once per post per request.**
