@@ -7,7 +7,7 @@
  * and template parts throughout El Rocinante and child themes.
  *
  * File:    inc/helpers.php
- * Version: 1.20.0
+ * Version: 1.20.1
  * Updated: 2026-10-21
  *
  * @package ElRocinante
@@ -1037,9 +1037,16 @@ function roci_get_faq_sections( $post_id = 0 ) {
  * (v1.20.0), so one FAQPage covers a page rendered section by section.
  * Outputs nothing if there are none.
  *
- * Called by the parent's template-parts/faq.php after the accordion, so a
- * page publishes FAQPage exactly when it shows the questions. Do not also call
- * it from a page template.
+ * TWO CALLERS (v1.20.1), and the guard below makes them one block:
+ *   1. header.php, in <head> after the site-level schema: on a singular route,
+ *      for the queried post, whenever it has complete pairs. This is where a
+ *      page's FAQPage is printed.
+ *   2. template-parts/faq.php, after the accordion: a no-op for a post the
+ *      head already covered; the fallback for anything else (a non-singular
+ *      route, a part rendered with another post's post_id).
+ * The head prints it whether or not the template renders the questions, so a
+ * post whose template shows no FAQ must not have FAQ Items saved. Do not also
+ * call it from a page template.
  *
  * ⚠ ONCE PER POST PER REQUEST (v1.19.0). A second call for the same post
  * prints nothing, so two renders of the FAQ part on one page cannot publish

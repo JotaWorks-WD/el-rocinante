@@ -13,10 +13,13 @@
  * via apply_filters('roci_business_hours') (inc/schema/business-hours.php).
  * hreflang alternates are filterable via apply_filters('roci_hreflang_alternates')
  * for children that opt into multilingual output with add_theme_support('roci-i18n').
+ * On a singular route the page's FAQPage JSON-LD is printed here too, after the
+ * site-level block, through jw_faq_schema() (v2.4.0); the FAQ part's own call is
+ * then a no-op for that post.
  *
  * File:    header.php
- * Version: 2.3.0
- * Updated: 2026-10-17
+ * Version: 2.4.0
+ * Updated: 2026-10-21
  *
  * @package ElRocinante
  */
@@ -730,6 +733,42 @@
 <?php echo str_replace( '</', '<\/', wp_json_encode( $roci_local_schema, JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT ) ); ?>
 </script>
     <?php endif; ?>
+
+    <?php
+    // --------------------------------------------------------
+    // SCHEMA JSON-LD — FAQ (v2.4.0)
+    //
+    // The page's FAQPage, printed here with the rest of the schema instead
+    // of after the FAQ section in the body. Built from the queried post's
+    // FAQ Items, every section (roci_get_faq_items() via jw_faq_schema()), on
+    // a singular route only.
+    //
+    // jw_faq_schema() prints once per post per request, so the FAQ part's own
+    // call later in the body (the parent's part, or a child's override that
+    // calls it) prints nothing for this post. That call stays as the fallback
+    // for what this block does not cover: a non-singular route, or a part
+    // rendered with another post's post_id.
+    //
+    // ⚠ PUBLISHED WHENEVER THE POST HAS COMPLETE FAQ ITEMS, whether or not its
+    // template renders the FAQ part. A template that does not show the
+    // questions must not have FAQ Items saved, or the page publishes
+    // questions it does not show.
+    //
+    // Buffered so the banner prints only with a block: jw_faq_schema() can
+    // still print nothing (an item that decodes to blank, an encode failure).
+    // --------------------------------------------------------
+    $roci_faq_schema = '';
+
+    if ( is_singular() && roci_get_faq_items( get_queried_object_id() ) ) {
+        ob_start();
+        jw_faq_schema( get_queried_object_id() );
+        $roci_faq_schema = (string) ob_get_clean();
+    }
+    ?>
+<?php if ( '' !== $roci_faq_schema ) : ?>
+<!-- Schema JSON-LD — FAQ -->
+<?php echo $roci_faq_schema; ?>
+<?php endif; ?>
 
     <?php wp_head(); ?>
 </head>

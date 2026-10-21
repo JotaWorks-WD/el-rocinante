@@ -1,6 +1,7 @@
 <?php
 /**
- * FAQ Accordion — a page's questions and answers, plus its FAQPage JSON-LD
+ * FAQ Accordion — a page's questions and answers (its FAQPage JSON-LD is
+ * printed in <head>; this part's call is the fallback, see THE SCHEMA)
  *
  * Any template renders it with one call:
  *
@@ -44,12 +45,14 @@
  * RENDERS NOTHING when there is no complete pair: no section, no heading, no
  * script, no schema.
  *
- * THE SCHEMA. jw_faq_schema() prints the FAQPage JSON-LD after the markup,
- * from EVERY complete item of the post (all sections), and only once per post
- * per request — a second render of this part prints the accordion again but
- * never a second FAQPage. The first render that prints anything publishes it.
- * (Keep the page's own Schema JSON-LD field free of FAQ markup; that would be
- * a second block.)
+ * THE SCHEMA. The FAQPage JSON-LD covers EVERY complete item of the post (all
+ * sections) and prints once per post per request (jw_faq_schema()). Since El
+ * Rocinante 7.8.0 header.php prints it in <head> on a singular route, so the
+ * jw_faq_schema() call at the end of this part prints nothing for the queried
+ * page. The call stays as the fallback: on a non-singular route, or with a
+ * post_id arg naming another post, the first render that prints anything
+ * publishes that post's FAQPage after its markup. (Keep the page's own Schema
+ * JSON-LD field free of FAQ markup; that would be a second block.)
  *
  * THE HEADING — an H2 that names the section — resolves in this order, the
  * last non-empty value winning:
@@ -104,7 +107,7 @@
  * the arguments, the field and the filter cannot express.
  *
  * File:    template-parts/faq.php
- * Version: 1.1.0
+ * Version: 1.1.1
  * Updated: 2026-10-21
  *
  * @package ElRocinante

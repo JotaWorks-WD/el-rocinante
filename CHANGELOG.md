@@ -4,6 +4,42 @@ All notable changes to the El Rocinante parent theme are recorded here. Entries 
 
 ---
 
+## [7.8.0] — 2026-10-21
+
+**FEAT: the FAQPage JSON-LD is printed in `<head>`, with the page-level and site-level schema, instead of after the FAQ section in the body.**
+
+Minor: one new output block in `header.php`. Every child gets it on deploy. A page whose template renders the FAQ still publishes exactly one FAQPage with the same content; it simply moves from the body to the head.
+
+### Why
+
+Owner decision: all of a page's structured data is printed in one place, the `<head>`.
+
+### The head — `header.php` (2.3.0 → 2.4.0)
+
+- **New block after the site-level LocalBusiness block**, under a `<!-- Schema JSON-LD — FAQ -->` banner: on a singular route, when `roci_get_faq_items( get_queried_object_id() )` returns items, it calls `jw_faq_schema( get_queried_object_id() )`. The FAQPage covers every item, every section included.
+- The output is buffered, so the banner prints only when a block does (`jw_faq_schema()` can still print nothing, for instance when an item decodes to blank).
+- Not on a listing route: no post owns its `<head>`.
+
+### No duplicate
+
+- **`jw_faq_schema()` prints once per post per request** (since 7.6.0), so the FAQ part's call after the accordion prints nothing for the post the head covered. **The call stays in the part as the fallback** for what the head does not cover: a non-singular route, or a part rendered with another post's `post_id`.
+- **The same guard covers a child's own FAQ part.** One that calls `jw_faq_schema()` with no argument resolves to the queried post on a singular route, which is the post the head just printed, so that call is a no-op as well.
+
+### ⚠ Published whenever the post has items
+
+The head prints the FAQPage whenever the queried post has complete FAQ Items, **whether or not its template renders the FAQ part.** Before 7.8.0 a post whose template rendered no FAQ published nothing. A template that does not show the questions must not have FAQ Items saved, or the page publishes questions it does not show.
+
+### Docs only
+
+- `inc/helpers.php` (1.20.0 → 1.20.1): `jw_faq_schema()`'s docblock names its two callers.
+- `template-parts/faq.php` (1.1.0 → 1.1.1): the summary line and THE SCHEMA describe the head and the fallback.
+
+### Unchanged
+
+`jw_faq_schema()`'s code and output, `roci_get_faq_items()`, the part's markup, `dist/css` and `dist/js`.
+
+---
+
 ## [7.7.0] — 2026-10-21
 
 **FEAT: grouped FAQ sections. One page can show its FAQ as several accordions, each under its own H2, while one FAQPage still covers every question.**
