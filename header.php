@@ -18,8 +18,8 @@
  * then a no-op for that post.
  *
  * File:    header.php
- * Version: 2.4.0
- * Updated: 2026-10-21
+ * Version: 2.4.1
+ * Updated: 2026-10-26
  *
  * @package ElRocinante
  */
@@ -155,13 +155,15 @@
     $roci_robots = $roci_post_id ? roci_get_field( 'roci_robots', $roci_post_id ) : '';
     $roci_robots = $roci_robots ? $roci_robots : 'index, follow';
 
-    // SEARCH RESULTS ARE NEVER INDEXED. Core noindexes them through
+    // SEARCH RESULTS AND 404s ARE NEVER INDEXED. Core noindexes search through
     // wp_robots_noindex_search(), part of the wp_robots() chain this theme
     // unhooks. (Before v7.0.0 the search page also borrowed the FIRST RESULT's
-    // own field; it now owns no post and would take the default.) "follow"
-    // keeps link discovery. ORDER: per-page -> search -> blog_public; the
-    // site-wide switch below must stay LAST.
-    if ( is_search() ) {
+    // own field; it now owns no post and would take the default.) A 404 owns
+    // no post either, and until v7.8.1 took the "index, follow" default; the
+    // 404 status already keeps it out of the index, so the tag now agrees with
+    // it. "follow" keeps link discovery. ORDER: per-page -> search / 404 ->
+    // blog_public; the site-wide switch below must stay LAST.
+    if ( is_search() || is_404() ) {
         $roci_robots = 'noindex, follow';
     }
 

@@ -4,6 +4,27 @@ All notable changes to the El Rocinante parent theme are recorded here. Entries 
 
 ---
 
+## [7.8.1] — 2026-10-26
+
+**FIX: a 404 page is `noindex`. It printed `<meta name="robots" content="index, follow">`.**
+
+Patch: one condition in `header.php`. Every child gets it on deploy with no change on its side; no child hook, template or setting is involved.
+
+### Why
+
+The theme unhooks core's `wp_robots()` (`functions.php`), and `header.php`'s ROBOTS block re-applies what the site needs from it. Search results were covered (v6.40.4); a 404 was not. A 404 owns no post (v7.0.0), so it took the `index, follow` default. The HTTP 404 status already keeps the URL out of search engines, so this makes the tag agree with the status rather than contradict it.
+
+### The head — `header.php` (2.4.0 → 2.4.1)
+
+- The search branch of the ROBOTS block is now `is_search() || is_404()` → `noindex, follow` ("follow" keeps link discovery, as on search).
+- **Order unchanged:** per-page field → search / 404 → `blog_public`. "Discourage search engines" still wins last.
+
+### Unchanged
+
+The HTTP 404 status (core's), the 404 and search templates and parts, canonical / OG handling on both routes, `dist/css` and `dist/js`.
+
+---
+
 ## [7.8.0] — 2026-10-21
 
 **FEAT: the FAQPage JSON-LD is printed in `<head>`, with the page-level and site-level schema, instead of after the FAQ section in the body.**
