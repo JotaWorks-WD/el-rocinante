@@ -4,6 +4,36 @@ All notable changes to the El Rocinante parent theme are recorded here. Entries 
 
 ---
 
+## [7.9.0] — 2026-10-31
+
+**FEAT: an optional secondary phone in Theme Settings → Business.**
+
+Minor: one new optional field. Every child gets it on deploy; nothing changes on a site until the field is filled, and the parent itself renders it nowhere.
+
+### Why
+
+Some businesses publish two numbers (an office line and a mobile, say). The second needs a home in settings so a child's contact display can read it, without disturbing the single `telephone` the structured data publishes.
+
+### The Business tab — `inc/theme-settings/tabs/tab-business.php` (1.8.0 → 1.9.0)
+
+- **New field "Secondary Phone"** directly under the existing number, stored as `roci_business['phone_secondary']`, with the note "Optional. Shown alongside the primary number where the theme displays contact details."
+- **The existing field is relabelled "Primary Phone".** Label only: its stored key stays `phone`, so every saved value and every `roci_setting( 'business', 'phone' )` read is untouched.
+
+### The sanitiser — `inc/theme-settings/settings-sanitize.php` (1.9.0 → 1.10.0)
+
+- `roci_sanitize_business()` returns `phone_secondary`, sanitised exactly like `phone` (`sanitize_text_field()`, `''` when absent). Tab and sanitiser stay in sync, so saving the tab never wipes the new key.
+
+### Reading it
+
+- `roci_setting( 'business', 'phone_secondary' )`, the same reader the primary uses. No new helper.
+- **A display shows the secondary only when it is non-empty.** The parent ships no front-end phone output, so that rule is the child's to apply.
+
+### Unchanged
+
+The LocalBusiness JSON-LD: `telephone` is still the primary `phone` alone, and the secondary is never published as structured data. `header.php`, `dist/css` and `dist/js`.
+
+---
+
 ## [7.8.1] — 2026-10-26
 
 **FIX: a 404 page is `noindex`. It printed `<meta name="robots" content="index, follow">`.**

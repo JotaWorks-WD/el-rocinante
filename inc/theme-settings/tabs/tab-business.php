@@ -5,8 +5,8 @@
  * Included by settings-page.php inside roci_settings_page().
  *
  * File:    inc/theme-settings/tabs/tab-business.php
- * Version: 1.8.0
- * Updated: 2026-10-17
+ * Version: 1.9.0
+ * Updated: 2026-10-31
  *
  * @package ElRocinante
  */
@@ -66,8 +66,22 @@ $roci_biz_type          = isset( $business['type'] ) && '' !== $business['type']
         </td>
     </tr>
     <tr>
-        <th><label for="roci_biz_phone"><?php esc_html_e( 'Phone Number', 'rocinante' ); ?></label></th>
+        <th><label for="roci_biz_phone"><?php esc_html_e( 'Primary Phone', 'rocinante' ); ?></label></th>
         <td><input type="text" name="roci_business[phone]" id="roci_biz_phone" class="regular-text" value="<?php echo esc_attr( isset( $business['phone'] ) ? $business['phone'] : '' ); ?>"></td>
+    </tr>
+    <?php
+    /*
+     * SECONDARY PHONE (v7.9.0) — display only. The schema's telephone stays the
+     * primary 'phone' key alone; this one is never published as structured data.
+     * The primary keeps its stored key 'phone' for backwards compatibility.
+     */
+    ?>
+    <tr>
+        <th><label for="roci_biz_phone_secondary"><?php esc_html_e( 'Secondary Phone', 'rocinante' ); ?></label></th>
+        <td>
+            <input type="text" name="roci_business[phone_secondary]" id="roci_biz_phone_secondary" class="regular-text" value="<?php echo esc_attr( isset( $business['phone_secondary'] ) ? $business['phone_secondary'] : '' ); ?>">
+            <p class="roci-note"><?php esc_html_e( 'Optional. Shown alongside the primary number where the theme displays contact details.', 'rocinante' ); ?></p>
+        </td>
     </tr>
     <tr>
         <th><label for="roci_biz_email"><?php esc_html_e( 'Email Address', 'rocinante' ); ?></label></th>

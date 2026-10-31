@@ -3,8 +3,8 @@
  * Theme Settings — Sanitize Callbacks
  *
  * File:    inc/theme-settings/settings-sanitize.php
- * Version: 1.9.0
- * Updated: 2026-10-17
+ * Version: 1.10.0
+ * Updated: 2026-10-31
  *
  * @package ElRocinante
  */
@@ -231,6 +231,7 @@ function roci_sanitize_business( $input ) {
         'amenities'     => $roci_amenities,
         'hours'         => $roci_hours,
         'phone'    => isset( $input['phone'] )    ? sanitize_text_field( $input['phone'] )    : '',
+        'phone_secondary' => isset( $input['phone_secondary'] ) ? sanitize_text_field( $input['phone_secondary'] ) : '',
         'email'    => isset( $input['email'] )    ? sanitize_email( $input['email'] )         : '',
         'street'   => sanitize_text_field( $input['street'] ?? '' ),
         'locality' => sanitize_text_field( $input['locality'] ?? '' ),
