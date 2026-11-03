@@ -22,9 +22,15 @@
  *                 stay as typed; Turnstile is reset; focus → the summary
  *        success  the form is replaced by the success message (the part's
  *                 "sent" markup); focus → the message
- *      Focus moves without the browser's own scroll; the target is then
- *      brought into view only if it is off screen (smoothly unless reduced
- *      motion). No reload, so no page transition runs.
+ *      Focus moves without the browser's own scroll (preventScroll), then ONE
+ *      scroll of ours, only when needed (1.1.1): on success the view lands on
+ *      the START OF THE FORM'S SECTION (a [data-roci-form-anchor] ancestor
+ *      when a child sets one, else closest( 'section' ), else the message), so
+ *      the section's prompt, heading and intro stay above the message; on
+ *      errors, on the summary. Every scroll clears the sticky / fixed header
+ *      (headerOffset(): html's scroll-padding-top when set, else the measured
+ *      header + admin bar) plus 24px. Smooth unless reduced motion. No reload,
+ *      so no page transition runs.
  *   5. while sending: the button is disabled (and aria-disabled), its label
  *      reads "Sending…", the form is aria-busy and a polite status line says
  *      "Sending…" for screen readers; a second submit is ignored.
@@ -36,13 +42,20 @@
  * lands on #roci-form-{id}. A control without the part's
  * roci-form-{id}-{field} id still gets its message — in the summary only.
  *
- * Config: window.rociForms = { endpoint, sending, errorPrefix }
- * (wp_localize_script in the parent's functions.php). Registered in the
- * footer and enqueued only by the form part. Hand-written, no dependencies.
- * Scoped to .roci-form.
+ * Config: window.rociForms = { endpoint, sending, errorPrefix, headerSelector }
+ * (wp_localize_script in the parent's functions.php; headerSelector through
+ * the roci_forms_header_selector filter). Registered in the footer and
+ * enqueued only by the form part. Hand-written, no dependencies. Scoped to
+ * .roci-form.
+ *
+ * NO-JS FRAGMENT LANDING is the site's own header offset, not this file's:
+ * html { scroll-padding-top } or scroll-margin-top on the target. The parent
+ * deliberately sets neither on html — scroll-padding and scroll-margin ADD UP,
+ * and children already offset #main-content and their sections with
+ * scroll-margin-top.
  *
  * File:    forms.js
- * Version: 1.1.0
+ * Version: 1.1.1
  * Updated: 2026-11-03
  *
  * @package ElRocinante
@@ -70,18 +83,92 @@
     return node;
   }
 
-  // Focus without the browser's jump, then scroll only if it is off screen.
-  function focusInPlace( target ) {
+  // Room left between the header (or the viewport top) and what scrolls in.
+  var BREATHING = 24;
+
+  function viewHeight() {
+    return window.innerHeight || document.documentElement.clientHeight;
+  }
+
+  function scrollTop() {
+    return window.pageYOffset || document.documentElement.scrollTop || 0;
+  }
+
+  // What covers the top of the viewport (1.1.1). The site's own
+  // html { scroll-padding-top } when it sets one — the same offset its anchor
+  // jumps and focus use (it already includes the admin bar where the site
+  // added it). Otherwise MEASURED: the header (rociForms.headerSelector,
+  // default "#site-header, .site-header") when it is fixed or sticky, plus a
+  // fixed admin bar.
+  function headerOffset() {
+    var root = document.documentElement;
+    var pad  = String( window.getComputedStyle( root ).getPropertyValue( 'scroll-padding-top' ) || '' ).trim();
+    var n    = parseFloat( pad );
+
+    if ( pad && 'auto' !== pad && ! isNaN( n ) && n > 0 ) {
+      return /%$/.test( pad ) ? n / 100 * viewHeight() : n;
+    }
+
+    var offset = 0;
+    var header = document.querySelector( cfg.headerSelector || '#site-header, .site-header' );
+    if ( header ) {
+      var position = window.getComputedStyle( header ).position;
+      if ( 'fixed' === position || 'sticky' === position ) {
+        offset += header.getBoundingClientRect().height;
+      }
+    }
+    var bar = document.getElementById( 'wpadminbar' );
+    if ( bar && 'fixed' === window.getComputedStyle( bar ).position ) {
+      offset += bar.getBoundingClientRect().height;
+    }
+    return offset;
+  }
+
+  // Bring `anchor`'s top into view below the header, with `must` (the thing
+  // that has to be read: the summary, the success message) fully on screen.
+  // Only when needed: the anchor's top is above the viewport or under the
+  // header, or `must` runs off the bottom. If the anchor is so tall that
+  // `must` would still end below the fold, `must` becomes the anchor.
+  function revealBelowHeader( anchor, must ) {
+    var offset = headerOffset();
+    var view   = viewHeight();
+    var top    = anchor.getBoundingClientRect().top;
+    var mRect  = must.getBoundingClientRect();
+
+    if ( top >= offset && top < view && mRect.bottom <= view ) {
+      return; // Already in view, clear of the header.
+    }
+
+    if ( anchor !== must && mRect.bottom - top + offset + BREATHING > view ) {
+      top = mRect.top;
+    }
+
+    var y = Math.max( 0, scrollTop() + top - offset - BREATHING );
+    try {
+      window.scrollTo( { top: y, behavior: reduceMotion ? 'auto' : 'smooth' } );
+    } catch ( e ) {
+      window.scrollTo( 0, y );
+    }
+  }
+
+  // Focus without the browser's own jump (one scroll only: ours).
+  function focusQuietly( target ) {
     try {
       target.focus( { preventScroll: true } );
     } catch ( e ) {
       target.focus();
     }
-    var rect = target.getBoundingClientRect();
-    var view = window.innerHeight || document.documentElement.clientHeight;
-    if ( rect.top < 0 || rect.bottom > view ) {
-      target.scrollIntoView( { block: 'nearest', behavior: reduceMotion ? 'auto' : 'smooth' } );
+  }
+
+  // Where the view lands after a success: a child's [data-roci-form-anchor]
+  // ancestor, else the form's <section> (eyebrow, heading and intro stay above
+  // the message), else the message itself.
+  function successAnchor( node, message ) {
+    var anchor = node.parentNode && node.parentNode.closest ? node.parentNode.closest( '[data-roci-form-anchor]' ) : null;
+    if ( ! anchor && node.closest ) {
+      anchor = node.closest( 'section' );
     }
+    return anchor || message;
   }
 
   // Summary links focus their field (page-rendered and drawn summaries alike).
@@ -245,7 +332,8 @@
       } catch ( e ) {}
     }
 
-    focusInPlace( summary );
+    focusQuietly( summary );
+    revealBelowHeader( summary, summary );
   }
 
   // ---------------------------------------------------------------- success --
@@ -264,7 +352,8 @@
     sent.appendChild( message );
 
     root.parentNode.replaceChild( sent, root );
-    focusInPlace( message );
+    focusQuietly( message );
+    revealBelowHeader( successAnchor( sent, message ), message );
   }
 
   // ----------------------------------------------------------------- submit --

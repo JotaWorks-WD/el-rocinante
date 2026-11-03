@@ -6,7 +6,7 @@
  * loads includes, and outputs analytics/integration scripts.
  *
  * File:    functions.php
- * Version: 1.19.1
+ * Version: 1.19.2
  * Updated: 2026-11-03
  *
  * @package ElRocinante
@@ -155,10 +155,13 @@ function el_rocinante_enqueue_assets() {
         );
         // The background submit's endpoint and strings (8.0.1). No nonce:
         // the endpoint is public, and a nonce in cached HTML goes stale (D4).
+        // headerSelector (8.0.2): the header forms.js measures for its scroll
+        // offset when the site sets no html { scroll-padding-top }.
         wp_localize_script( 'el-rocinante-forms', 'rociForms', array(
-            'endpoint'    => esc_url_raw( rest_url( 'roci/v1/form/' ) ),
-            'sending'     => __( 'Sending…', 'rocinante' ),
-            'errorPrefix' => __( 'Error:', 'rocinante' ),
+            'endpoint'       => esc_url_raw( rest_url( 'roci/v1/form/' ) ),
+            'sending'        => __( 'Sending…', 'rocinante' ),
+            'errorPrefix'    => __( 'Error:', 'rocinante' ),
+            'headerSelector' => (string) apply_filters( 'roci_forms_header_selector', '#site-header, .site-header' ),
         ) );
         wp_register_script(
             'el-rocinante-turnstile',

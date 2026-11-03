@@ -4,6 +4,47 @@ All notable changes to the El Rocinante parent theme are recorded here. Entries 
 
 ---
 
+## [8.0.2] — 2026-11-03
+
+**FIX (forms.js 1.1.0 → 1.1.1): the success scroll lands on the form's section, and every scroll clears the sticky header.**
+
+### Why
+
+On staging (jota.works `/contact/`), after a background submit succeeded, the page scrolled so the success message sat right under the sticky header. The section's prompt and heading ("> send_a_message" / "Send me a message") ended up off screen, so the message read as out of context.
+
+### What changed
+
+- **Success target.** The view lands on the start of the form's containing section, so the prompt, heading and intro stay above the message. In priority order:
+  1. the nearest ancestor with **`data-roci-form-anchor`**, so a child can choose another anchor;
+  2. else `closest( 'section' )`;
+  3. else the message itself.
+
+  If the section is so tall that the message would still be below the fold, the message is used instead.
+- **Scroll only when needed:** when the anchor's top is above the viewport or under the header, or the message (or the summary) runs off the bottom. Otherwise nothing moves.
+- **The header offset, on every scroll** (success and the error summary):
+  - `html`'s computed `scroll-padding-top` when the site sets one. That is the offset its anchor jumps and focus already use, and on jota.works it includes the admin bar.
+  - Otherwise it is **measured**: the header when it is `fixed` or `sticky`, plus a fixed `#wpadminbar`.
+  - Then **+24px** of breathing room.
+  - The header is found through `rociForms.headerSelector`: the new filter **`roci_forms_header_selector`**, default `#site-header, .site-header` (`functions.php` 1.19.1 → 1.19.2).
+- **One scroll:** focus still uses `preventScroll`, and the scroll is a single `window.scrollTo()`. It is smooth unless reduced motion is on (then instant, as before), and never above the page top.
+- **Error path:** it still scrolls to the error summary, now clear of the header.
+
+### Not changed, on purpose
+
+**The parent still sets no `html { scroll-padding-top }`, and adds no header-height property.**
+- Scroll padding on `html` and scroll margin on a target **add up**.
+- The parent already offsets `#main-content` with `scroll-margin-top: var(--site-header-h, 12rem)`.
+- Children offset their own sections and bands with `scroll-margin-top`. Casa Jícaro documents this choice; Coco ATV does it on its anchor nav and form band.
+- A parent rule would double those offsets.
+
+So the no-JS `#roci-form-{id}` fragment landing stays the site's own header offset. jota.works already sets `html { scroll-padding-top: var(--site-header-h) }` (+ admin bar), so it lands clear of its header, and forms.js reads that same value. `--site-header-h`, published by each child, stays the network's one header-height property.
+
+### Breaking changes
+
+None. No CSS change (dist/css unchanged), no markup change, and no child change needed.
+
+---
+
 ## [8.0.1] — 2026-11-03
 
 **FEAT/FIX (forms): with JavaScript, a form submits in the background, so the page never reloads.**
