@@ -23,9 +23,14 @@
  * wp_date() (the site's timezone, not the server's), and every value is
  * escaped. The rendered English text is unchanged.
  *
+ * v1.1.0: the footer credit (Theme Settings → Footer → Credit) follows the
+ * copyright line, inside the same paragraph — roci_footer_credit(), '' while
+ * the setting is None (the default), so an untouched site is byte-identical.
+ * A child that overrides this part calls roci_footer_credit() itself.
+ *
  * File:    template-parts/footer/site-footer.php
- * Version: 1.0.1
- * Updated: 2026-10-09
+ * Version: 1.1.0
+ * Updated: 2026-11-03
  *
  * @package ElRocinante
  */
@@ -43,6 +48,10 @@
                         esc_html( wp_date( 'Y' ) ),
                         esc_html( get_bloginfo( 'name', 'display' ) )
                     );
+                    $roci_credit = roci_footer_credit();
+                    if ( '' !== $roci_credit ) {
+                        echo ' ' . $roci_credit; // Built and escaped in roci_footer_credit().
+                    }
                     ?>
                 </p>
             </div>

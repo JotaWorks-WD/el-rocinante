@@ -4,6 +4,77 @@ All notable changes to the El Rocinante parent theme are recorded here. Entries 
 
 ---
 
+## [8.0.0] — 2026-11-03
+
+**FEAT: the parent's forms module, `roci-forms` — plus a footer credit setting and two text fixes.**
+
+**Major as a declared milestone (owner decision), not for a breaking change. There are NO breaking changes for existing children:** every new feature is off until a child opts in (`add_theme_support( 'roci-forms' )`) or an admin sets the footer credit (default None). No template, filter, setting key or class a child already uses changed. The only output change on an untouched site is the compiled stylesheet, which gains rules under `:where(.roci-form)` that match nothing until a form renders.
+
+### Why
+
+Owner decision: forms live in the parent, not a per-site plugin, so every El Rocinante site can use them. This replaces the plan for a separate `jotaworks-forms` plugin (never built).
+
+### The forms module — `inc/forms/` (all new, 1.0.0)
+
+- **Opt-in gate** (`forms-loader.php`): `roci_forms_enabled()` reads `current_theme_supports( 'roci-forms' )`. Every hook checks it **at run time**, because the parent's `functions.php` loads before the child's `after_setup_theme`. Off → no CPT, no shortcode, no scripts, no cron, no settings section, no privacy hooks. Required from `functions.php` (1.18.0 → 1.19.0) under a new "FORMS (roci-forms)" banner.
+- **Forms in code** (`forms-registry.php`): the child declares them on the **`roci_forms`** filter (id ⇒ label, fields, submit_label, success_message, recipient, subject). Field types: text, email, url, select, textarea. Each field: id, label, required, help, options (select), autocomplete, `role` (name / email / site — the admin columns, the privacy match and Reply-To), maxlength. Normalised once per request by `roci_get_forms()` / `roci_get_form()`; an invalid field is dropped with a `WP_DEBUG` comment. The parent ships no forms (§12.4).
+- **Embedding** (`forms-render.php` + the new part `template-parts/form.php`): **`[roci_form id="…"]`**. Markup in the part, so a child overrides the part. BEM classes (`.roci-form`, `__field`, `__label`, `__required`, `__help`, `__error`, `__errors`, `__submit`, `__success` …); class slots through the new **`roci_form_classes`** filter.
+- **Accessibility:**
+  - `<label for>` on every control, with "(required)" **in text** plus `aria-required`;
+  - help and error joined in `aria-describedby`, with `aria-invalid`;
+  - an error summary at the top, linking to each field;
+  - focus on the summary or the success message **without JS** (`autofocus` + `tabindex="-1"`, the action's `#roci-form-{id}` fragment);
+  - `novalidate`, so every message is the server's.
+- **Submission** (`forms-handler.php`, on `template_redirect`): the form posts to its own page.
+  - Order of checks: honeypot (silent fake success), then field validation and sanitising, then the rate limit, then Turnstile.
+  - **Errors render in the POST response**; success stores, mails, fires **`roci_form_submitted`**, then **303** to `?roci_sent={id}`.
+  - Field names are namespaced (`roci_fields[…]`), because WordPress reads public query vars from POST.
+- **No nonce** (owner decision D4): the GET markup is identical for every visitor, so **a page with a form needs no page-cache exclusion**. The POST response sends `nocache_headers()` plus LiteSpeed's `litespeed_control_set_nocache`.
+- **Spam:**
+  - **Cloudflare Turnstile**, using `ROCI_TURNSTILE_SITE_KEY` / `ROCI_TURNSTILE_SECRET_KEY` from `wp-config.php` only, verified server-side with the token and secret (no `remoteip`).
+  - **No-JS submissions are held**: stored as `held` and mailed "[Unverified]" (D2).
+  - **Keys missing:** honeypot + rate limit only, with an admin notice (D3). An unreachable Cloudflare counts as a failed check.
+  - **Rate limit:** 5 sent submissions per form per 10 minutes per client, keyed by a hash in a transient (never the IP). Filterable with **`roci_form_rate_limit`**. `ROCI_FORMS_TRUST_CF_IP` opts a proxied site into `CF-Connecting-IP`.
+- **Email:**
+  - **Recipient:** the form's `recipient`, then Integrations → Forms → Send Submissions To, then the Business email; last word **`roci_form_recipient`**.
+  - **Headers:** Reply-To is the visitor (CR/LF stripped, re-validated). From is left to WordPress / SMTP.
+  - **Content:** a plain-text body. The subject is "[Site] New {label} from {name}", filterable with **`roci_form_email_subject`**.
+- **Storage** (`forms-cpt.php`): private CPT **`roci_submission`**.
+  - No front end, no REST; every capability maps to `manage_options`, and there's no "Add new".
+  - **Admin list:** a Submissions menu with columns Date · Form · Name · Email · Site · Status, a Form filter, sortable columns, and Mark as read (row and bulk). A read-only detail box; opening a submission marks it read.
+  - **What's stored:** the values, as one meta array — **an approved exception to §12.3 (D12)** — with name, email and site also as their own keys. No IP, no user agent.
+- **Privacy** (`forms-privacy.php`):
+  - a daily `roci_forms_cleanup` cron deletes submissions older than the retention period (**default 730 days**, 0 keeps them forever);
+  - personal-data exporter and eraser for Tools → Export / Erase Personal Data, matched on the email;
+  - a suggested paragraph in the privacy-policy guide.
+- **Settings:** a **Forms section in Theme Settings → Integrations**, added on `roci_integrations_extra` and shown only when enabled. It shows Turnstile configured / not configured (never the keys), the recipient override and retention days. `roci_sanitize_integrations()` keeps those values when the section is absent.
+- **Assets:**
+  - `dist/js/forms.js` (new, enhancement only: marks JS as present, repeats focus, focuses a field from the error summary, stops a double submit);
+  - Cloudflare's Turnstile `api.js` (external, deferred — D13).
+
+  Both are registered in `el_rocinante_enqueue_assets()` only when enabled, and enqueued only by the form part. Turnstile loads only with keys configured.
+- **Styles:** `Build/scss/components/_forms.scss` (new) — structure only, every rule under `:where(.roci-form)`: stacking, full-width controls, the off-screen honeypot, error text in `--color-danger`, and 65px reserved for the Turnstile widget. `main.scss` 1.2.0 → 1.3.0.
+
+### Footer credit — Theme Settings → Footer
+
+- **Settings:** the Footer tab (`tab-footer.php` 1.1.2 → 1.2.0) gains **Credit** (None / Built by Jota Works / Powered by Jota Works, default **None**) and **Followed link**. When Followed link is off, the credit carries `rel="nofollow"`.
+- **Helpers:** new `roci_footer_credit_options()` and `roci_footer_credit()` (`inc/helpers.php` 1.20.1 → 1.21.0) link to `https://jota.works`. `nofollow` is merged into the **one** `rel` with `noopener noreferrer`. On jota.works itself the link is internal, with no new tab and no nofollow.
+- **Output:** the parent's footer part (`template-parts/footer/site-footer.php` 1.0.1 → 1.1.0) prints the credit after the copyright line. A child that overrides that part calls `roci_footer_credit()` itself. Byte-identical while the setting is None.
+- **Sanitiser:** `roci_sanitize_footer()` (`settings-sanitize.php` 1.10.0 → 1.11.0) whitelists `credit` against the options list and stores `credit_follow` as `'1'` / `''`.
+
+### Text fixes
+
+- The Footer Tagline note no longer says "Uses Apalu font if set" (a leftover from another site).
+- "JotaWorks" → "Jota Works" where it is the brand in text: the `style.css` Description, the `comment-suppression.php` docblock (a comment-only edit, so that file's version and date stay put per §3), and the Build repo's `package.json` description.
+- **Kept on purpose:** `Author: JotaWorks` (the network-wide field, decision D5), the `JotaWorks-WD` org in URLs, and this changelog's historical entry (D6).
+- `faq-accordion.js` and `functions.php` comments no longer call the FAQ script the parent's only front-end script (comment-only in the JS file).
+
+### Unchanged
+
+`header.php`, every existing template and part except the footer part, every existing filter and setting key, and the page bundles.
+
+---
+
 ## [7.9.0] — 2026-10-31
 
 **FEAT: an optional secondary phone in Theme Settings → Business.**

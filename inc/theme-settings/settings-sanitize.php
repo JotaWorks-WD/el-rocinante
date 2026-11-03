@@ -3,8 +3,8 @@
  * Theme Settings — Sanitize Callbacks
  *
  * File:    inc/theme-settings/settings-sanitize.php
- * Version: 1.10.0
- * Updated: 2026-10-31
+ * Version: 1.11.0
+ * Updated: 2026-11-03
  *
  * @package ElRocinante
  */
@@ -284,19 +284,34 @@ function roci_sanitize_integrations( $input ) {
     // users fall back to wp_kses_post() and can never inject scripts.
     $can_raw = current_user_can( 'unfiltered_html' );
 
+    // The Forms section (v1.11.0) renders only on a site that opted in to
+    // roci-forms. When it is absent from the POST, KEEP the stored values —
+    // unlike the rebuild-from-scratch fields above — so a site that turns
+    // forms off and saves this tab loses nothing.
+    $stored = get_option( 'roci_integrations', array() );
+    $stored = is_array( $stored ) ? $stored : array();
+
     return array(
         'ga_id'                => isset( $input['ga_id'] )                ? sanitize_text_field( $input['ga_id'] )                : '',
         'gtm_id'               => isset( $input['gtm_id'] )               ? sanitize_text_field( $input['gtm_id'] )               : '',
         'fb_pixel_id'          => isset( $input['fb_pixel_id'] )          ? sanitize_text_field( $input['fb_pixel_id'] )          : '',
         'custom_head_script'   => isset( $input['custom_head_script'] )   ? ( $can_raw ? $input['custom_head_script'] : wp_kses_post( $input['custom_head_script'] ) )   : '',
         'custom_footer_script' => isset( $input['custom_footer_script'] ) ? ( $can_raw ? $input['custom_footer_script'] : wp_kses_post( $input['custom_footer_script'] ) ) : '',
+        'forms_recipient'      => isset( $input['forms_recipient'] )      ? sanitize_email( $input['forms_recipient'] )      : ( isset( $stored['forms_recipient'] ) ? sanitize_email( $stored['forms_recipient'] ) : '' ),
+        'forms_retention_days' => isset( $input['forms_retention_days'] ) ? (string) absint( $input['forms_retention_days'] ) : ( isset( $stored['forms_retention_days'] ) ? (string) absint( $stored['forms_retention_days'] ) : '' ),
     );
 }
 
 function roci_sanitize_footer( $input ) {
+    // credit: whitelisted against roci_footer_credit_options() (v1.11.0);
+    // anything else, or nothing, is 'none'. credit_follow: '1' or ''.
+    $credit = isset( $input['credit'] ) ? sanitize_key( $input['credit'] ) : 'none';
+
     return array(
-        'tagline'  => isset( $input['tagline'] )  ? sanitize_text_field( $input['tagline'] )      : '',
-        'blurb'    => isset( $input['blurb'] )    ? sanitize_textarea_field( $input['blurb'] )    : '',
-        'logo_url' => isset( $input['logo_url'] ) ? esc_url_raw( $input['logo_url'] )             : '',
+        'tagline'       => isset( $input['tagline'] )  ? sanitize_text_field( $input['tagline'] )      : '',
+        'blurb'         => isset( $input['blurb'] )    ? sanitize_textarea_field( $input['blurb'] )    : '',
+        'logo_url'      => isset( $input['logo_url'] ) ? esc_url_raw( $input['logo_url'] )             : '',
+        'credit'        => array_key_exists( $credit, roci_footer_credit_options() ) ? $credit : 'none',
+        'credit_follow' => empty( $input['credit_follow'] ) ? '' : '1',
     );
 }

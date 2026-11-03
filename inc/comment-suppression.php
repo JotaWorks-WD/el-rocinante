@@ -4,7 +4,7 @@
  *
  * Disables WordPress comments, pingbacks and trackbacks across every site
  * in the family. Graduated to the parent from the standalone "Disable
- * Comments Clean" plugin (v3.14, JotaWorks) that previously ran on one
+ * Comments Clean" plugin (v3.14, Jota Works) that previously ran on one
  * child only, so every child — current and future — inherits it without
  * a per-site plugin install.
  *

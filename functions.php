@@ -6,8 +6,8 @@
  * loads includes, and outputs analytics/integration scripts.
  *
  * File:    functions.php
- * Version: 1.18.0
- * Updated: 2026-10-17
+ * Version: 1.19.0
+ * Updated: 2026-11-03
  *
  * @package ElRocinante
  */
@@ -70,8 +70,9 @@ add_action( 'after_setup_theme', 'el_rocinante_setup' );
 //
 // ⚠ THE PARENT SUPPLIES NO DISMISSAL. It renders the overlay and styles it;
 // removing it is the child's job: the parent enqueues no front-end
-// JavaScript unconditionally (see §8 of CLAUDE.md; its one script is the FAQ
-// part's), and ships none for this feature. A child that opts in WITHOUT shipping dismissal JS gets
+// JavaScript unconditionally (see §8 of CLAUDE.md; its scripts — the FAQ's and
+// the forms module's — load only with the part that renders them), and ships
+// none for this feature. A child that opts in WITHOUT shipping dismissal JS gets
 // an overlay that never goes away. The reference child's dismissal lives in
 // its own front-end script.
 
@@ -125,7 +126,7 @@ function el_rocinante_enqueue_assets() {
         filemtime( get_template_directory() . '/dist/css/style.css' )
     );
 
-    // THE PARENT'S ONE FRONT-END SCRIPT (v7.6.0) — REGISTERED, NEVER ENQUEUED
+    // THE FAQ SCRIPT (v7.6.0) — REGISTERED, NEVER ENQUEUED
     // HERE. template-parts/faq.php enqueues it only when it renders an
     // accordion, so no other page requests it. FOOTER, so the part (which runs
     // in the body, before wp_footer()) can still enqueue it, and the script
@@ -138,6 +139,31 @@ function el_rocinante_enqueue_assets() {
         filemtime( get_template_directory() . '/dist/js/faq-accordion.js' ),
         true
     );
+
+    // THE FORMS MODULE'S SCRIPTS (v8.0.0) — registered only when the child
+    // opted in to roci-forms, enqueued only by template-parts/form.php when
+    // it renders a form. forms.js is enhancement only (the form works without
+    // it). Turnstile is Cloudflare's own script, loaded on form pages only and
+    // only when the keys are configured (owner decision D13, 2026-11-03).
+    if ( roci_forms_enabled() ) {
+        wp_register_script(
+            'el-rocinante-forms',
+            get_template_directory_uri() . '/dist/js/forms.js',
+            array(),
+            filemtime( get_template_directory() . '/dist/js/forms.js' ),
+            true
+        );
+        wp_register_script(
+            'el-rocinante-turnstile',
+            'https://challenges.cloudflare.com/turnstile/v0/api.js',
+            array(),
+            null,
+            array(
+                'in_footer' => true,
+                'strategy'  => 'defer',
+            )
+        );
+    }
 
 }
 add_action( 'wp_enqueue_scripts', 'el_rocinante_enqueue_assets' );
@@ -274,6 +300,19 @@ require_once get_template_directory() . '/inc/metabox/metabox-loader.php';
 // ============================================================
 
 require_once get_template_directory() . '/inc/layout-bundles/layout-bundles.php';
+
+
+// ============================================================
+// FORMS (roci-forms) — opt-in, v8.0.0
+// ============================================================
+//
+// INERT UNLESS THE CHILD DECLARES add_theme_support( 'roci-forms' ). The files
+// only define functions; every hook checks roci_forms_enabled() when it runs
+// (the opt-in cannot be known at file load — see the loader's header). Forms
+// are declared by the child on the roci_forms filter and embedded with
+// [roci_form id="…"]. Turnstile keys are wp-config.php constants only.
+
+require_once get_template_directory() . '/inc/forms/forms-loader.php';
 
 
 // ============================================================

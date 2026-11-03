@@ -7,8 +7,8 @@
  * and template parts throughout El Rocinante and child themes.
  *
  * File:    inc/helpers.php
- * Version: 1.20.1
- * Updated: 2026-10-21
+ * Version: 1.21.0
+ * Updated: 2026-11-03
  *
  * @package ElRocinante
  *
@@ -26,6 +26,8 @@
  *   jw_faq_schema()                — FAQPage JSON-LD for those pairs, once per post per request
  *   jw_link_atts()                 — Returns target + rel attribute string for external links
  *   jw_new_tab_note()              — SR-only "(opens in a new tab)" for links that open a new tab
+ *   roci_footer_credit_options()   — The footer credit choices (none / built / powered), one list for the tab + sanitiser
+ *   roci_footer_credit()           — The footer credit line (Theme Settings → Footer), '' for None; one rel incl. nofollow
  *   roci_is_external_link()        — (internal) The one external-link test behind the three link helpers
  *   roci_is_svg_attachment()       — (internal) The one SVG test behind the image helpers (mime image/svg+xml)
  *   roci_current_atts()            — Returns aria-current for the link to the page being viewed
@@ -1272,6 +1274,86 @@ function jw_new_tab_note( $url ) {
     }
 
     return '<span class="screen-reader-text"> ' . esc_html__( '(opens in a new tab)', 'rocinante' ) . '</span>';
+}
+
+
+// ============================================================
+// FOOTER CREDIT (v1.21.0)
+// ============================================================
+
+/**
+ * roci_footer_credit_options()
+ *
+ * The footer credit choices: stored value => admin label. The ONE list the
+ * Footer tab renders and roci_sanitize_footer() whitelists against.
+ *
+ * @return array<string, string>
+ */
+function roci_footer_credit_options() {
+    return array(
+        'none'    => __( 'None', 'rocinante' ),
+        'built'   => __( 'Built by Jota Works', 'rocinante' ),
+        'powered' => __( 'Powered by Jota Works', 'rocinante' ),
+    );
+}
+
+/**
+ * roci_footer_credit()
+ *
+ * The footer credit line from Theme Settings → Footer → Credit, as HTML, or
+ * '' when it is None (the default — an untouched site shows nothing).
+ *
+ *   <span class="footer-credit">Built by <a href="https://jota.works" rel="nofollow noopener noreferrer" target="_blank">Jota Works<span class="screen-reader-text"> (opens in a new tab)</span></a></span>
+ *
+ * The parent's footer part prints it after the copyright line. A child that
+ * overrides template-parts/footer/site-footer.php echoes this where its
+ * credit goes, so the setting reaches its footer too.
+ *
+ * ⚠ ONE rel ATTRIBUTE. The link is external on every site but jota.works, so
+ *   it would carry jw_link_atts()'s rel="noopener noreferrer". nofollow (the
+ *   default; "Followed link" in the tab turns it off) is merged into that same
+ *   attribute here — never printed as a second rel. On jota.works itself the
+ *   link is same-host: no new tab, no noopener, and no nofollow (an internal
+ *   link).
+ *
+ * @return string HTML — echo as-is; '' for None.
+ */
+function roci_footer_credit() {
+
+    $credit = roci_setting( 'footer', 'credit', 'none' );
+
+    $lead = array(
+        /* translators: before the linked name in the footer credit, "Built by Jota Works". */
+        'built'   => __( 'Built by', 'rocinante' ),
+        /* translators: before the linked name in the footer credit, "Powered by Jota Works". */
+        'powered' => __( 'Powered by', 'rocinante' ),
+    );
+
+    if ( ! isset( $lead[ $credit ] ) ) {
+        return '';
+    }
+
+    $url      = 'https://jota.works';
+    $external = roci_is_external_link( $url );
+    $rel      = array();
+
+    if ( $external && '1' !== (string) roci_setting( 'footer', 'credit_follow', '' ) ) {
+        $rel[] = 'nofollow';
+    }
+    if ( $external ) {
+        $rel[] = 'noopener';
+        $rel[] = 'noreferrer';
+    }
+
+    return sprintf(
+        '<span class="footer-credit">%1$s <a href="%2$s"%3$s%4$s>%5$s%6$s</a></span>',
+        esc_html( $lead[ $credit ] ),
+        esc_url( $url ),
+        $external ? ' target="_blank"' : '',
+        $rel ? ' rel="' . esc_attr( implode( ' ', $rel ) ) . '"' : '',
+        esc_html__( 'Jota Works', 'rocinante' ),
+        jw_new_tab_note( $url )
+    );
 }
 
 

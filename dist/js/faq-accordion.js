@@ -9,7 +9,7 @@
  * Height is released back to auto once an opening transition finishes, so later
  * reflow (wrapping text, late-loading images) is not clipped.
  *
- * THE PARENT'S ONE FRONT-END SCRIPT. Registered by el_rocinante_enqueue_assets()
+ * A PART-SCOPED FRONT-END SCRIPT. Registered by el_rocinante_enqueue_assets()
  * (footer) and enqueued only by template-parts/faq.php when it renders, so a
  * page without an accordion never requests it. Hand-written, no dependencies.
  *
