@@ -4,7 +4,10 @@
  *
  * A form posts to ITS OWN PAGE (the action is the current URL), and
  * roci_handle_form_post() picks the POST up on template_redirect — no
- * admin-post.php round trip, and it works with JavaScript off.
+ * admin-post.php round trip, and it works with JavaScript off. With
+ * JavaScript, forms.js submits in the background instead (8.0.1,
+ * forms-rest.php); BOTH paths run roci_process_form_submission(), the steps
+ * below, so they cannot drift.
  *
  *   1. form id known?                       no  → ignore (WordPress renders the page)
  *   2. honeypot (roci_website) filled?      yes → silent fake success: nothing stored or mailed
@@ -39,8 +42,12 @@
  * remoteip (decision D11). The client IP is used only as a hashed transient
  * key for the rate limit and expires with the window.
  *
+ * 1.1.0 (8.0.1) — the checks moved into roci_process_form_submission(),
+ * unchanged, so the REST path can share them; the POST path behaves exactly
+ * as in 1.0.0.
+ *
  * File:    inc/forms/forms-handler.php
- * Version: 1.0.0
+ * Version: 1.1.0
  * Updated: 2026-11-03
  *
  * @package ElRocinante
@@ -70,14 +77,67 @@ function roci_handle_form_post() {
 
     $sent_url = add_query_arg( 'roci_sent', $form['id'], roci_forms_current_url() ) . '#roci-form-' . $form['id'] . '-success';
 
+    $outcome = roci_process_form_submission(
+        $form,
+        array(
+            'fields'  => isset( $_POST['roci_fields'] ) && is_array( $_POST['roci_fields'] ) ? wp_unslash( $_POST['roci_fields'] ) : array(),
+            'website' => isset( $_POST['roci_website'] ) ? wp_unslash( $_POST['roci_website'] ) : '',
+            'token'   => isset( $_POST['cf-turnstile-response'] ) ? wp_unslash( $_POST['cf-turnstile-response'] ) : '',
+        ),
+        ! empty( $_POST['roci_js'] ),
+        roci_forms_current_url()
+    );
+
+    if ( 'error' === $outcome['status'] ) {
+        $errors          = $outcome['errors'];
+        $errors['_form'] = $outcome['notes'];
+        roci_forms_request_state( array(
+            'form'   => $form['id'],
+            'values' => $outcome['values'],
+            'errors' => $errors,
+        ) );
+        return; // The page renders with the errors, in this POST response.
+    }
+
+    // 'sent', or 'spam' (the honeypot: the same success a person gets).
+    wp_safe_redirect( $sent_url, 303 );
+    exit;
+}
+add_action( 'template_redirect', 'roci_handle_form_post', 1 );
+
+/**
+ * roci_process_form_submission()
+ *
+ * THE ONE PIPELINE, shared by the page POST (roci_handle_form_post()) and the
+ * background submit (forms-rest.php, 8.0.1): honeypot → fields → rate limit →
+ * Turnstile → store, mail, count, roci_form_submitted. Neither caller checks
+ * anything itself, so the two paths cannot drift.
+ *
+ * @param  array  $form   The normalised form.
+ * @param  array  $input  'fields' (roci_fields[], unslashed), 'website' (the
+ *                        honeypot), 'token' (cf-turnstile-response).
+ * @param  bool   $js     The browser ran JavaScript (roci_js, or the REST path).
+ * @param  string $source The page URL the form was sent from.
+ * @return array{status: string, values: array, errors: array, notes: string[], post_id: int}
+ *         status 'sent' | 'spam' (honeypot — report success, nothing stored) | 'error'.
+ */
+function roci_process_form_submission( $form, $input, $js, $source ) {
+    $outcome = array(
+        'status'  => 'error',
+        'values'  => array(),
+        'errors'  => array(),
+        'notes'   => array(),
+        'post_id' => 0,
+    );
+
     // 2. Honeypot — a bot gets the same success a person does, and nothing else.
-    if ( ! empty( $_POST['roci_website'] ) ) {
-        wp_safe_redirect( $sent_url, 303 );
-        exit;
+    if ( ! empty( $input['website'] ) ) {
+        $outcome['status'] = 'spam';
+        return $outcome;
     }
 
     // 3. Fields.
-    $raw    = isset( $_POST['roci_fields'] ) && is_array( $_POST['roci_fields'] ) ? wp_unslash( $_POST['roci_fields'] ) : array();
+    $raw    = isset( $input['fields'] ) && is_array( $input['fields'] ) ? $input['fields'] : array();
     $result = roci_validate_form( $form, $raw );
     $errors = $result['errors'];
     $notes  = array();
@@ -93,8 +153,7 @@ function roci_handle_form_post() {
     $keys = roci_forms_turnstile_keys();
 
     if ( $keys && ! $errors && ! $notes ) {
-        $token = isset( $_POST['cf-turnstile-response'] ) ? sanitize_text_field( wp_unslash( $_POST['cf-turnstile-response'] ) ) : '';
-        $js    = ! empty( $_POST['roci_js'] );
+        $token = isset( $input['token'] ) && is_scalar( $input['token'] ) ? sanitize_text_field( (string) $input['token'] ) : '';
 
         if ( '' !== $token ) {
             if ( ! roci_verify_turnstile( $token, $keys['secret'] ) ) {
@@ -107,17 +166,15 @@ function roci_handle_form_post() {
         }
     }
 
+    $outcome['values'] = $result['values'];
+
     if ( $errors || $notes ) {
-        $errors['_form'] = $notes;
-        roci_forms_request_state( array(
-            'form'   => $form['id'],
-            'values' => $result['values'],
-            'errors' => $errors,
-        ) );
-        return; // The page renders with the errors, in this POST response.
+        $outcome['errors'] = $errors;
+        $outcome['notes']  = $notes;
+        return $outcome;
     }
 
-    $post_id = roci_store_submission( $form, $result['values'], $held, roci_forms_current_url() );
+    $post_id = roci_store_submission( $form, $result['values'], $held, $source );
 
     if ( $post_id ) {
         $mailed = roci_send_form_notification( $form, $result['values'], $post_id, $held );
@@ -132,10 +189,11 @@ function roci_handle_form_post() {
      */
     do_action( 'roci_form_submitted', $form['id'], $result['values'], (int) $post_id );
 
-    wp_safe_redirect( $sent_url, 303 );
-    exit;
+    $outcome['status']  = 'sent';
+    $outcome['post_id'] = (int) $post_id;
+
+    return $outcome;
 }
-add_action( 'template_redirect', 'roci_handle_form_post', 1 );
 
 /**
  * roci_validate_form()

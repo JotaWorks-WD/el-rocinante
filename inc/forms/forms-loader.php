@@ -22,12 +22,16 @@
  *   forms-registry.php  the roci_forms filter → roci_get_forms() / roci_get_form()
  *   forms-render.php    [roci_form id="…"], the part's args, roci_form_classes
  *   forms-handler.php   the POST: honeypot, rate limit, Turnstile, validation,
- *                       store, mail, redirect
+ *                       store, mail, redirect — roci_process_form_submission(),
+ *                       the one pipeline
+ *   forms-rest.php      the background submit (8.0.1): POST roci/v1/form/{id},
+ *                       the same pipeline, JSON back, never cached
  *   forms-cpt.php       the private roci_submission CPT and its admin screens
  *   forms-privacy.php   retention cron, personal-data exporter / eraser, the
  *                       privacy-policy guide text
  *   template-parts/form.php        the markup (override the part, not this)
- *   dist/js/forms.js               enhancement only — focus, double submit
+ *   dist/js/forms.js               enhancement only — the background submit,
+ *                                  in-place errors / success, focus, "Sending…"
  *   Build: components/_forms.scss  structural rules under :where(.roci-form)
  *
  * A CHILD:
@@ -46,7 +50,7 @@
  * D4 (2026-11-03): no nonce. See forms-handler.php.
  *
  * File:    inc/forms/forms-loader.php
- * Version: 1.0.0
+ * Version: 1.0.1
  * Updated: 2026-11-03
  *
  * @package ElRocinante
@@ -178,5 +182,6 @@ add_action( 'roci_integrations_extra', 'roci_forms_settings_section' );
 require_once get_template_directory() . '/inc/forms/forms-registry.php';
 require_once get_template_directory() . '/inc/forms/forms-render.php';
 require_once get_template_directory() . '/inc/forms/forms-handler.php';
+require_once get_template_directory() . '/inc/forms/forms-rest.php';
 require_once get_template_directory() . '/inc/forms/forms-cpt.php';
 require_once get_template_directory() . '/inc/forms/forms-privacy.php';

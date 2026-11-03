@@ -18,8 +18,15 @@
  * parent's search form — 'form', 'submit', 'success'. A dropped slot gets
  * its default back; every class goes through sanitize_html_class().
  *
+ * With JavaScript the 'error' and 'sent' states are drawn in place by
+ * forms.js from the background submit's JSON (8.0.1, forms-rest.php), using
+ * the same classes, ids and strings as the part.
+ *
+ * 1.1.0 (8.0.1) — roci_form_errors_title(), the summary heading shared with
+ * the REST response.
+ *
  * File:    inc/forms/forms-render.php
- * Version: 1.0.0
+ * Version: 1.1.0
  * Updated: 2026-11-03
  *
  * @package ElRocinante
@@ -100,6 +107,22 @@ function roci_forms_current_url() {
     }
 
     return remove_query_arg( 'roci_sent', $url );
+}
+
+/**
+ * roci_form_errors_title()
+ *
+ * The error summary's heading — one string for the page (the part) and the
+ * background submit (forms-rest.php), so both say the same thing.
+ *
+ * @param  int $count Number of problems (field errors + form-level messages).
+ * @return string
+ */
+function roci_form_errors_title( $count ) {
+    $count = max( 1, (int) $count );
+
+    /* translators: %d: number of problems with the form. */
+    return sprintf( _n( 'There is %d problem with your message', 'There are %d problems with your message', $count, 'rocinante' ), $count );
 }
 
 /**

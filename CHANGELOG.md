@@ -4,6 +4,38 @@ All notable changes to the El Rocinante parent theme are recorded here. Entries 
 
 ---
 
+## [8.0.1] — 2026-11-03
+
+**FEAT/FIX (forms): with JavaScript, a form submits in the background, so the page never reloads.**
+
+### Why
+
+On staging (jota.works), a valid submit looked jumpy: the POST reload, then the 303 redirect, plus a child's cross-document page transition, gave two visible reloads. The no-JS path was fine and is kept exactly as it was.
+
+### What changed
+
+- **New endpoint, `POST /wp-json/roci/v1/form/{id}`** (`inc/forms/forms-rest.php`, new 1.0.0; registered only when the child opted in to `roci-forms`). The body is the form itself as `multipart/form-data`, with the same field names as the page POST plus `roci_source` (the page URL; kept only when it is on this site, else the referer, else the home URL).
+  - **200** `{ ok: true, form, message, classes: { success } }`. The honeypot gets the same reply, so a bot can't tell.
+  - **422** `{ ok: false, form, errors: { field: message }, notes: [ … ], summary }`.
+  - **404** `{ ok: false, code: "roci_form_unknown" }`.
+  - Public, with no nonce (decision D4), and **never cached**: `nocache_headers()`, `Cache-Control: no-store`, `X-LiteSpeed-Cache-Control: no-cache` and `litespeed_control_set_nocache` on every reply.
+- **One pipeline:** the checks moved out of `roci_handle_form_post()` into **`roci_process_form_submission()`** (`forms-handler.php` 1.0.0 → 1.1.0), unchanged: honeypot, fields, rate limit, Turnstile, store, mail, `roci_form_submitted`. The page POST and the endpoint both call it, so they can't drift. On the endpoint the browser ran JavaScript by definition, so a missing Turnstile token is "complete the check", never "held".
+- **`dist/js/forms.js` 1.0.0 → 1.1.0:** the submit is sent with `fetch()`, and the result is drawn **in place** using the part's own classes and ids.
+  - **Errors:** the summary is drawn first in the form and focused. Each field's message goes above its control. `aria-invalid` and `aria-describedby` (help + error) are set, and cleared from fields that are now fixed. The values stay as typed, and Turnstile is reset.
+  - **Success:** the form is replaced by the success message (the part's "sent" markup), which is focused.
+  - **Focus without the browser's jump:** the target is scrolled into view only when it is off screen, and not smoothly under reduced motion.
+  - **While sending:** the button is disabled and `aria-disabled`, and its label reads "Sending…". The form is `aria-busy`, a polite status line says "Sending…", and a second submit is ignored.
+  - **Fallback to the page POST, unchanged:** this happens with no `fetch` / `FormData` / endpoint, a form without its root id or `roci_form_id` input, a network failure, a reply that isn't JSON (a 5xx, a firewall page), or a 404.
+- **`roci_form_errors_title()`** (`forms-render.php` 1.0.0 → 1.1.0): the summary heading, shared by the part and the endpoint.
+- `template-parts/form.php` 1.0.0 → 1.0.1: uses the helper (same output) and documents which ids a child override must keep for the in-place rendering.
+- `functions.php` 1.19.0 → 1.19.1: `wp_localize_script( 'el-rocinante-forms', 'rociForms', { endpoint, sending, errorPrefix } )`. `forms-loader.php` 1.0.0 → 1.0.1: requires the new file.
+
+### Breaking changes
+
+None. The page POST, its fragment landing, the 303 and `?roci_sent=` are as in 8.0.0. No style change (dist/css unchanged), and no child change is needed. A child that overrides `template-parts/form.php` keeps working: without the root id or `roci_form_id` input forms.js uses the page POST, and without a control's `roci-form-{id}-{field}` id that field's error shows in the summary only.
+
+---
+
 ## [8.0.0] — 2026-11-03
 
 **FEAT: the parent's forms module, `roci-forms` — plus a footer credit setting and two text fixes.**

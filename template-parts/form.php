@@ -17,8 +17,15 @@
  *     field, and any form-level message), then each message above its field
  *   - focus WITHOUT JavaScript: the form posts to "#roci-form-{id}", and the
  *     summary / the success message carry tabindex="-1" + autofocus, so the
- *     reply lands on them. forms.js repeats the focus where autofocus is not
- *     honoured, and stops a double submit. Nothing here needs JS to work.
+ *     reply lands on them. Nothing here needs JS to work.
+ *   - WITH JavaScript (8.0.1) forms.js submits in the background and draws
+ *     the summary, the field errors and the success message IN PLACE, from
+ *     the same classes and ids as below: ⚠ a child override of this part
+ *     must keep them: the root id and the roci_form_id input (without them
+ *     forms.js uses the page POST), roci-form-{id}-{field} on each control
+ *     and its -help id (without them a field's error shows in the summary
+ *     only), .roci-form__field around each control, .roci-form__actions
+ *     around the submit.
  *   - novalidate: every message is the server's, in the site's words, not a
  *     browser bubble
  *   - the honeypot is hidden from sight AND from assistive tech
@@ -35,7 +42,7 @@
  * __textarea · __hp · __turnstile · __actions · __submit · __success
  *
  * File:    template-parts/form.php
- * Version: 1.0.0
+ * Version: 1.0.1
  * Updated: 2026-11-03
  *
  * @package ElRocinante
@@ -84,15 +91,7 @@ $roci_any_required = (bool) array_filter( wp_list_pluck( $roci_form['fields'], '
 
     <?php if ( $roci_has_errors ) : ?>
         <div class="roci-form__errors" id="<?php echo esc_attr( $roci_id . '-errors' ); ?>" tabindex="-1" autofocus data-roci-focus>
-            <h2 class="roci-form__errors-title">
-                <?php
-                $roci_count = count( $roci_errors ) + count( $roci_form_notes );
-                echo esc_html(
-                    /* translators: %d: number of problems with the form. */
-                    sprintf( _n( 'There is %d problem with your message', 'There are %d problems with your message', $roci_count, 'rocinante' ), $roci_count )
-                );
-                ?>
-            </h2>
+            <h2 class="roci-form__errors-title"><?php echo esc_html( roci_form_errors_title( count( $roci_errors ) + count( $roci_form_notes ) ) ); ?></h2>
             <ul class="roci-form__errors-list">
                 <?php foreach ( $roci_errors as $roci_field_id => $roci_message ) : ?>
                     <li><a href="#<?php echo esc_attr( $roci_id . '-' . $roci_field_id ); ?>"><?php echo esc_html( $roci_message ); ?></a></li>

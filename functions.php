@@ -6,7 +6,7 @@
  * loads includes, and outputs analytics/integration scripts.
  *
  * File:    functions.php
- * Version: 1.19.0
+ * Version: 1.19.1
  * Updated: 2026-11-03
  *
  * @package ElRocinante
@@ -153,6 +153,13 @@ function el_rocinante_enqueue_assets() {
             filemtime( get_template_directory() . '/dist/js/forms.js' ),
             true
         );
+        // The background submit's endpoint and strings (8.0.1). No nonce:
+        // the endpoint is public, and a nonce in cached HTML goes stale (D4).
+        wp_localize_script( 'el-rocinante-forms', 'rociForms', array(
+            'endpoint'    => esc_url_raw( rest_url( 'roci/v1/form/' ) ),
+            'sending'     => __( 'Sending…', 'rocinante' ),
+            'errorPrefix' => __( 'Error:', 'rocinante' ),
+        ) );
         wp_register_script(
             'el-rocinante-turnstile',
             'https://challenges.cloudflare.com/turnstile/v0/api.js',
