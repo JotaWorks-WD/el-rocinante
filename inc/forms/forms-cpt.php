@@ -17,7 +17,10 @@
  *   _roci_form_email    } the admin list can sort and the privacy exporter /
  *   _roci_form_site     } eraser can match on the email
  *   _roci_form_status   new | read | held (no security check could run)
- *   _roci_form_mailed   '1' | '0'
+ *   _roci_form_mailed   '1' | '0'  (kept for 8.0.x rows)
+ *   _roci_mail_status   sent | failed  (8.1.0)
+ *   _roci_mail_error    the wp_mail_failed / PHPMailer text on failure, with
+ *                       credentials scrubbed (8.1.0)
  *   _roci_form_source   the page URL it was sent from
  *
  * ⚠ THE ONE SERIALISED VALUE — A REASONED EXCEPTION to parent CLAUDE.md §12.3
@@ -29,13 +32,15 @@
  *   has its own key above.
  *
  * ADMIN: Submissions menu (dashicons-email-alt). List columns Date · Form ·
- * Name · Email · Site · Status; a Form filter; Date / Form / Status sortable;
+ * Name · Email · Site · Status · Mail (8.1.0: Sent / Failed + the error);
+ * a Form filter; Date / Form / Status sortable;
  * "Mark as read" row + bulk actions. Opening one marks it read; its screen is
  * a read-only box of label → value (no editor, no title field). Notices: a
- * Turnstile key reminder and a missing-recipient warning on these screens.
+ * Turnstile key reminder, a missing-recipient warning and (8.1.0) a
+ * "no SMTP" warning on these screens.
  *
  * File:    inc/forms/forms-cpt.php
- * Version: 1.0.0
+ * Version: 1.1.0
  * Updated: 2026-11-03
  *
  * @package ElRocinante
@@ -182,9 +187,32 @@ function roci_submission_columns( $columns ) {
         'roci_email'  => __( 'Email', 'rocinante' ),
         'roci_site'   => __( 'Site', 'rocinante' ),
         'roci_status' => __( 'Status', 'rocinante' ),
+        'roci_mail'   => __( 'Mail', 'rocinante' ),
     );
 }
 add_filter( 'manage_roci_submission_posts_columns', 'roci_submission_columns' );
+
+/**
+ * roci_submission_mail_state()
+ *
+ * A submission's notification delivery: array( 'state' => 'sent' | 'failed' |
+ * 'unknown', 'error' => text ). 8.1.0 stores _roci_mail_status; an older row
+ * falls back to _roci_form_mailed ('1' sent, '0' failed, nothing unknown).
+ *
+ * @param  int $post_id
+ * @return array{state: string, error: string}
+ */
+function roci_submission_mail_state( $post_id ) {
+    $status = (string) get_post_meta( $post_id, '_roci_mail_status', true );
+    $error  = (string) get_post_meta( $post_id, '_roci_mail_error', true );
+
+    if ( 'sent' !== $status && 'failed' !== $status ) {
+        $legacy = (string) get_post_meta( $post_id, '_roci_form_mailed', true );
+        $status = '1' === $legacy ? 'sent' : ( '0' === $legacy ? 'failed' : 'unknown' );
+    }
+
+    return array( 'state' => $status, 'error' => $error );
+}
 
 /**
  * One column's cell.
@@ -223,8 +251,20 @@ function roci_submission_column( $column, $post_id ) {
             $statuses = roci_submission_statuses();
             $status   = (string) get_post_meta( $post_id, '_roci_form_status', true );
             echo esc_html( isset( $statuses[ $status ] ) ? $statuses[ $status ] : $status );
-            if ( '0' === (string) get_post_meta( $post_id, '_roci_form_mailed', true ) ) {
-                echo '<br><span style="color:#b32d2e;">' . esc_html__( 'Email not sent', 'rocinante' ) . '</span>';
+            break;
+
+        case 'roci_mail':
+            $mail = roci_submission_mail_state( $post_id );
+            if ( 'sent' === $mail['state'] ) {
+                echo '<span style="color:#00712e;">' . esc_html__( 'Sent', 'rocinante' ) . '</span>';
+            } elseif ( 'failed' === $mail['state'] ) {
+                echo '<strong style="color:#b32d2e;">' . esc_html__( 'Failed', 'rocinante' ) . '</strong>';
+                if ( '' !== $mail['error'] ) {
+                    $short = function_exists( 'mb_strimwidth' ) ? mb_strimwidth( $mail['error'], 0, 90, '…' ) : substr( $mail['error'], 0, 90 );
+                    echo '<br><span class="description" title="' . esc_attr( $mail['error'] ) . '">' . esc_html( $short ) . '</span>';
+                }
+            } else {
+                echo '—';
             }
             break;
     }
@@ -422,8 +462,13 @@ function roci_submission_details_box( $post ) {
     <p>
         <strong><?php esc_html_e( 'Form:', 'rocinante' ); ?></strong> <?php echo esc_html( $form ? $form['label'] : $form_id ); ?>
         · <strong><?php esc_html_e( 'Status:', 'rocinante' ); ?></strong> <?php echo esc_html( isset( $statuses[ $status ] ) ? $statuses[ $status ] : $status ); ?>
-        · <strong><?php esc_html_e( 'Email:', 'rocinante' ); ?></strong> <?php echo '1' === (string) get_post_meta( $post->ID, '_roci_form_mailed', true ) ? esc_html__( 'sent', 'rocinante' ) : esc_html__( 'not sent', 'rocinante' ); ?>
+        <?php $mail = roci_submission_mail_state( $post->ID ); ?>
+        · <strong><?php esc_html_e( 'Email:', 'rocinante' ); ?></strong> <?php echo 'sent' === $mail['state'] ? esc_html__( 'sent', 'rocinante' ) : ( 'failed' === $mail['state'] ? esc_html__( 'failed', 'rocinante' ) : '—' ); ?>
     </p>
+    <?php if ( 'failed' === $mail['state'] && '' !== $mail['error'] ) : ?>
+        <p><strong><?php esc_html_e( 'Mail error:', 'rocinante' ); ?></strong> <code><?php echo esc_html( $mail['error'] ); ?></code></p>
+        <p class="description"><?php esc_html_e( 'The message is stored here either way. Check Theme Settings → Mail, then send a test email.', 'rocinante' ); ?></p>
+    <?php endif; ?>
     <?php if ( '' !== $source ) : ?>
         <p><strong><?php esc_html_e( 'Sent from:', 'rocinante' ); ?></strong> <a href="<?php echo esc_url( $source ); ?>"><?php echo esc_html( $source ); ?></a></p>
     <?php endif; ?>
@@ -456,7 +501,13 @@ function roci_submission_admin_notices() {
 
     if ( $missing ) {
         /* translators: %s: comma-separated form labels. */
-        echo '<div class="notice notice-error"><p>' . esc_html( sprintf( __( 'No valid email to send these forms to: %s. Submissions are stored but not emailed. Set Theme Settings → Business → Email.', 'rocinante' ), implode( ', ', $missing ) ) ) . '</p></div>';
+        echo '<div class="notice notice-error"><p>' . esc_html( sprintf( __( 'No valid email to send these forms to: %s. Submissions are stored but not emailed. Set Theme Settings → Mail → Form notifications to.', 'rocinante' ), implode( ', ', $missing ) ) ) . '</p></div>';
+    }
+
+    // 8.1.0: say how mail leaves the site, unless El Rocinante's SMTP or a
+    // known SMTP plugin is sending it.
+    if ( function_exists( 'roci_mail_state' ) && 'off' === roci_mail_state() ) {
+        echo '<div class="notice notice-warning"><p>' . esc_html__( 'Mail is sent by the server\'s default PHP mail, which often lands in spam. Add the ROCI_SMTP_* constants to wp-config.php (Theme Settings → Mail).', 'rocinante' ) . '</p></div>';
     }
 }
 add_action( 'admin_notices', 'roci_submission_admin_notices' );

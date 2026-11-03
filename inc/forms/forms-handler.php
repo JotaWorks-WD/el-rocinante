@@ -45,9 +45,13 @@
  * 1.1.0 (8.0.1) — the checks moved into roci_process_form_submission(),
  * unchanged, so the REST path can share them; the POST path behaves exactly
  * as in 1.0.0.
+ * 1.2.0 (8.1.0) — the recipient resolves through roci_mail_recipient()
+ * (Theme Settings → Mail first); the notification goes through
+ * roci_mail_send_capturing() and its delivery is stored on the submission
+ * (_roci_mail_status / _roci_mail_error).
  *
  * File:    inc/forms/forms-handler.php
- * Version: 1.1.0
+ * Version: 1.2.0
  * Updated: 2026-11-03
  *
  * @package ElRocinante
@@ -394,8 +398,9 @@ function roci_form_role_value( $form, $values, $role ) {
  * roci_form_recipient_for()
  *
  * (internal) Where a form's notification goes: the form's own recipient →
- * Theme Settings → Integrations → Forms → Send Submissions To → the Business
- * email, then roci_form_recipient. '' when nothing valid is set.
+ * roci_mail_recipient() (8.1.0: Theme Settings → Mail → Form notifications
+ * to → the 8.0.x Integrations → Forms → Send Submissions To → the Business
+ * email → admin_email), then roci_form_recipient. '' when nothing valid is set.
  *
  * @param  array $form
  * @return string
@@ -404,10 +409,7 @@ function roci_form_recipient_for( $form ) {
     $to = $form['recipient'];
 
     if ( ! is_email( $to ) ) {
-        $to = sanitize_email( (string) roci_setting( 'integrations', 'forms_recipient' ) );
-    }
-    if ( ! is_email( $to ) ) {
-        $to = sanitize_email( (string) roci_setting( 'business', 'email' ) );
+        $to = roci_mail_recipient();
     }
 
     $to = apply_filters( 'roci_form_recipient', $to, $form['id'] );
@@ -420,8 +422,14 @@ function roci_form_recipient_for( $form ) {
  *
  * The plain-text email to the business: every field, the page it came from,
  * and a link to the stored submission. Reply-To is the visitor (the email
- * role, re-validated, CR/LF stripped); From is left to WordPress / the SMTP
- * plugin — never the visitor's address, which would fail SPF / DMARC.
+ * role, re-validated, CR/LF stripped); From stays the SITE's sender (Theme
+ * Settings → Mail through the mail module, 8.1.0) — never the visitor's
+ * address, which would fail SPF / DMARC.
+ *
+ * DELIVERY IS RECORDED ON THE SUBMISSION (8.1.0): _roci_mail_status 'sent' |
+ * 'failed', and on failure _roci_mail_error — the wp_mail_failed / PHPMailer
+ * text (password scrubbed), or "no recipient". The Submissions list shows it.
+ * The submission itself is stored before this runs, whatever happens here.
  *
  * @param  array $form
  * @param  array $values
@@ -433,6 +441,7 @@ function roci_send_form_notification( $form, $values, $post_id, $held ) {
     $to = roci_form_recipient_for( $form );
 
     if ( '' === $to ) {
+        roci_form_record_mail( $post_id, false, __( 'No valid recipient address (Theme Settings → Mail).', 'rocinante' ) );
         return false;
     }
 
@@ -480,5 +489,32 @@ function roci_send_form_notification( $form, $values, $post_id, $held ) {
         $headers[]  = 'Reply-To: ' . ( '' !== $reply_name ? '"' . $reply_name . '" ' : '' ) . '<' . $email . '>';
     }
 
-    return (bool) wp_mail( $to, $subject, implode( "\n", $lines ), $headers );
+    $result = roci_mail_send_capturing( $to, $subject, implode( "\n", $lines ), $headers );
+
+    roci_form_record_mail( $post_id, $result['ok'], $result['error'] );
+
+    return $result['ok'];
+}
+
+/**
+ * roci_form_record_mail()
+ *
+ * (internal) Store a notification's delivery on its submission.
+ *
+ * @param int    $post_id
+ * @param bool   $ok
+ * @param string $error   Already scrubbed of credentials.
+ */
+function roci_form_record_mail( $post_id, $ok, $error = '' ) {
+    if ( ! $post_id ) {
+        return;
+    }
+
+    update_post_meta( $post_id, '_roci_mail_status', $ok ? 'sent' : 'failed' );
+
+    if ( $ok ) {
+        delete_post_meta( $post_id, '_roci_mail_error' );
+    } else {
+        update_post_meta( $post_id, '_roci_mail_error', wp_slash( sanitize_text_field( roci_mail_scrub( $error ) ) ) );
+    }
 }

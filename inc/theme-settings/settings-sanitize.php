@@ -2,8 +2,10 @@
 /**
  * Theme Settings — Sanitize Callbacks
  *
+ * 1.12.0 (8.1.0) — roci_sanitize_mail().
+ *
  * File:    inc/theme-settings/settings-sanitize.php
- * Version: 1.11.0
+ * Version: 1.12.0
  * Updated: 2026-11-03
  *
  * @package ElRocinante
@@ -300,6 +302,45 @@ function roci_sanitize_integrations( $input ) {
         'forms_recipient'      => isset( $input['forms_recipient'] )      ? sanitize_email( $input['forms_recipient'] )      : ( isset( $stored['forms_recipient'] ) ? sanitize_email( $stored['forms_recipient'] ) : '' ),
         'forms_retention_days' => isset( $input['forms_retention_days'] ) ? (string) absint( $input['forms_retention_days'] ) : ( isset( $stored['forms_retention_days'] ) ? (string) absint( $stored['forms_retention_days'] ) : '' ),
     );
+}
+
+/**
+ * roci_mail — the Mail tab (8.1.0). from_name: plain text; from_email and
+ * recipient: valid addresses or '' (an invalid one is dropped with a notice,
+ * never stored half-valid). The SMTP credentials are NOT here: they are
+ * wp-config.php constants only (inc/mail/mail.php).
+ */
+function roci_sanitize_mail( $input ) {
+    $input = is_array( $input ) ? $input : array();
+    $clean = array(
+        'from_name'  => isset( $input['from_name'] ) ? sanitize_text_field( $input['from_name'] ) : '',
+        'from_email' => '',
+        'recipient'  => '',
+    );
+
+    $labels = array(
+        'from_email' => __( 'From email', 'rocinante' ),
+        'recipient'  => __( 'Form notifications to', 'rocinante' ),
+    );
+
+    foreach ( $labels as $key => $label ) {
+        $raw = isset( $input[ $key ] ) ? trim( (string) $input[ $key ] ) : '';
+
+        if ( '' === $raw ) {
+            continue;
+        }
+
+        $email = sanitize_email( $raw );
+
+        if ( is_email( $email ) ) {
+            $clean[ $key ] = $email;
+        } elseif ( function_exists( 'add_settings_error' ) ) {
+            /* translators: %s: the field label. */
+            add_settings_error( 'roci_mail', 'roci_mail_' . $key, sprintf( __( '%s is not a valid email address and was not saved.', 'rocinante' ), $label ) );
+        }
+    }
+
+    return $clean;
 }
 
 function roci_sanitize_footer( $input ) {

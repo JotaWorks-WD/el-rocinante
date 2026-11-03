@@ -6,9 +6,11 @@
  * shared styles, AJAX logo script). Tab content is delegated
  * to the individual files in tabs/.
  *
+ * 1.3.0 (8.1.0) — the Mail tab (tabs/tab-mail.php).
+ *
  * File:    inc/theme-settings/settings-page.php
- * Version: 1.2.1
- * Updated: 2026-08-08
+ * Version: 1.3.0
+ * Updated: 2026-11-03
  *
  * @package ElRocinante
  */
@@ -41,6 +43,7 @@ function roci_settings_page() {
         'social'       => __( 'Social', 'rocinante' ),
         'seo'          => __( 'SEO', 'rocinante' ),
         'integrations' => __( 'Integrations', 'rocinante' ),
+        'mail'         => __( 'Mail', 'rocinante' ),
         'footer'       => __( 'Footer', 'rocinante' ),
     ) );
 
@@ -119,6 +122,10 @@ function roci_settings_page() {
 
                     case 'integrations':
                         include __DIR__ . '/tabs/tab-integrations.php';
+                        break;
+
+                    case 'mail':
+                        include __DIR__ . '/tabs/tab-mail.php';
                         break;
 
                     case 'footer':

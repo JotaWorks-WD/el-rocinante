@@ -6,7 +6,7 @@
  * loads includes, and outputs analytics/integration scripts.
  *
  * File:    functions.php
- * Version: 1.19.2
+ * Version: 1.20.0
  * Updated: 2026-11-03
  *
  * @package ElRocinante
@@ -323,6 +323,20 @@ require_once get_template_directory() . '/inc/layout-bundles/layout-bundles.php'
 // [roci_form id="…"]. Turnstile keys are wp-config.php constants only.
 
 require_once get_template_directory() . '/inc/forms/forms-loader.php';
+
+
+// ============================================================
+// MAIL — authenticated SMTP for wp_mail(), v8.1.0
+// ============================================================
+//
+// INERT UNTIL wp-config.php DEFINES ROCI_SMTP_HOST, ROCI_SMTP_USER AND
+// ROCI_SMTP_PASS (and steps aside for an active SMTP plugin, or for
+// ROCI_SMTP_DISABLED). Not opt-in like the forms: every site sends mail. The
+// sender and the notification recipient are Theme Settings → Mail; the
+// credentials are never in the database. Also `wp roci mail-test` /
+// `wp roci mail-status`.
+
+require_once get_template_directory() . '/inc/mail/mail.php';
 
 
 // ============================================================

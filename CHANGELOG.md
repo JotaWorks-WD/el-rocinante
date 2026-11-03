@@ -4,6 +4,69 @@ All notable changes to the El Rocinante parent theme are recorded here. Entries 
 
 ---
 
+## [8.1.0] — 2026-11-03
+
+**FEAT: the mail module — authenticated SMTP for every `wp_mail()`, with no plugin. Each site's sender is set in Theme Settings → Mail.**
+
+### Why
+
+Form notifications (and every other `wp_mail()`) went out through the server's PHP mail or depended on a per-site SMTP plugin. Every El Rocinante site now sends through an authenticated provider. Brevo comes first, but nothing is Brevo-specific. Credentials stay out of the database.
+
+### The module — `inc/mail/mail.php` (new 1.0.0, required from `functions.php` 1.19.2 → 1.20.0 under a "MAIL" banner)
+
+- **Credentials: `wp-config.php` constants only**, per site, never stored: `ROCI_SMTP_HOST`, `ROCI_SMTP_PORT` (default 587, or 465 with ssl), `ROCI_SMTP_USER`, `ROCI_SMTP_PASS`, `ROCI_SMTP_SECURE` (`tls` | `ssl` | `''`), and the optional `ROCI_SMTP_DISABLED`.
+- **State** (`roci_mail_state()`), checked in this order. Only `active` changes anything:
+  - `plugin` — Post SMTP, WP Mail SMTP (and Pro) or FluentSMTP is active. It is read from the active-plugin lists; filter **`roci_mail_smtp_plugins`**.
+  - `disabled` — `ROCI_SMTP_DISABLED` is set.
+  - `off` — HOST, USER or PASS is missing.
+  - `active`.
+- **Sending:** `phpmailer_init` → `isSMTP()`, `SMTPAuth`, host / port / secure, `Timeout` 15 (filter **`roci_mail_timeout`**), `SMTPDebug` 0.
+- **Sender:** `wp_mail_from` / `wp_mail_from_name` (priority 20) put Theme Settings → Mail's From email / name in place of **WordPress's default only** (`wordpress@{site}` / "WordPress"). A caller that set its own From keeps it, and an invalid setting leaves the default.
+- **Recipient** (`roci_mail_recipient()`): Mail → Form notifications to, then the 8.0.x Integrations → Forms → Send Submissions To (kept so no site changes silently), then Business → Email, then `admin_email`.
+- **`roci_mail_send_capturing()`:** `wp_mail()` plus the `wp_mail_failed` (PHPMailer) error text. The listener is removed after the send.
+- **Secrets:** the password is never output, stored or logged. `roci_mail_scrub()` removes it (and the unmasked user) from any provider message, and `roci_mail_mask()` masks the user everywhere it is shown.
+- **WP-CLI:** `wp roci mail-test [<to>]` and `wp roci mail-status`.
+
+### Theme Settings → Mail (new tab; `tabs/tab-mail.php` 1.0.0; `settings-page.php` 1.2.1 → 1.3.0, `settings-register.php` 1.5.3 → 1.6.0, `settings-sanitize.php` 1.11.0 → 1.12.0)
+
+- **Option row `roci_mail`:**
+  - `from_name`;
+  - `from_email`, which must be valid and is dropped with a notice otherwise. A warning shows when its domain is not the site's: verify SPF / DKIM for it;
+  - `recipient`, valid or dropped.
+- **A read-only status line:**
+  - active, with host:port, TLS / SSL and the masked user;
+  - off (constants missing);
+  - disabled;
+  - handed to the named plugin.
+- **"Send test email":** sends to the recipient, or to an address typed beside it, through `wp_mail()`. It shows success or the PHPMailer error. It is checked with a nonce and `manage_options`, and posts to `admin-post.php?action=roci_mail_test`. It sends with the saved settings.
+
+### Forms (`forms-handler.php` 1.1.0 → 1.2.0, `forms-cpt.php` 1.0.0 → 1.1.0, `forms-loader.php` 1.0.1 → 1.1.0)
+
+- **Addresses:** Reply-To is the visitor's name and email when the form has a valid email field; From stays the site's sender. The recipient resolves through `roci_mail_recipient()` after a form's own `recipient`.
+- **Delivery recorded on each submission:**
+  - `_roci_mail_status` is `sent` or `failed`;
+  - on failure, `_roci_mail_error` holds the `wp_mail_failed` text with credentials scrubbed, or "No valid recipient".
+- **Submissions screens:**
+  - a new **Mail** column (Sent / Failed + the error);
+  - the details box shows the error;
+  - 8.0.x rows fall back to `_roci_form_mailed`;
+  - a notice appears when mail is still the server's default.
+- **Integrations → Forms:** the recipient field moved to the Mail tab, and this section links there. A value saved here in 8.0.x is still honoured and kept on save.
+- **Unchanged:** submissions are always stored before mail runs.
+
+### Docs
+
+The parent README gains **"Setting up mail on a site"**; CONVENTIONS.md gains a Mail section.
+
+### Breaking changes
+
+None.
+- A site **without** the constants sends mail exactly as before, with the same sender and the same recipient chain.
+- A site with Post SMTP / WP Mail SMTP / FluentSMTP active is untouched.
+- No CSS change.
+
+---
+
 ## [8.0.2] — 2026-11-03
 
 **FIX (forms.js 1.1.0 → 1.1.1): the success scroll lands on the form's section, and every scroll clears the sticky header.**

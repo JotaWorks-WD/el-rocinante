@@ -49,8 +49,11 @@
  * data — so a page with a form needs NO page-cache exclusion. Owner decision
  * D4 (2026-11-03): no nonce. See forms-handler.php.
  *
+ * 1.1.0 (8.1.0) — the recipient field moved to Theme Settings → Mail; this
+ * section now links there (an 8.0.x value is still honoured).
+ *
  * File:    inc/forms/forms-loader.php
- * Version: 1.0.1
+ * Version: 1.1.0
  * Updated: 2026-11-03
  *
  * @package ElRocinante
@@ -142,7 +145,6 @@ function roci_forms_settings_section() {
 
     $integrations = get_option( 'roci_integrations', array() );
     $recipient    = isset( $integrations['forms_recipient'] ) ? $integrations['forms_recipient'] : '';
-    $business     = sanitize_email( (string) roci_setting( 'business', 'email' ) );
     $keys         = roci_forms_turnstile_keys();
     ?>
     <h2 class="roci-section-title"><?php esc_html_e( 'Forms', 'rocinante' ); ?></h2>
@@ -160,10 +162,24 @@ function roci_forms_settings_section() {
             </td>
         </tr>
         <tr>
-            <th><label for="roci_forms_recipient"><?php esc_html_e( 'Send Submissions To', 'rocinante' ); ?></label></th>
+            <th><?php esc_html_e( 'Send Submissions To', 'rocinante' ); ?></th>
             <td>
-                <input type="email" name="roci_integrations[forms_recipient]" id="roci_forms_recipient" class="regular-text" value="<?php echo esc_attr( $recipient ); ?>" placeholder="<?php echo esc_attr( $business ); ?>">
-                <p class="roci-note"><?php esc_html_e( 'Optional. Empty → the Business email (Theme Settings → Business). A form can also name its own recipient in code.', 'rocinante' ); ?></p>
+                <?php
+                // 8.1.0: the recipient moved to Theme Settings → Mail. A value
+                // saved here in 8.0.x is still honoured after Mail's own field
+                // (roci_mail_recipient()) and is kept on save (the sanitiser
+                // keeps it when the field is absent).
+                $roci_mail_url = admin_url( 'admin.php?page=roci-theme-settings&tab=mail' );
+                ?>
+                <p><?php esc_html_e( 'Now set in Theme Settings → Mail → Form notifications to.', 'rocinante' ); ?> <a href="<?php echo esc_url( $roci_mail_url ); ?>"><?php esc_html_e( 'Open the Mail tab', 'rocinante' ); ?></a></p>
+                <?php if ( '' !== $recipient ) : ?>
+                    <p class="roci-note">
+                        <?php
+                        /* translators: %s: email address saved in an earlier version. */
+                        echo esc_html( sprintf( __( 'Saved here earlier, still used while the Mail tab\'s field is empty: %s', 'rocinante' ), $recipient ) );
+                        ?>
+                    </p>
+                <?php endif; ?>
             </td>
         </tr>
         <tr>

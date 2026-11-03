@@ -7,9 +7,11 @@
  * and the two readers that resolve through it — roci_admin_brand_accent()
  * ("what colour") and roci_has_brand_accent() ("is one configured at all").
  *
+ * 1.6.0 (8.1.0) — roci_mail (the Mail tab: sender + notification recipient).
+ *
  * File:    inc/theme-settings/settings-register.php
- * Version: 1.5.3
- * Updated: 2026-10-09
+ * Version: 1.6.0
+ * Updated: 2026-11-03
  *
  * @package ElRocinante
  */
@@ -29,6 +31,7 @@ function roci_register_settings() {
     register_setting( 'roci_seo_group',          'roci_seo',          array( 'sanitize_callback' => 'roci_sanitize_seo'          ) );
     register_setting( 'roci_integrations_group', 'roci_integrations', array( 'sanitize_callback' => 'roci_sanitize_integrations' ) );
     register_setting( 'roci_footer_group',       'roci_footer',       array( 'sanitize_callback' => 'roci_sanitize_footer'       ) );
+    register_setting( 'roci_mail_group',         'roci_mail',         array( 'sanitize_callback' => 'roci_sanitize_mail'         ) );
 
     // Site Identity — registers WP core options directly
     register_setting( 'roci_identity_group', 'blogname',        array( 'sanitize_callback' => 'sanitize_text_field' ) );
