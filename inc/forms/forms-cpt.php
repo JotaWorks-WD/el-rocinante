@@ -21,6 +21,9 @@
  *   _roci_mail_status   sent | failed  (8.1.0)
  *   _roci_mail_error    the wp_mail_failed / PHPMailer text on failure, with
  *                       credentials scrubbed (8.1.0)
+ *   _roci_autoreply_status   sent | failed | skipped  (8.2.0)
+ *   _roci_autoreply_reason   the error, or why it was skipped
+ *   _roci_autoreply_variant  the matched variant index, -1 = the default
  *   _roci_form_source   the page URL it was sent from
  *
  * ⚠ THE ONE SERIALISED VALUE — A REASONED EXCEPTION to parent CLAUDE.md §12.3
@@ -39,8 +42,11 @@
  * Turnstile key reminder, a missing-recipient warning and (8.1.0) a
  * "no SMTP" warning on these screens.
  *
+ * 1.2.0 (8.2.0) — the Mail column and the details box show the visitor's
+ * auto-reply status beside the notification's.
+ *
  * File:    inc/forms/forms-cpt.php
- * Version: 1.1.0
+ * Version: 1.2.0
  * Updated: 2026-11-03
  *
  * @package ElRocinante
@@ -255,6 +261,7 @@ function roci_submission_column( $column, $post_id ) {
 
         case 'roci_mail':
             $mail = roci_submission_mail_state( $post_id );
+            echo esc_html__( 'Notification:', 'rocinante' ) . ' ';
             if ( 'sent' === $mail['state'] ) {
                 echo '<span style="color:#00712e;">' . esc_html__( 'Sent', 'rocinante' ) . '</span>';
             } elseif ( 'failed' === $mail['state'] ) {
@@ -265,6 +272,22 @@ function roci_submission_column( $column, $post_id ) {
                 }
             } else {
                 echo '—';
+            }
+
+            // 8.2.0 — the visitor's auto-reply.
+            $auto   = (string) get_post_meta( $post_id, '_roci_autoreply_status', true );
+            $reason = (string) get_post_meta( $post_id, '_roci_autoreply_reason', true );
+            if ( '' !== $auto ) {
+                $labels = array(
+                    'sent'    => '<span style="color:#00712e;">' . esc_html__( 'Sent', 'rocinante' ) . '</span>',
+                    'failed'  => '<strong style="color:#b32d2e;">' . esc_html__( 'Failed', 'rocinante' ) . '</strong>',
+                    'skipped' => esc_html__( 'Skipped', 'rocinante' ),
+                );
+                echo '<br>' . esc_html__( 'Auto-reply:', 'rocinante' ) . ' ' . ( isset( $labels[ $auto ] ) ? $labels[ $auto ] : esc_html( $auto ) );
+                if ( '' !== $reason ) {
+                    $short = function_exists( 'mb_strimwidth' ) ? mb_strimwidth( $reason, 0, 90, '…' ) : substr( $reason, 0, 90 );
+                    echo '<br><span class="description" title="' . esc_attr( $reason ) . '">' . esc_html( $short ) . '</span>';
+                }
             }
             break;
     }
@@ -468,6 +491,16 @@ function roci_submission_details_box( $post ) {
     <?php if ( 'failed' === $mail['state'] && '' !== $mail['error'] ) : ?>
         <p><strong><?php esc_html_e( 'Mail error:', 'rocinante' ); ?></strong> <code><?php echo esc_html( $mail['error'] ); ?></code></p>
         <p class="description"><?php esc_html_e( 'The message is stored here either way. Check Theme Settings → Mail, then send a test email.', 'rocinante' ); ?></p>
+    <?php endif; ?>
+    <?php
+    $auto   = (string) get_post_meta( $post->ID, '_roci_autoreply_status', true );
+    $reason = (string) get_post_meta( $post->ID, '_roci_autoreply_reason', true );
+    ?>
+    <?php if ( '' !== $auto ) : ?>
+        <p>
+            <strong><?php esc_html_e( 'Auto-reply to the visitor:', 'rocinante' ); ?></strong> <?php echo esc_html( $auto ); ?>
+            <?php if ( '' !== $reason ) : ?>— <?php echo esc_html( $reason ); ?><?php endif; ?>
+        </p>
     <?php endif; ?>
     <?php if ( '' !== $source ) : ?>
         <p><strong><?php esc_html_e( 'Sent from:', 'rocinante' ); ?></strong> <a href="<?php echo esc_url( $source ); ?>"><?php echo esc_html( $source ); ?></a></p>

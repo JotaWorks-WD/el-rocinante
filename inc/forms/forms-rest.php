@@ -30,8 +30,11 @@
  * litespeed_control_set_nocache, so neither the browser nor the page cache
  * ever stores one. Registered only when the child opted in to roci-forms.
  *
+ * 1.1.0 (8.2.0) — the success message is the matched auto-reply variant's
+ * success_message when it has one.
+ *
  * File:    inc/forms/forms-rest.php
- * Version: 1.0.0
+ * Version: 1.1.0
  * Updated: 2026-11-03
  *
  * @package ElRocinante
@@ -108,7 +111,7 @@ function roci_forms_rest_submit( $request ) {
     return roci_forms_rest_response( array(
         'ok'      => true,
         'form'    => $form['id'],
-        'message' => $form['success_message'],
+        'message' => roci_form_success_message_for( $form, 'sent' === $outcome['status'] ? (int) $outcome['variant'] : -1 ),
         'classes' => array( 'success' => array_values( $classes['success'] ) ),
     ), 200 );
 }
@@ -153,7 +156,7 @@ function roci_forms_rest_source( $posted ) {
 
         $url = strtok( $url, '#' );
 
-        return remove_query_arg( 'roci_sent', $url );
+        return remove_query_arg( array( 'roci_sent', 'roci_v' ), $url );
     }
 
     return home_url( '/' );

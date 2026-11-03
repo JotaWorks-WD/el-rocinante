@@ -4,6 +4,73 @@ All notable changes to the El Rocinante parent theme are recorded here. Entries 
 
 ---
 
+## [8.2.0] — 2026-11-03
+
+**FEAT: visitor confirmation emails (auto-replies), per form, off by default.**
+
+### Why
+
+After a successful submission the visitor gets a short confirmation. Each form decides whether to send one, and a form can send a different reply depending on a field's value, for example a platform it can't help with.
+
+### Configuration — on the form's declaration (`roci_forms`)
+
+Normalised in `forms-registry.php` (1.0.0 → 1.1.0):
+
+| Key | Type | Default | Meaning |
+|---|---|---|---|
+| `autoreply_enabled` | bool | `false` | send the confirmation |
+| `autoreply_subject` | string | `''` | the subject (merge tags allowed) |
+| `autoreply_body` | string | `''` | plain text; a blank line starts a paragraph |
+| `reply_window` | string | `''` → "one working day" | `{reply_window}` |
+| `autoreply_variants` | list | `array()` | `{ field, values[], subject, body, success_message }`. **The first match wins**, else the default. A variant needs a field of the form and at least one value; otherwise it is dropped with a `WP_DEBUG` notice. |
+
+A variant's `success_message` also replaces the on-page message, through `roci_form_success_message_for()`:
+- on the no-JS path, the 303 carries `roci_v={index}` (no personal data) and `forms-render.php` (1.1.0 → 1.2.0) reads it;
+- on the background submit, the REST reply's `message` (`forms-rest.php` 1.0.0 → 1.1.0).
+
+### Merge tags — the only four
+
+- `{name}`: the **first word** of the name-role field, letters only (an inner hyphen or apostrophe is allowed), **at most 40 characters**. Anything else gives "there": a URL, an address, digits or markup.
+- `{site_name}`, `{form_title}`, `{reply_window}`.
+- Any other `{…}` is left as typed, so no other field can be merged in.
+- The subject is forced onto one line, and the HTML version escapes every paragraph.
+
+### Abuse safety
+
+- **Sent only from the `sent` end of `roci_process_form_submission()`** (`forms-handler.php` 1.2.0 → 1.3.0), after every check passed and the submission was stored. So it is never sent for the honeypot, a validation error, the rate limit or a failed or missing Turnstile check. **It is not sent for a held (no-JS, unverified) submission either**, which is skipped with a reason.
+- **The visitor's text is never echoed:** no message, URL or free text, only the filtered `{name}`. The copy is the site's, in code.
+- **At most one per address per form per 24 hours.** The key is a transient on a hash of the address and form; the address itself isn't stored there. Case and spaces don't get round it. A failed send sets no mark.
+
+### Sending
+
+- `wp_mail()`, so the mail module's SMTP and site sender apply, with **Reply-To the form's notification recipient**.
+- The body is multipart/alternative: a plain HTML version (the site name, the paragraphs, no images, no links) with the plain text as `AltBody`, set on `phpmailer_init` for that send only.
+
+### Recorded
+
+Stored on the submission (`forms-cpt.php` 1.1.0 → 1.2.0):
+- `_roci_autoreply_status`: `sent` | `failed` | `skipped`;
+- `_roci_autoreply_reason`: the error, or why it was skipped (off / held / no valid email / no copy / 24h);
+- `_roci_autoreply_variant`: -1 for the default.
+
+The Submissions **Mail** column shows "Notification: … / Auto-reply: …", and the details box repeats it.
+
+### Preview
+
+- **Theme Settings → Mail** gains an "Auto-replies" section (`tab-mail.php` 1.0.0 → 1.1.0 fires the new `roci_mail_tab_extra` action). Per form it shows on / off, the reply window, and each reply's subject, body and on-page message, read-only with `{name}` shown as "Ana".
+- **"Send me a preview"** sends the default and every variant to the form's notification recipient, with "[Preview]" in the subject. There's no 24h limit and nothing is stored. It is checked with a nonce and `manage_options`.
+- **`wp roci mail-preview <form> [<to>]`** does the same from the server.
+
+### Files
+
+New `inc/forms/forms-autoreply.php` 1.0.0, required by `forms-loader.php` (1.1.0 → 1.2.0).
+
+### Breaking changes
+
+None. Auto-replies are off unless a form sets `autoreply_enabled`. A child on an older parent can declare the keys; they are ignored there.
+
+---
+
 ## [8.1.0] — 2026-11-03
 
 **FEAT: the mail module — authenticated SMTP for every `wp_mail()`, with no plugin. Each site's sender is set in Theme Settings → Mail.**

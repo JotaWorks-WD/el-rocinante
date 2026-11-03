@@ -12,8 +12,10 @@
  * form's fields ride along and are ignored there. It sends with the SAVED
  * settings — save first.
  *
+ * 1.1.0 (8.2.0) — roci_mail_tab_extra at the foot (the auto-reply previews).
+ *
  * File:    inc/theme-settings/tabs/tab-mail.php
- * Version: 1.0.0
+ * Version: 1.1.0
  * Updated: 2026-11-03
  *
  * @package ElRocinante
@@ -122,3 +124,7 @@ $status_class = array(
         </td>
     </tr>
 </table>
+
+<?php
+// More sections (8.2.0: the forms module's auto-reply previews).
+do_action( 'roci_mail_tab_extra' );

@@ -25,8 +25,11 @@
  * 1.1.0 (8.0.1) — roci_form_errors_title(), the summary heading shared with
  * the REST response.
  *
+ * 1.2.0 (8.2.0) — the 'sent' state shows a matched auto-reply variant's
+ * success_message (?roci_v={index}, set by the handler's redirect).
+ *
  * File:    inc/forms/forms-render.php
- * Version: 1.1.0
+ * Version: 1.2.0
  * Updated: 2026-11-03
  *
  * @package ElRocinante
@@ -106,7 +109,7 @@ function roci_forms_current_url() {
         $url .= '?' . $qs;
     }
 
-    return remove_query_arg( 'roci_sent', $url );
+    return remove_query_arg( array( 'roci_sent', 'roci_v' ), $url );
 }
 
 /**
@@ -182,6 +185,11 @@ function roci_render_form( $id ) {
         $errors = $posted['errors'];
     } elseif ( isset( $_GET['roci_sent'] ) && sanitize_key( wp_unslash( $_GET['roci_sent'] ) ) === $form['id'] ) {
         $state = 'sent';
+
+        // 8.2.0: a matched auto-reply variant's own on-page message.
+        if ( isset( $_GET['roci_v'] ) && is_numeric( $_GET['roci_v'] ) ) {
+            $form['success_message'] = roci_form_success_message_for( $form, (int) $_GET['roci_v'] );
+        }
     }
 
     $keys = roci_forms_turnstile_keys();

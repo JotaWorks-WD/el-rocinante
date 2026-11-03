@@ -26,6 +26,9 @@
  *                       the one pipeline
  *   forms-rest.php      the background submit (8.0.1): POST roci/v1/form/{id},
  *                       the same pipeline, JSON back, never cached
+ *   forms-autoreply.php the visitor's confirmation email (8.2.0): per-form
+ *                       copy + variants, merge tags, abuse limits, the Mail
+ *                       tab preview, `wp roci mail-preview`
  *   forms-cpt.php       the private roci_submission CPT and its admin screens
  *   forms-privacy.php   retention cron, personal-data exporter / eraser, the
  *                       privacy-policy guide text
@@ -52,8 +55,10 @@
  * 1.1.0 (8.1.0) — the recipient field moved to Theme Settings → Mail; this
  * section now links there (an 8.0.x value is still honoured).
  *
+ * 1.2.0 (8.2.0) — requires forms-autoreply.php.
+ *
  * File:    inc/forms/forms-loader.php
- * Version: 1.1.0
+ * Version: 1.2.0
  * Updated: 2026-11-03
  *
  * @package ElRocinante
@@ -199,5 +204,6 @@ require_once get_template_directory() . '/inc/forms/forms-registry.php';
 require_once get_template_directory() . '/inc/forms/forms-render.php';
 require_once get_template_directory() . '/inc/forms/forms-handler.php';
 require_once get_template_directory() . '/inc/forms/forms-rest.php';
+require_once get_template_directory() . '/inc/forms/forms-autoreply.php';
 require_once get_template_directory() . '/inc/forms/forms-cpt.php';
 require_once get_template_directory() . '/inc/forms/forms-privacy.php';

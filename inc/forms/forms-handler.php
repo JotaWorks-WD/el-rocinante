@@ -50,8 +50,12 @@
  * roci_mail_send_capturing() and its delivery is stored on the submission
  * (_roci_mail_status / _roci_mail_error).
  *
+ * 1.3.0 (8.2.0) — the visitor's auto-reply (forms-autoreply.php), sent only
+ * from the 'sent' end of the pipeline; the matched variant rides on the
+ * success redirect as roci_v.
+ *
  * File:    inc/forms/forms-handler.php
- * Version: 1.2.0
+ * Version: 1.3.0
  * Updated: 2026-11-03
  *
  * @package ElRocinante
@@ -104,6 +108,12 @@ function roci_handle_form_post() {
     }
 
     // 'sent', or 'spam' (the honeypot: the same success a person gets).
+    // A matched auto-reply variant carries its index (no personal data), so
+    // the success page shows that variant's message (8.2.0).
+    if ( 'sent' === $outcome['status'] && $outcome['variant'] >= 0 ) {
+        $sent_url = add_query_arg( array( 'roci_sent' => $form['id'], 'roci_v' => $outcome['variant'] ), roci_forms_current_url() ) . '#roci-form-' . $form['id'] . '-success';
+    }
+
     wp_safe_redirect( $sent_url, 303 );
     exit;
 }
@@ -122,8 +132,9 @@ add_action( 'template_redirect', 'roci_handle_form_post', 1 );
  *                        honeypot), 'token' (cf-turnstile-response).
  * @param  bool   $js     The browser ran JavaScript (roci_js, or the REST path).
  * @param  string $source The page URL the form was sent from.
- * @return array{status: string, values: array, errors: array, notes: string[], post_id: int}
- *         status 'sent' | 'spam' (honeypot — report success, nothing stored) | 'error'.
+ * @return array{status: string, values: array, errors: array, notes: string[], post_id: int, variant: int}
+ *         status 'sent' | 'spam' (honeypot — report success, nothing stored) | 'error';
+ *         variant: the matched auto-reply variant (8.2.0), -1 for the default.
  */
 function roci_process_form_submission( $form, $input, $js, $source ) {
     $outcome = array(
@@ -132,6 +143,7 @@ function roci_process_form_submission( $form, $input, $js, $source ) {
         'errors'  => array(),
         'notes'   => array(),
         'post_id' => 0,
+        'variant' => -1,
     );
 
     // 2. Honeypot — a bot gets the same success a person does, and nothing else.
@@ -187,6 +199,14 @@ function roci_process_form_submission( $form, $input, $js, $source ) {
 
     roci_form_rate_count( $form['id'] );
 
+    // 8.2.0 — the visitor's confirmation, ONLY here: every check passed and
+    // the submission is stored (a store failure sends none). The matching
+    // reply (variant) also picks the on-page success message.
+    $pick = roci_form_autoreply_pick( $form, $result['values'] );
+    if ( $post_id ) {
+        roci_form_send_autoreply( $form, $result['values'], $post_id, $held );
+    }
+
     /**
      * After a submission is stored (and mailed, or not). $post_id is 0 when
      * the store failed.
@@ -195,6 +215,7 @@ function roci_process_form_submission( $form, $input, $js, $source ) {
 
     $outcome['status']  = 'sent';
     $outcome['post_id'] = (int) $post_id;
+    $outcome['variant'] = (int) $pick['variant'];
 
     return $outcome;
 }

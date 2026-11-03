@@ -18,8 +18,16 @@
  *           ),
  *           'submit_label'    => 'Send',
  *           'success_message' => 'Thanks — your message is on its way.',
- *           'recipient'       => '',   // '' → Integrations → Forms, then Business email
+ *           'recipient'       => '',   // '' → Theme Settings → Mail (8.1.0), …
  *           'subject'         => '',   // '' → "[Site] New {label} from {name}"
+ *           // 8.2.0 — the visitor's confirmation email (forms-autoreply.php):
+ *           'autoreply_enabled'  => true,   // default false
+ *           'autoreply_subject'  => 'Thanks, {name}',
+ *           'autoreply_body'     => "Hi {name},\n\n…",
+ *           'reply_window'       => 'one working day',
+ *           'autoreply_variants' => array(  // first match wins, else the default
+ *               array( 'field' => 'topic', 'values' => array( 'b' ), 'subject' => '…', 'body' => '…', 'success_message' => '…' ),
+ *           ),
  *       );
  *       return $forms;
  *   } );
@@ -35,8 +43,12 @@
  * An invalid field is dropped, and in WP_DEBUG the form prints a
  * jw_debug_comment() saying why; a form left with no fields is dropped.
  *
+ * 1.1.0 (8.2.0) — the auto-reply keys (autoreply_enabled / _subject / _body /
+ * _variants, reply_window), normalised; a variant needs a field of the form
+ * and at least one value.
+ *
  * File:    inc/forms/forms-registry.php
- * Version: 1.0.0
+ * Version: 1.1.0
  * Updated: 2026-11-03
  *
  * @package ElRocinante
@@ -126,6 +138,27 @@ function roci_get_forms() {
 
         $label = isset( $form['label'] ) && '' !== trim( (string) $form['label'] ) ? trim( (string) $form['label'] ) : $id;
 
+        // Auto-reply variants (8.2.0): each needs a field of THIS form and at
+        // least one value; anything else is dropped with a notice.
+        $variants = array();
+        foreach ( isset( $form['autoreply_variants'] ) && is_array( $form['autoreply_variants'] ) ? $form['autoreply_variants'] : array() as $variant ) {
+            $field  = is_array( $variant ) && isset( $variant['field'] ) ? sanitize_key( (string) $variant['field'] ) : '';
+            $values = is_array( $variant ) && isset( $variant['values'] ) ? array_values( array_filter( array_map( 'strval', (array) $variant['values'] ), 'strlen' ) ) : array();
+
+            if ( '' === $field || ! isset( $fields[ $field ] ) || ! $values ) {
+                $notices[] = sprintf( 'roci_forms: an auto-reply variant in form "%s" needs a field of the form and at least one value; it was dropped.', $id );
+                continue;
+            }
+
+            $variants[] = array(
+                'field'           => $field,
+                'values'          => $values,
+                'subject'         => isset( $variant['subject'] ) ? trim( (string) $variant['subject'] ) : '',
+                'body'            => isset( $variant['body'] ) ? trim( (string) $variant['body'] ) : '',
+                'success_message' => isset( $variant['success_message'] ) ? trim( (string) $variant['success_message'] ) : '',
+            );
+        }
+
         $forms[ $id ] = array(
             'id'              => $id,
             'label'           => $label,
@@ -135,6 +168,11 @@ function roci_get_forms() {
             'success_message' => isset( $form['success_message'] ) && '' !== trim( (string) $form['success_message'] ) ? trim( (string) $form['success_message'] ) : __( 'Thank you — your message has been sent.', 'rocinante' ),
             'recipient'       => isset( $form['recipient'] ) ? sanitize_email( (string) $form['recipient'] ) : '',
             'subject'         => isset( $form['subject'] ) ? trim( (string) $form['subject'] ) : '',
+            'reply_window'    => isset( $form['reply_window'] ) ? trim( (string) $form['reply_window'] ) : '',
+            'autoreply_enabled'  => ! empty( $form['autoreply_enabled'] ),
+            'autoreply_subject'  => isset( $form['autoreply_subject'] ) ? trim( (string) $form['autoreply_subject'] ) : '',
+            'autoreply_body'     => isset( $form['autoreply_body'] ) ? trim( (string) $form['autoreply_body'] ) : '',
+            'autoreply_variants' => $variants,
             'notices'         => $notices,
         );
     }
