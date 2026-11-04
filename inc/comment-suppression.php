@@ -18,6 +18,7 @@
  *      database rather than only preventing new ones.
  *   4. The core comment-reply script is dequeued and deregistered.
  *   5. cancel_comment_reply_link is emptied.
+ *   6. (v1.1.0) the comment-feed <link> tags are dropped; the main feed stays.
  *
  * (1) alone leaves existing posts open, because comment_status is stored
  * per post and post type support is not consulted on the front end. (2)
@@ -34,8 +35,8 @@
  * output that no longer happens, so they are left in place.
  *
  * File:    inc/comment-suppression.php
- * Version: 1.0.0
- * Updated: 2026-08-18
+ * Version: 1.1.0
+ * Updated: 2026-11-04
  *
  * @package ElRocinante
  */
@@ -120,3 +121,18 @@ add_action( 'wp_enqueue_scripts', 'roci_remove_comment_reply_script', 100 );
 // (wp-includes/comment-template.php), and core registers no action of
 // that name, so a remove_action() call would be a silent no-op.
 add_filter( 'cancel_comment_reply_link', '__return_empty_string', 20 );
+
+
+// ============================================================
+// DROP THE COMMENT-FEED LINKS (v1.1.0, El Rocinante 8.3.0)
+// ============================================================
+
+// automatic-feed-links (functions.php) prints the site's comments feed beside
+// the main feed, and feed_links_extra() a per-post comments feed on a single
+// post that has stored comments. With comments off everywhere both would
+// advertise empty feeds. Only the <link rel="alternate"> tags go: the main
+// posts feed (/feed/) and its link stay exactly as they were.
+//   feed_links_show_comments_feed            — the site-wide "Comments Feed" (core 4.4+)
+//   feed_links_extra_show_post_comments_feed — a single post's comments feed (core 6.1+)
+add_filter( 'feed_links_show_comments_feed', '__return_false' );
+add_filter( 'feed_links_extra_show_post_comments_feed', '__return_false' );

@@ -4,6 +4,69 @@ All notable changes to the El Rocinante parent theme are recorded here. Entries 
 
 ---
 
+## [8.3.0] — 2026-11-04
+
+**FEAT: blog mechanics — single-post seams, BlogPosting schema, reading time. Content-agnostic; every child benefits.**
+
+### Why
+
+A child with a blog had two choices: accept the bare `single.php`, or fork it and freeze every later parent fix to that route. 8.3.0 gives the single post the same "override a part, never the template" seams the listings got in 7.1.0, plus the structured data and helpers every blog needs.
+
+### `single.php` 1.3.0 → 1.4.0 — the seams
+
+| Seam | Where | Args |
+|---|---|---|
+| `roci_before_entry_title` (action) | inside `.entry-header`, immediately before the `<h1>` — the eyebrow slot. Not fired when the title mode is `'none'` | `( 'single', $post_id )` |
+| `template-parts/entry-meta.php` (new part) | right after the `<h1>`, inside the header (on its own when the title mode is `'none'`) | `$args['context'] = 'single'` |
+| `roci_before_entry_content` (action) | after the entry header, before `.entry-content` — a featured image, a summary | `( 'single', $post_id )` |
+| `roci_after_entry_content` (action) | after `.entry-content` and `wp_link_pages()`, inside the `<article>` — a call to action, previous / next | `( 'single', $post_id )` |
+
+**The default `entry-meta.php` is minimal:** on a `post` only, `<div class="entry-meta"><time class="entry-date published" datetime="…">…</time></div>`. No author, no category, no links (an author or category link would point at an archive the parent 404s). Other post types reaching `single.php` print nothing, exactly as before. **That date line is the only visible change for a child that hooks nothing.**
+
+### BlogPosting JSON-LD — `inc/schema/article-schema.php` (new), `header.php` 2.4.1 → 2.5.0
+
+On a singular route whose post type is in `roci_article_schema_post_types()` (default `array( 'post' )`), `header.php` prints a BlogPosting node after the FAQ block, under `<!-- Schema JSON-LD — Article -->`:
+
+| Property | Source |
+|---|---|
+| `headline` | the title, tags stripped, entities decoded |
+| `datePublished` | the post's time, ISO 8601 with offset |
+| `dateModified` | **the real `post_modified`, always** — a child's "Updated" line is display only |
+| `author` | a Person, the author's display name; filter `roci_article_author( $author, $post_id )` (add a `url`, or return empty to omit) |
+| `publisher` | `{ "@id": home/#organization, "name" }` — a reference to the site-level node — when Theme Settings → Business → name is set (the same gate that prints that node); otherwise an Organization with the site name and home URL |
+| `image` | the featured image as an ImageObject (url, width, height); omitted when there is none |
+| `mainEntityOfPage` | a WebPage whose `@id` is the page's canonical |
+
+- **`roci_article_schema( $data, $post_id )`** has the last word: extend the node, or return `false` / `array()` to print nothing.
+- **A post whose own Schema JSON-LD field already declares an Article-family `@type`** (Article, BlogPosting, NewsArticle, TechArticle) gets no automatic node, so a pasted one is never doubled (`roci_schema_has_article_type()`, internal).
+- Encoded script-safe (`</` → `<\/`), like every other parent schema block.
+- **`article:published_time` and `article:modified_time`** meta print in the Open Graph block on the same routes (`roci_is_article_route()`, `roci_article_times()`). They stay when `roci_article_schema` switches the JSON-LD off.
+
+### Comment-feed links removed — `inc/comment-suppression.php` 1.0.0 → 1.1.0
+
+`feed_links_show_comments_feed` and `feed_links_extra_show_post_comments_feed` return false, so neither the site's "Comments Feed" `<link>` nor a post's comments-feed `<link>` prints. They advertised empty feeds, since comments are off everywhere. **The main RSS feed and its link are unchanged.**
+
+### Helpers — `inc/helpers.php` 1.21.0 → 1.22.0
+
+- **`roci_reading_time( $post = null )`** — whole minutes: words ÷ 230, rounded up; 1 minimum for any words, 0 for none or a missing post. Block comments, shortcodes and tags are stripped before counting. Filter `roci_reading_time_wpm( 230, $post_id )`; a non-positive value falls back to 230. Wording and thresholds are the child's.
+- **`jw_target_external_links( $html )`** — `jw_wysiwyg_body()`'s link pass on its own (target, merged rel, the new-tab note), with no shortcode expansion. For already-rendered HTML, e.g. a child's own `the_content` callback after core's `do_shortcode`. `jw_wysiwyg_body()` now calls it; **its output is byte-identical**. The parent hooks it nowhere.
+
+### Files
+
+| File | Version |
+|---|---|
+| `single.php` | 1.3.0 → 1.4.0 |
+| `template-parts/entry-meta.php` | new, 1.0.0 |
+| `header.php` | 2.4.1 → 2.5.0 |
+| `inc/schema/article-schema.php` | new, 1.0.0 |
+| `inc/comment-suppression.php` | 1.0.0 → 1.1.0 |
+| `inc/helpers.php` | 1.21.0 → 1.22.0 |
+| `functions.php` | 1.20.0 → 1.21.0 (requires the schema file) |
+
+**No CSS change** (`dist/css` untouched; no Build commit). No breaking change: every seam defaults to the 8.2.0 markup apart from the date line on posts.
+
+---
+
 ## [8.2.0] — 2026-11-03
 
 **FEAT: visitor confirmation emails (auto-replies), per form, off by default.**

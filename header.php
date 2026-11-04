@@ -16,10 +16,13 @@
  * On a singular route the page's FAQPage JSON-LD is printed here too, after the
  * site-level block, through jw_faq_schema() (v2.4.0); the FAQ part's own call is
  * then a no-op for that post.
+ * On a single post (v2.5.0) it also prints article:published_time /
+ * article:modified_time and a BlogPosting node (inc/schema/article-schema.php;
+ * filters roci_article_schema_post_types, roci_article_author, roci_article_schema).
  *
  * File:    header.php
- * Version: 2.4.1
- * Updated: 2026-10-26
+ * Version: 2.5.0
+ * Updated: 2026-11-04
  *
  * @package ElRocinante
  */
@@ -376,6 +379,19 @@
     <meta property="og:image:type" content="<?php echo esc_attr( $roci_og_image_type ); ?>">
 <?php endif; ?>
     <?php endif; ?>
+<?php
+// article:published_time / article:modified_time (v2.5.0) — on the same routes
+// as the BlogPosting node below (roci_is_article_route(), inc/schema/
+// article-schema.php). Modified is always the real post_modified.
+$roci_is_article = roci_is_article_route();
+$roci_article_times = $roci_is_article ? roci_article_times( get_queried_object_id() ) : array( 'published' => '', 'modified' => '' );
+?>
+<?php if ( '' !== $roci_article_times['published'] ) : ?>
+    <meta property="article:published_time" content="<?php echo esc_attr( $roci_article_times['published'] ); ?>">
+<?php endif; ?>
+<?php if ( '' !== $roci_article_times['modified'] ) : ?>
+    <meta property="article:modified_time" content="<?php echo esc_attr( $roci_article_times['modified'] ); ?>">
+<?php endif; ?>
 
     <!-- Twitter Card -->
     <meta name="twitter:card" content="<?php echo $roci_og_image_url ? 'summary_large_image' : 'summary'; ?>">
@@ -770,6 +786,35 @@
 <?php if ( '' !== $roci_faq_schema ) : ?>
 <!-- Schema JSON-LD — FAQ -->
 <?php echo $roci_faq_schema; ?>
+<?php endif; ?>
+
+    <?php
+    // --------------------------------------------------------
+    // SCHEMA JSON-LD — ARTICLE (v2.5.0, El Rocinante 8.3.0)
+    //
+    // A BlogPosting node on a single post (roci_is_article_route(): singular,
+    // post type in roci_article_schema_post_types(), default 'post'), built by
+    // roci_article_schema_json() in inc/schema/article-schema.php: headline,
+    // datePublished, dateModified (the real modified time), author (Person,
+    // roci_article_author), publisher (a reference to the site-level
+    // #organization node when Business → name is set, else an Organization),
+    // image (the featured image) and mainEntityOfPage (this canonical).
+    // roci_article_schema has the last word; false / array() prints nothing.
+    //
+    // Skipped when the post's own Schema JSON-LD field already declares an
+    // Article-family @type, so a pasted node is never doubled.
+    // --------------------------------------------------------
+    $roci_article_schema = '';
+
+    if ( $roci_is_article && ! roci_schema_has_article_type( $roci_schema_expanded ) ) {
+        $roci_article_schema = roci_article_schema_json( get_queried_object_id(), $roci_canonical );
+    }
+    ?>
+<?php if ( '' !== $roci_article_schema ) : ?>
+<!-- Schema JSON-LD — Article -->
+<script type="application/ld+json">
+<?php echo $roci_article_schema; ?>
+</script>
 <?php endif; ?>
 
     <?php wp_head(); ?>

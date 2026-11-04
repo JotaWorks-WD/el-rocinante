@@ -6,8 +6,8 @@
  * loads includes, and outputs analytics/integration scripts.
  *
  * File:    functions.php
- * Version: 1.20.0
- * Updated: 2026-11-03
+ * Version: 1.21.0
+ * Updated: 2026-11-04
  *
  * @package ElRocinante
  */
@@ -268,6 +268,11 @@ require_once get_template_directory() . '/inc/schema/business-types.php';
 require_once get_template_directory() . '/inc/schema/social-platforms.php';
 require_once get_template_directory() . '/inc/schema/business-hours.php';
 require_once get_template_directory() . '/inc/schema/schema-tokens.php';
+
+// BlogPosting JSON-LD + article:* meta on single posts (v8.3.0); printed by
+// header.php, filterable (roci_article_schema_post_types, roci_article_author,
+// roci_article_schema).
+require_once get_template_directory() . '/inc/schema/article-schema.php';
 
 
 // ============================================================

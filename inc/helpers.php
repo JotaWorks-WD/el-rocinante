@@ -7,8 +7,8 @@
  * and template parts throughout El Rocinante and child themes.
  *
  * File:    inc/helpers.php
- * Version: 1.21.0
- * Updated: 2026-11-03
+ * Version: 1.22.0
+ * Updated: 2026-11-04
  *
  * @package ElRocinante
  *
@@ -35,6 +35,8 @@
  *   roci_normalize_url_path()      — (internal) Normalises a URL path for comparison
  *   roci_get_page_url()            — An internal page's URL, by assigned template then slug ('' on a miss)
  *   jw_wysiwyg_body()              — Expands shortcodes + targets external links inside stored wysiwyg HTML
+ *   jw_target_external_links()     — jw_wysiwyg_body()'s link pass alone, for already-rendered HTML (v1.22.0)
+ *   roci_reading_time()            — A post's reading time in whole minutes, words ÷ 230 rounded up (v1.22.0)
  *   roci_sanitize_object_position() — Whitelists a CSS object-position value (strict)
  *   roci_get_hero_focus()          — Resolves the sanitized hero focal point for a post
  *   roci_entry_title_mode()        — How the parent's templates render the page's <h1> (filterable)
@@ -1651,7 +1653,35 @@ function jw_wysiwyg_body( $html ) {
         return '';
     }
 
-    $html = do_shortcode( $html );
+    return jw_target_external_links( do_shortcode( $html ) );
+}
+
+
+/**
+ * jw_target_external_links() (v1.22.0)
+ *
+ * jw_wysiwyg_body()'s link pass on its own: adds target="_blank" + rel
+ * "noopener noreferrer" (merged into an existing rel) and the
+ * jw_new_tab_note() span to every EXTERNAL http(s) anchor in a blob of HTML,
+ * and expands NOTHING. Everything jw_wysiwyg_body() documents about the
+ * rewrite applies unchanged — it is the same code, moved here so the two can
+ * never disagree: anchors with a target, non-http(s) and same-host links are
+ * left as authored, the note is never doubled, an unclosed anchor gets the
+ * attributes without a note.
+ *
+ * FOR HTML THAT HAS ALREADY BEEN RENDERED — e.g. a child's own the_content
+ * callback, scoped to the routes it chooses, after core's do_shortcode at 11.
+ * jw_wysiwyg_body() would expand shortcodes a second time there. The parent
+ * hooks it nowhere (the jw_wysiwyg_body() warning about global filters stands).
+ *
+ * @param  string $html Rendered HTML.
+ * @return string       The HTML with its external links targeted.
+ */
+function jw_target_external_links( $html ) {
+
+    if ( ! is_string( $html ) || '' === trim( $html ) ) {
+        return is_string( $html ) ? $html : '';
+    }
 
     // Nothing to rewrite — skip the regex entirely on the common case.
     if ( false === stripos( $html, '<a ' ) ) {
@@ -1727,6 +1757,54 @@ function jw_wysiwyg_body( $html ) {
         },
         $html
     );
+}
+
+
+// ============================================================
+// READING TIME (v1.22.0)
+// ============================================================
+
+/**
+ * roci_reading_time()
+ *
+ * A post's reading time in whole minutes: its words ÷ 230, rounded UP, never
+ * less than 1 for a post with any words (0 for none). The words are the
+ * post_content with block comments, shortcodes and tags stripped, so markup
+ * and shortcode attributes are never counted.
+ *
+ * Returns the number only; wording ("6 min read") and any threshold for
+ * showing it are the child's. The rate is filterable:
+ *   roci_reading_time_wpm( 230, $post_id ) — words per minute (a non-positive
+ *   value falls back to 230). Not memoized.
+ *
+ * @param  int|WP_Post|null $post A post ID or object; null = the current post.
+ * @return int                    Minutes (0 when the post is missing or empty).
+ */
+function roci_reading_time( $post = null ) {
+
+    $post = get_post( $post );
+
+    if ( ! $post ) {
+        return 0;
+    }
+
+    $text = (string) $post->post_content;
+    $text = preg_replace( '#<!--.*?-->#s', ' ', $text );          // block delimiters, comments
+    $text = strip_shortcodes( $text );
+    $text = wp_strip_all_tags( $text );
+    $text = html_entity_decode( $text, ENT_QUOTES, 'UTF-8' );
+
+    $words = preg_split( '/\s+/u', trim( $text ), -1, PREG_SPLIT_NO_EMPTY );
+    $count = is_array( $words ) ? count( $words ) : 0;
+
+    if ( 0 === $count ) {
+        return 0;
+    }
+
+    $wpm = (int) apply_filters( 'roci_reading_time_wpm', 230, $post->ID );
+    $wpm = $wpm > 0 ? $wpm : 230;
+
+    return max( 1, (int) ceil( $count / $wpm ) );
 }
 
 
