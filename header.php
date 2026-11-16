@@ -7,7 +7,8 @@
  * Twitter Card, schema JSON-LD, and the primary navigation.
  * Nav output is controlled per child theme via do_action('roci_nav').
  * Site-level business JSON-LD is filterable via apply_filters('roci_schema_data');
- * its @type resolves from roci_business_types() (inc/schema/business-types.php),
+ * its @type resolves from roci_business_types() (inc/schema/business-types.php)
+ * and is emitted as [ type, "Organization" ] (v2.5.1; a lone "Organization" stays a string),
  * its sameAs skips the keys apply_filters('roci_schema_sameas_exclude') lists, and
  * its openingHoursSpecification comes from roci_get_business_hours(), filterable
  * via apply_filters('roci_business_hours') (inc/schema/business-hours.php).
@@ -21,8 +22,8 @@
  * filters roci_article_schema_post_types, roci_article_author, roci_article_schema).
  *
  * File:    header.php
- * Version: 2.5.0
- * Updated: 2026-11-04
+ * Version: 2.5.1
+ * Updated: 2026-11-16
  *
  * @package ElRocinante
  */
@@ -459,6 +460,26 @@ $roci_article_times = $roci_is_article ? roci_article_times( get_queried_object_
         : 'LocalBusiness';
 
     /*
+     * MULTI-TYPED WITH Organization (v2.5.1).
+     *
+     * The node is emitted as [ "<business type>", "Organization" ], same @id,
+     * same properties. Every business type is already an Organization
+     * subtype in schema.org, so this asserts nothing new for a parser that
+     * walks the hierarchy — but some tools (Ahrefs AI Discoverability among
+     * them) only match the literal string "Organization" and otherwise report
+     * the site as having no Organization node.
+     *
+     * A type that is ALREADY "Organization" stays a single string: never
+     * [ "Organization", "Organization" ].
+     *
+     * Set before roci_schema_data, so a callback receives the array and may
+     * still change it, or put a single string back.
+     */
+    $roci_schema_type_out = ( 'Organization' === $roci_schema_type )
+        ? $roci_schema_type
+        : array( $roci_schema_type, 'Organization' );
+
+    /*
      * The field keys THIS type declares — the emit gate for type-specific
      * properties below.
      *
@@ -524,7 +545,7 @@ $roci_article_times = $roci_is_article ? roci_article_times( get_queried_object_
 
         $roci_local_schema = [
             '@context'  => 'https://schema.org',
-            '@type'     => $roci_schema_type,
+            '@type'     => $roci_schema_type_out,
             '@id'       => home_url( '/#organization' ),
             'name'      => $roci_biz_name,
             'url'       => home_url( '/' ),
@@ -721,7 +742,9 @@ $roci_article_times = $roci_is_article ? roci_article_times( get_queried_object_
          * priceRange / address / geo / description / openingHoursSpecification
          * and the type-specific properties survived their gates above. A child
          * may modify it, add to it, or replace it outright — change '@type' to
-         * the vertical it actually is, add aggregateRating, swap a value the
+         * the vertical it actually is (since v2.5.1 it arrives as an array,
+         * [ type, 'Organization' ], unless the type is Organization itself;
+         * test it with in_array(), never ===), add aggregateRating, swap a value the
          * Business tab cannot express — and return it. Whatever comes back is
          * what gets encoded. openingHoursSpecification is built in since
          * v2.3.0: a child that sets the key here overwrites the parent's (one

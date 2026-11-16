@@ -4,6 +4,26 @@ All notable changes to the El Rocinante parent theme are recorded here. Entries 
 
 ---
 
+## [8.3.1] — 2026-11-16
+
+**FIX: the site-level business node is multi-typed with Organization.**
+
+### Why
+
+Ahrefs' AI Discoverability check (and any tool like it) looks for a node whose `@type` is literally `"Organization"`. The site-level node is a `LocalBusiness` / `LodgingBusiness` / `Restaurant` / … — all Organization subtypes in schema.org, but a tool that does not walk the hierarchy reports the site as having no Organization.
+
+### `header.php` 2.5.0 → 2.5.1
+
+- The site-level JSON-LD now emits `"@type": [ "<business type>", "Organization" ]`. Same `@id` (`home/#organization`), same properties, same gates. The `publisher` reference in the BlogPosting node already points at that `@id` and needs no change.
+- **A type that is already `"Organization"` stays a single string.** No `[ "Organization", "Organization" ]`.
+- The array is built **before** `roci_schema_data`, so the filter still has the last word: a callback receives the array and may change it, or set a single string back to opt out.
+
+⚠ **Contract note for `roci_schema_data` callbacks:** `$data['@type']` is now an array for every built-in type. A callback that compared it with `===` against a string must use `in_array()`. A callback that assigns `'@type'` outright still replaces it, Organization included. No child in this workspace is known to hook the filter (last checked for 7.5.0); grep a child for `roci_schema_data` before deploying to it.
+
+No CSS change. No settings change.
+
+---
+
 ## [8.3.0] — 2026-11-04
 
 **FEAT: blog mechanics — single-post seams, BlogPosting schema, reading time. Content-agnostic; every child benefits.**
