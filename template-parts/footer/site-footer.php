@@ -14,9 +14,10 @@
  * assigned — so there is never an empty landmark. The label names the nav,
  * not its role (a screen reader announces "Footer, navigation").
  *
- * The menu's <ul> carries role="list": the parent's global list-style: none
- * strips its markers, and WebKit (Safari + VoiceOver) then drops its list
- * semantics unless the role is explicit.
+ * v1.1.1: the menu's <ul> no longer carries role="list". The parent's global
+ * list marker is a zero-width space (base/_typography.scss, 8.4.2), not none,
+ * so WebKit (Safari + VoiceOver) keeps the list semantics without ARIA, and
+ * the W3C validator has no redundant role to warn about.
  *
  * The copyright line is ONE translatable string with placeholders (v1.0.1),
  * so a translation can reorder the year and the name. The year comes from
@@ -29,8 +30,8 @@
  * A child that overrides this part calls roci_footer_credit() itself.
  *
  * File:    template-parts/footer/site-footer.php
- * Version: 1.1.0
- * Updated: 2026-11-03
+ * Version: 1.1.1
+ * Updated: 2026-11-18
  *
  * @package ElRocinante
  */
@@ -65,7 +66,7 @@
                             'menu_class'     => 'footer-nav u-flex u-gap-medium u-justify-end-md',
                             'fallback_cb'    => false,
                             'depth'          => 1,
-                            'items_wrap'     => '<ul id="%1$s" class="%2$s" role="list">%3$s</ul>',
+                            'items_wrap'     => '<ul id="%1$s" class="%2$s">%3$s</ul>',
                         ) );
                         ?>
                     </nav>

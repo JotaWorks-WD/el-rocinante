@@ -7,7 +7,7 @@
  * and template parts throughout El Rocinante and child themes.
  *
  * File:    inc/helpers.php
- * Version: 1.23.0
+ * Version: 1.23.1
  * Updated: 2026-11-18
  *
  * @package ElRocinante
@@ -1985,7 +1985,8 @@ function roci_listing_context( $context ) {
  *                   around the_posts_pagination(). Never a <nav>: core prints
  *                   that already.
  *   'results_tag' — (v1.17.0) 'div' by default; 'ul' or 'ol' make the results
- *                   container a list with role="list", and the item part MUST
+ *                   container a list (no role="list" since 8.4.2: the global
+ *                   zero-width marker keeps it a list), and the item part MUST
  *                   then emit <li>. Ignored on 404, whose results container
  *                   holds the empty state, not items — always a <div> there.
  *
@@ -2045,17 +2046,16 @@ function roci_get_listing_classes( $context ) {
  * roci_listing_results_atts()
  *
  * (internal) The attributes of a listing's results container: its class
- * attribute, plus role="list" when results_tag is a list (the parent's global
- * list-style: none would otherwise strip list semantics in WebKit). Printed
- * between the tag name and the closing ">", so a <div> default is unchanged.
+ * attribute. Printed between the tag name and the closing ">". 8.4.2: a list
+ * results_tag no longer adds role="list" — the parent's global list marker is
+ * a zero-width space, not none, so WebKit keeps the list semantics itself and
+ * the W3C validator has no redundant role to warn about.
  *
  * @param  array $classes roci_get_listing_classes() output.
  * @return string         Leading-space attribute string.
  */
 function roci_listing_results_atts( $classes ) {
-    $atts = ' class="' . roci_class_attr( $classes['results'] ) . '"';
-
-    return 'div' === $classes['results_tag'] ? $atts : $atts . ' role="list"';
+    return ' class="' . roci_class_attr( $classes['results'] ) . '"';
 }
 
 /**

@@ -6,7 +6,7 @@
  * loads includes, and outputs analytics/integration scripts.
  *
  * File:    functions.php
- * Version: 1.23.0
+ * Version: 1.23.1
  * Updated: 2026-11-18
  *
  * @package ElRocinante
@@ -429,6 +429,59 @@ remove_action( 'wp_head', 'wp_shortlink_wp_head' );
 remove_action( 'wp_head', 'wp_oembed_add_discovery_links' );
 remove_action( 'wp_head', 'wp_oembed_add_host_js' );
 remove_action( 'wp_head', 'rest_output_link_wp_head' );
+
+
+// ============================================================
+// NO TRAILING SLASH ON CORE'S VOID TAGS IN <head> (v1.23.1, theme 8.4.2)
+// ============================================================
+//
+// Core still writes XHTML-style void tags (`<link … />`, `<meta … />`); the
+// W3C validator reports every one ("Trailing slash on void elements has no
+// effect"). The page is HTML, so the slash goes — through core's own filters
+// where they exist, else by buffering the one core printer and filtering its
+// output. Only <link> and <meta> are touched, and only a final " />" / "/>";
+// nothing else in the tag changes. A child or plugin that removed one of the
+// printers below keeps it removed (the swap checks first).
+//
+//   stylesheet links           style_loader_tag
+//   site icons + msapplication site_icon_meta_tags
+//   feed links (+ extra)       feed_links / feed_links_extra, buffered
+//   preload + resource hints   wp_preload_resources / wp_resource_hints, buffered
+
+function el_rocinante_void_tag_html( $html ) {
+    return preg_replace( '#<(link|meta)\b([^<>]*?)\s*/>#i', '<$1$2>', (string) $html );
+}
+
+add_filter( 'style_loader_tag', 'el_rocinante_void_tag_html' );
+
+add_filter( 'site_icon_meta_tags', function( $tags ) {
+    return array_map( 'el_rocinante_void_tag_html', (array) $tags );
+} );
+
+// On template_redirect, after the child theme and plugins have had their say:
+// each printer still hooked at core's priority is swapped for a buffered copy.
+function el_rocinante_void_tag_printers() {
+    $printers = array(
+        'wp_preload_resources' => 1,
+        'wp_resource_hints'    => 2,
+        'feed_links'           => 2,
+        'feed_links_extra'     => 3,
+    );
+
+    foreach ( $printers as $printer => $priority ) {
+        if ( $priority !== has_action( 'wp_head', $printer ) ) {
+            continue;
+        }
+
+        remove_action( 'wp_head', $printer, $priority );
+        add_action( 'wp_head', function() use ( $printer ) {
+            ob_start();
+            call_user_func( $printer );
+            echo el_rocinante_void_tag_html( ob_get_clean() ); // Core's own escaped markup, only the slash removed.
+        }, $priority );
+    }
+}
+add_action( 'template_redirect', 'el_rocinante_void_tag_printers', 100 );
 
 
 // ============================================================

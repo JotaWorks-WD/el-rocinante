@@ -4,6 +4,35 @@ All notable changes to the El Rocinante parent theme are recorded here. Entries 
 
 ---
 
+## [8.4.2] — 2026-11-18
+
+**FIX: W3C validity — no `role="list"` (a zero-width list marker keeps Safari's list semantics instead), and no trailing slash on core's void tags in `<head>`.**
+
+**In plain English (2026-11-18):** Pages built on El Rocinante now pass the W3C HTML validator without the "redundant role" warnings or the trailing-slash notes, and nothing on screen changes. Screen readers in Safari still announce lists as lists.
+
+PATCH. No change to any documented contract a child calls; the list-tag listing results lose an attribute a child may have relied on only for ARIA (none does in this network).
+
+### Lists: a zero-width marker instead of `role="list"`
+
+- **Why the role existed:** the parent's global `ul, ol { list-style: none }` hides every marker, and WebKit (Safari + VoiceOver) then stops announcing those lists as lists. `role="list"` put the semantics back, and the W3C validator warns on it as redundant (one warning per list).
+- **Now:** the global rule is `list-style: "\200B"` (Build `base/_typography.scss` 1.2.1). A zero-width space marker draws nothing and, as an outside marker, takes no space, but WebKit keeps the list semantics. The form error list does the same (`components/_forms.scss` 1.0.1).
+- **The role is gone** from the footer menu (`template-parts/footer/site-footer.php` 1.1.1), list-tag listing results (`roci_listing_results_atts()`, `inc/helpers.php` 1.23.1) and the `[roci_expect]` list (`inc/blog-shortcodes.php` 1.2.1).
+- **Sass writes the escape out as the character itself**, so the compiled `dist/css/style.css` now starts with `@charset "UTF-8"`. Expected; nothing else in the sheet changes.
+- ⚠ **For children:** a class rule with `list-style: none` still drops the semantics in Safari; use `"\200B"`. Where a list item opens with a block in smaller type, the marker's line box can add a few pixels; `> li::marker { font-size: 0; }` on the same rule removes that. The global rule doesn't, because it would also hide the markers of lists that restore real bullets.
+
+### `<head>`: no trailing slash on core's void tags
+
+- `el_rocinante_void_tag_html()` (new, `functions.php` 1.23.1) turns `<link … />` / `<meta … />` into `<link …>` / `<meta …>`. Nothing else in the tag changes.
+- **Through core's filters:** `style_loader_tag` (every stylesheet link) and `site_icon_meta_tags` (the site icons and the msapplication tile).
+- **Buffered:** `feed_links`, `feed_links_extra`, `wp_resource_hints` and `wp_preload_resources` print directly. `el_rocinante_void_tag_printers()` (on `template_redirect`, 100) swaps each for a buffered copy at the same priority, only while it is still hooked at core's priority, so a printer a child or plugin removed stays removed.
+- Checked against a child's home page on staging, with the changes applied to its served HTML: W3C before, 36 warnings + 7 info notes; after, no messages at all.
+
+### Docs
+
+CONVENTIONS: "Lists that drop their markers use a zero-width marker, not `role="list"`" (replaces the 2026-10-06 rule), the panel note, the listing-results row and the accessibility checklist line. CLAUDE.md: the `el_rocinante_` list (now 16).
+
+---
+
 ## [8.4.1] — 2026-11-18
 
 **FIX: W3C validity — the loader's critical CSS moves from `<body>` to `<head>`.**
