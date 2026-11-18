@@ -4,6 +4,68 @@ All notable changes to the El Rocinante parent theme are recorded here. Entries 
 
 ---
 
+## [8.4.0] — 2026-11-18
+
+**FEAT: schema + SEO hygiene, an opt-in Updated date, llms.txt, opt-in dark mode, and four admin tools (Pages tabs, 404 log, visitor stats, IndexNow).**
+
+**In plain English (2026-11-18):** Search engines and AI tools now get cleaner, more accurate information about every page, and sites can opt in to an "Updated" date, dark mode, a 404 report, visitor stats and instant search-engine notifications.
+
+MINOR: new features and hooks; no breaking change to a documented contract. Everything except the schema changes, the hentry removal and the Pages tabs is off until a site switches it on.
+
+### Schema + SEO
+
+- `post_class()` no longer carries `hentry` on the front end (`el_rocinante_post_classes()`); the admin keeps it.
+- A WebSite node (`@id` `home/#website`) prints on every page in its own script; its `publisher` points at `home/#organization` only when that node prints. Filter `roci_website_schema`.
+- The BlogPosting and its author print as one `@graph`: `author` is an `@id` reference to a Person beside it. The Person's `@id` is the author URL + `#person`, else `home/#/person/{nicename}`, unless `roci_article_author` set one. New filter `roci_article_person_node`; `roci_article_schema` still gets the BlogPosting alone.
+- FAQPage JSON-LD is no longer printed in `<head>`; it prints only in the body, where the FAQ renders (`jw_faq_schema()`), so a page that shows no FAQ publishes none.
+- Business type Tourism / Activity now emits `[ "TouristAttraction", "LocalBusiness" ]` instead of `[ "TouristAttraction", "Organization" ]`.
+- The robots chain (field → search / 404 → `blog_public`) is one helper, `roci_effective_robots( $post_id )`; `header.php` prints it, byte-identical.
+- A `js` class on `<html>` from one inline pre-paint script (`wp_head` priority 1, lines in `$roci_lines`).
+
+### Updated date
+
+- An "Updated date" side box on every public post type except attachments (`roci_updated_date_post_types`): "Show updated date" and an optional "What changed".
+- `roci_post_updated()` and `roci_updated_date_line()`; the parent prints the line in `entry-meta.php` (posts, after the published date) and `page.php` (after the `<h1>`, or before the content with no title).
+- Nothing shows until the box is ticked; the date is the real last-modified date.
+
+### llms.txt
+
+- Theme Settings → SEO → "Serve /llms.txt", off by default: a Markdown list of published, indexable pages and posts (front page first), with the Business description and each page's meta description.
+- "Custom llms.txt" replaces the whole file. Filters `roci_llms_txt`, `roci_llms_post_types`, `roci_llms_max_links` (40).
+- Never served while "Discourage search engines" is on; a physical `llms.txt` wins; saving the tab purges it in LiteSpeed.
+
+### Dark mode (opt-in: `roci-dark-mode`)
+
+- Theme Settings → Design → Colour mode: off, auto (follow the device; default) or toggle (the device plus a visitor toggle). Changing it purges the page cache.
+- `data-color-mode` on `<html>`, a `color-scheme` meta, and in toggle mode the saved choice (localStorage `roci-theme`, copied once from `jwd-theme`) applied before first paint.
+- `roci_theme_toggle()` / `roci_get_theme_toggle()` print the toggle button; always defined, empty without the flag or outside toggle mode. `dist/js/theme-toggle.js` is enqueued only in toggle mode.
+- The parent ships the selector contract and the toggle's styles, no colours; a child ships its dark roles inside the two contract selectors.
+- Without the flag, a site's HTML is unchanged; the stylesheet only gains `:root { color-scheme: light }`, the browser's default.
+
+### Admin tools
+
+- **F1 — Pages tabs (every site):** a tab strip ("All pages" + one tab per page screen) across the top of the Pages landing and every page settings screen, when there are two or more screens.
+- **F2 — 404 log (opt-in: `roci-404-log`):** missing URLs per day with hits, last referrer and kind (404 or suppressed archive), in Theme Settings → 404 log; 404s are not page-cached while it is on; 90-day retention (`roci_404_log_retention_days`). New action `roci_archive_suppressed`.
+- **F3 — Visitor stats (opt-in: `roci-stats`):** daily views and visitors counted from the browser, without cookies or stored IPs, shown in a "Visitors" dashboard widget with a 7-day chart; bots and logged-in users are not counted (`roci_stats_retention_days`, default keep).
+- **F4 — IndexNow (opt-in: `roci-indexnow`):** a published or updated indexable page is sent to IndexNow once per 5 minutes per URL, with a key file at `/{key}.txt` and the last 20 results in `roci_indexnow_log` (`roci_indexnow_urls`).
+
+### Docs
+
+- CONVENTIONS: the extension-point catalogue (64 points, ten new names, a helpers / flags / settings table, the `roci_schema_data` array contract and the Tourism exception), schema outputs and their order, the pre-paint script, opt-in modules (dark-mode contract, tables-in-a-theme decision, remove-for-good commands), LiteSpeed `cache-rest` OFF, a per-site onboarding checklist.
+- CLAUDE.md: the `el_rocinante_` list (now 13), the file tree, FAQ and schema text, robots and llms.txt, the front-end JS rule and the stylesheet contents.
+- File docblocks: `template-parts/faq.php` and `jw_faq_schema()` describe the body-only FAQPage.
+
+### Child follow-ups (per-site run-throughs)
+
+- **jota.works:** drop `jwd_post_class_no_hentry()` (the parent does it now).
+- **jota.works:** migrate the updated-date meta keys `jwd_post_show_updated` → `roci_post_show_updated` and `jwd_post_what_changed` → `roci_post_what_changed`, drop its own "Updated date" box, and have its `entry-meta.php` override call `roci_updated_date_line()`.
+- **jota.works:** move to the parent dark mode — declare `roci-dark-mode`, set Colour mode to toggle, put `roci_theme_toggle()` in the nav and the mobile panel, and delete `jwd_theme_init()`, `site.js` §1 and the duplicate toggle-label CSS.
+- **jota.works:** remove any pasted WebSite node (the parent prints `home/#website` now), and optionally set the Person `@id` in its `roci_article_author` callback.
+- **RJK:** drop `rjk_html_js_flag()` (it adds `js` at `wp_head` priority 0, the parent's slot; the parent's pre-paint script adds it now).
+- **Every site:** check Business → type (Tourism changed); check pasted schema for collisions (`#website`, FAQPage, Person); remove FAQ Items from pages that render no FAQ; check for a physical `robots.txt` / `llms.txt`; write an llms.txt override where the automatic list is not right; set LiteSpeed `cache-rest` OFF; opt into F2–F4 as wanted.
+
+---
+
 ## [8.3.1] — 2026-11-16
 
 **FIX: the site-level business node is multi-typed with Organization.**

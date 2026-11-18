@@ -6,8 +6,8 @@
  * Add new field files here as post types and components are registered.
  *
  * File:    inc/metabox/metabox-loader.php
- * Version: 1.1.3
- * Updated: 2026-05-24
+ * Version: 1.2.0
+ * Updated: 2026-11-18
  *
  * @package ElRocinante
  */
@@ -24,3 +24,4 @@ require_once get_template_directory() . '/inc/metabox/metabox-seo-preview.php';
 require_once get_template_directory() . '/inc/metabox/metabox-seo-health.php';
 require_once get_template_directory() . '/inc/metabox/metabox-schema-fields.php';
 require_once get_template_directory() . '/inc/metabox/metabox-faq-fields.php';
+require_once get_template_directory() . '/inc/metabox/metabox-updated-fields.php';

@@ -3,10 +3,12 @@
  * Theme Settings — Sanitize Callbacks
  *
  * 1.12.0 (8.1.0) — roci_sanitize_mail().
+ * 1.13.0 (8.4.0) — roci_sanitize_seo() keeps llms_enabled and llms_override;
+ *                  roci_sanitize_design() keeps color_mode.
  *
  * File:    inc/theme-settings/settings-sanitize.php
- * Version: 1.12.0
- * Updated: 2026-11-03
+ * Version: 1.13.0
+ * Updated: 2026-11-18
  *
  * @package ElRocinante
  */
@@ -44,6 +46,23 @@ function roci_sanitize_design( $input ) {
     $sanitized['header_style']   = isset( $input['header_style'] )   ? sanitize_text_field( $input['header_style'] )   : 'solid';
     $sanitized['sticky_header']  = isset( $input['sticky_header'] )  ? '1' : '0';
     $sanitized['button_style']   = isset( $input['button_style'] )   ? sanitize_text_field( $input['button_style'] )   : 'rounded';
+
+    // COLOUR MODE (1.13.0, El Rocinante 8.4.0) — off | auto | toggle, default
+    // auto. The field renders only on a roci-dark-mode site, so when it is
+    // ABSENT from the POST the stored value is KEPT (the forms-section rule in
+    // roci_sanitize_integrations()): a site that drops the flag and saves this
+    // tab loses nothing. The three keys are listed here, not read from
+    // roci_color_modes(), because inc/dark-mode.php is not loaded without the
+    // flag.
+    $roci_modes = array( 'off', 'auto', 'toggle' );
+    if ( isset( $input['color_mode'] ) ) {
+        $roci_mode = sanitize_key( $input['color_mode'] );
+    } else {
+        $roci_stored = get_option( 'roci_design', array() );
+        $roci_mode   = is_array( $roci_stored ) && isset( $roci_stored['color_mode'] ) ? (string) $roci_stored['color_mode'] : 'auto';
+    }
+    $sanitized['color_mode'] = in_array( $roci_mode, $roci_modes, true ) ? $roci_mode : 'auto';
+
     return $sanitized;
 }
 
@@ -273,10 +292,16 @@ function roci_sanitize_social( $input ) {
 }
 
 function roci_sanitize_seo( $input ) {
+    // REBUILT FROM SCRATCH: a key the SEO tab renders but this list omits is
+    // wiped on the next save. The two llms.txt keys (1.13.0, El Rocinante
+    // 8.4.0) are listed for that reason. sanitize_textarea_field() keeps the
+    // override's line breaks.
     return array(
         'default_meta_description' => isset( $input['default_meta_description'] ) ? sanitize_textarea_field( $input['default_meta_description'] ) : '',
         'default_og_image'         => isset( $input['default_og_image'] )         ? esc_url_raw( $input['default_og_image'] )                     : '',
         'seo_preview'              => isset( $input['seo_preview'] )              ? '1'                                                           : '0',
+        'llms_enabled'             => ! empty( $input['llms_enabled'] )           ? '1'                                                           : '',
+        'llms_override'            => isset( $input['llms_override'] )            ? sanitize_textarea_field( $input['llms_override'] )            : '',
     );
 }
 

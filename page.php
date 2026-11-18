@@ -28,9 +28,14 @@
  * v1.3.0: the entry is an <article post_class()>, and wp_link_pages() follows
  * the_content() so a Page split with <!--nextpage--> reaches its later pages.
  *
+ * v1.4.0 (El Rocinante 8.4.0): roci_updated_date_line() — the opt-in
+ * "Updated {date}" line from the page's "Updated date" box — prints inside the
+ * entry header right after the <h1>, or, when the title mode is 'none' (no
+ * header), directly before .entry-content. Unticked, it prints nothing.
+ *
  * File:    page.php
- * Version: 1.3.0
- * Updated: 2026-10-09
+ * Version: 1.4.0
+ * Updated: 2026-11-18
  *
  * @package ElRocinante
  */
@@ -48,7 +53,10 @@ get_header(); ?>
                 <?php if ( 'none' !== $roci_title_mode ) : ?>
                     <header class="entry-header">
                         <h1 class="entry-title<?php echo ( 'hidden' === $roci_title_mode ) ? ' screen-reader-text' : ''; ?>"><?php the_title(); ?></h1>
+                        <?php roci_updated_date_line(); ?>
                     </header>
+                <?php else : ?>
+                    <?php roci_updated_date_line(); ?>
                 <?php endif; ?>
                 <div class="entry-content">
                     <?php the_content(); ?>

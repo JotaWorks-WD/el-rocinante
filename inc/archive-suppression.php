@@ -11,12 +11,16 @@
  *   roci_suppress_date_archive     — bool, default true
  *   roci_suppress_taxonomy_archive — bool, default true (covers category + tag)
  *
+ * Action dispatched (v1.1.0):
+ *   roci_archive_suppressed( $query ) — after a suppression's 404, so a
+ *   listener (the 404 log) can tell it from a missing URL.
+ *
  * CPT archives are unaffected — those are controlled per-CPT via
  * has_archive at registration.
  *
  * File:    inc/archive-suppression.php
- * Version: 1.0.0
- * Updated: 2026-05-31
+ * Version: 1.1.0
+ * Updated: 2026-11-18
  *
  * @package ElRocinante
  */
@@ -63,6 +67,11 @@ function roci_suppress_default_archives( $query ) {
         $query->set_404();
         status_header( 404 );
         nocache_headers();
+
+        // The marker (v1.1.0): this 404 is a suppressed archive, not a missing
+        // URL. The 404 log (roci-404-log) tags its row 'suppressed' from it.
+        // Nothing listens by default, so the suppression is unchanged.
+        do_action( 'roci_archive_suppressed', $query );
     }
 }
 add_action( 'pre_get_posts', 'roci_suppress_default_archives' );

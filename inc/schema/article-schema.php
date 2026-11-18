@@ -16,8 +16,13 @@
  *   datePublished     the post's local time, ISO 8601 with offset
  *   dateModified      the REAL modified time, always — whatever a child shows
  *                     on the page ("Updated" lines are display only)
- *   author            a Person: the post author's display name (+ url when
- *                     the roci_article_author filter supplies one)
+ *   author            { "@id" } — a reference to the author's Person node
+ *                     (8.4.0), printed beside the BlogPosting in one @graph:
+ *                     the post author's display name (+ url when the
+ *                     roci_article_author filter supplies one) and an @id —
+ *                     the url exactly as given + #person
+ *                     (https://example.com/about/#person), else
+ *                     home/#/person/{user_nicename}
  *   publisher         a REFERENCE to the site-level node, { "@id": home/#organization,
  *                     "name" } when Theme Settings → Business → name is set
  *                     (that is the gate header.php's LocalBusiness block uses,
@@ -31,8 +36,12 @@
  *   roci_article_schema_post_types( array( 'post' ) ) — which post types get it.
  *   roci_article_author( $author, $post_id ) — the author node; return an
  *     array (e.g. add 'url' => an About page), or an empty value to omit it.
- *   roci_article_schema( $data, $post_id ) — the whole node, last word;
- *     extend it, or return false / array() to print nothing.
+ *     Runs first; an '@id' set here is kept.
+ *   roci_article_person_node( $person, $post_id ) — the Person node after its
+ *     @id is set (8.4.0); an empty return means no author at all.
+ *   roci_article_schema( $data, $post_id ) — the BlogPosting node, last word
+ *     on it (its author is the @id reference); extend it, or return
+ *     false / array() to print nothing.
  * None is memoized.
  *
  * A post whose own Schema JSON-LD field already carries an Article-family
@@ -41,8 +50,8 @@
  * roci_schema_has_article_type().
  *
  * File:    inc/schema/article-schema.php
- * Version: 1.0.0
- * Updated: 2026-11-04
+ * Version: 1.1.0
+ * Updated: 2026-11-18
  *
  * @package ElRocinante
  */
@@ -118,21 +127,24 @@ function roci_schema_has_article_type( $json ) {
 
 
 /**
- * roci_get_article_schema()
+ * roci_article_schema_parts()
  *
- * The BlogPosting node for a post, filtered, or array() for none.
+ * Internal (8.4.0). Builds the BlogPosting node and the author's Person node
+ * together, each filter running once: roci_article_author, then
+ * roci_article_person_node, then roci_article_schema (BlogPosting only, its
+ * author an @id reference — that filter's contract is unchanged).
  *
  * @param  int    $post_id   Post ID.
- * @param  string $canonical The page's canonical URL (header.php's), for
- *                           mainEntityOfPage; '' falls back to the permalink.
- * @return array             The node, or array().
+ * @param  string $canonical The page's canonical URL, for mainEntityOfPage.
+ * @return array             array( 'article' => array, 'person' => array );
+ *                           either may be array().
  */
-function roci_get_article_schema( $post_id, $canonical = '' ) {
+function roci_article_schema_parts( $post_id, $canonical = '' ) {
     $post_id = (int) $post_id;
     $post    = $post_id ? get_post( $post_id ) : null;
 
     if ( ! $post || ! in_array( $post->post_type, roci_article_schema_post_types(), true ) ) {
-        return array();
+        return array( 'article' => array(), 'person' => array() );
     }
 
     $headline = trim( wp_strip_all_tags( html_entity_decode( get_the_title( $post_id ), ENT_QUOTES, 'UTF-8' ) ) );
@@ -154,13 +166,46 @@ function roci_get_article_schema( $post_id, $canonical = '' ) {
         $data['dateModified'] = $times['modified'];
     }
 
-    // Author — a Person from the post author, filterable.
+    // Author — a Person from the post author, filterable. roci_article_author
+    // runs FIRST and unchanged: a child may replace the node outright there.
     $author_name = trim( (string) get_the_author_meta( 'display_name', (int) $post->post_author ) );
     $author      = '' !== $author_name ? array( '@type' => 'Person', 'name' => $author_name ) : array();
     $author      = apply_filters( 'roci_article_author', $author, $post_id );
 
+    // THE PERSON GETS AN @id (8.4.0), so the BlogPosting can reference it and
+    // other nodes can point at the same person. One the filter already set is
+    // kept. Otherwise: the author's url exactly as given (trimmed) + #person,
+    // else home/#/person/{user_nicename} (the user ID when there is no
+    // nicename). roci_article_person_node has the last word on the node; an
+    // empty return means no author at all, exactly as an empty author did.
+    $person = array();
+
     if ( is_array( $author ) && ! empty( $author ) ) {
-        $data['author'] = $author;
+        if ( empty( $author['@id'] ) ) {
+            $author_url = isset( $author['url'] ) ? trim( (string) $author['url'] ) : '';
+
+            if ( '' !== $author_url ) {
+                $author['@id'] = $author_url . '#person';
+            } else {
+                $nicename      = (string) get_the_author_meta( 'user_nicename', (int) $post->post_author );
+                $author['@id'] = home_url( '/#/person/' . ( '' !== $nicename ? $nicename : (string) (int) $post->post_author ) );
+            }
+        }
+
+        $person = apply_filters( 'roci_article_person_node', $author, $post_id );
+        $person = is_array( $person ) ? $person : array();
+    }
+
+    if ( ! empty( $person ) ) {
+        if ( ! empty( $person['@id'] ) && is_string( $person['@id'] ) ) {
+            $data['author'] = array( '@id' => $person['@id'] );
+        } else {
+            // A person node with its @id removed by the filter cannot be
+            // referenced, so it stays inline as before 8.4.0 — never a
+            // reference to a node that is not on the page.
+            $data['author'] = $person;
+            $person         = array();
+        }
     }
 
     // Publisher — a reference to the site-level node when header.php prints it
@@ -210,25 +255,61 @@ function roci_get_article_schema( $post_id, $canonical = '' ) {
 
     $data = apply_filters( 'roci_article_schema', $data, $post_id );
 
-    return is_array( $data ) ? $data : array();
+    return array(
+        'article' => is_array( $data ) ? $data : array(),
+        'person'  => $person,
+    );
+}
+
+
+/**
+ * roci_get_article_schema()
+ *
+ * The BlogPosting node for a post, filtered, or array() for none. Since 8.4.0
+ * its author is an @id reference; the Person node it points at comes from
+ * roci_article_schema_parts().
+ *
+ * @param  int    $post_id   Post ID.
+ * @param  string $canonical The page's canonical URL (header.php's), for
+ *                           mainEntityOfPage; '' falls back to the permalink.
+ * @return array             The node, or array().
+ */
+function roci_get_article_schema( $post_id, $canonical = '' ) {
+    $parts = roci_article_schema_parts( $post_id, $canonical );
+
+    return $parts['article'];
 }
 
 
 /**
  * roci_article_schema_json()
  *
- * The node encoded for a <script type="application/ld+json">, script-safe
- * ("</" rewritten to "<\/", as every other parent schema block), or '' for none.
+ * The JSON for a <script type="application/ld+json">, script-safe ("</"
+ * rewritten to "<\/", as every other parent schema block), or '' for none.
+ *
+ * With an author (8.4.0): { "@context", "@graph": [ BlogPosting, Person ] },
+ * the BlogPosting without its own @context. Without one: the BlogPosting
+ * alone, as before. roci_article_schema returning empty prints nothing.
  *
  * @param  int    $post_id   Post ID.
  * @param  string $canonical The page's canonical URL.
  * @return string
  */
 function roci_article_schema_json( $post_id, $canonical = '' ) {
-    $data = roci_get_article_schema( $post_id, $canonical );
+    $parts = roci_article_schema_parts( $post_id, $canonical );
+    $data  = $parts['article'];
 
     if ( empty( $data ) ) {
         return '';
+    }
+
+    if ( ! empty( $parts['person'] ) ) {
+        unset( $data['@context'] );
+
+        $data = array(
+            '@context' => 'https://schema.org',
+            '@graph'   => array( $data, $parts['person'] ),
+        );
     }
 
     $json = wp_json_encode( $data, JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT );

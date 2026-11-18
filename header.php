@@ -8,22 +8,27 @@
  * Nav output is controlled per child theme via do_action('roci_nav').
  * Site-level business JSON-LD is filterable via apply_filters('roci_schema_data');
  * its @type resolves from roci_business_types() (inc/schema/business-types.php)
- * and is emitted as [ type, "Organization" ] (v2.5.1; a lone "Organization" stays a string),
+ * and is emitted as [ type, "Organization" ] (v2.5.1; a lone "Organization" stays a string;
+ * TouristAttraction is paired with "LocalBusiness" instead, v2.6.0),
  * its sameAs skips the keys apply_filters('roci_schema_sameas_exclude') lists, and
  * its openingHoursSpecification comes from roci_get_business_hours(), filterable
  * via apply_filters('roci_business_hours') (inc/schema/business-hours.php).
  * hreflang alternates are filterable via apply_filters('roci_hreflang_alternates')
  * for children that opt into multilingual output with add_theme_support('roci-i18n').
- * On a singular route the page's FAQPage JSON-LD is printed here too, after the
- * site-level block, through jw_faq_schema() (v2.4.0); the FAQ part's own call is
- * then a no-op for that post.
- * On a single post (v2.5.0) it also prints article:published_time /
- * article:modified_time and a BlogPosting node (inc/schema/article-schema.php;
- * filters roci_article_schema_post_types, roci_article_author, roci_article_schema).
+ *
+ * JSON-LD blocks, in order: the per-page pasted schema (roci_schema_json), the
+ * site-level business node (Business → name gate), the WebSite node on every
+ * page (v2.6.0; filter roci_website_schema), and on a single post (v2.5.0) a
+ * BlogPosting + Person @graph (inc/schema/article-schema.php; filters
+ * roci_article_schema_post_types, roci_article_author, roci_article_person_node,
+ * roci_article_schema), with article:published_time / article:modified_time.
+ * FAQPage is no longer printed here (v2.6.0): it prints in the body where the
+ * FAQ renders, through jw_faq_schema().
+ * Robots (v2.6.0) come from roci_effective_robots() (inc/metabox/metabox-seo-fields.php).
  *
  * File:    header.php
- * Version: 2.5.1
- * Updated: 2026-11-16
+ * Version: 2.6.0
+ * Updated: 2026-11-18
  *
  * @package ElRocinante
  */
@@ -154,31 +159,14 @@
     $roci_canonical = $roci_canonical ? (string) $roci_canonical : '';
 
     // --------------------------------------------------------
-    // ROBOTS
+    // ROBOTS — roci_effective_robots() (inc/metabox/metabox-seo-fields.php)
+    //
+    // ORDER: per-page field -> search / 404 -> blog_public; the site-wide
+    // switch stays LAST. The rule and its reasons live with the helper.
+    // (Before v7.0.0 the search page also borrowed the FIRST RESULT's own
+    // field; it now owns no post and takes the default before the override.)
     // --------------------------------------------------------
-    $roci_robots = $roci_post_id ? roci_get_field( 'roci_robots', $roci_post_id ) : '';
-    $roci_robots = $roci_robots ? $roci_robots : 'index, follow';
-
-    // SEARCH RESULTS AND 404s ARE NEVER INDEXED. Core noindexes search through
-    // wp_robots_noindex_search(), part of the wp_robots() chain this theme
-    // unhooks. (Before v7.0.0 the search page also borrowed the FIRST RESULT's
-    // own field; it now owns no post and would take the default.) A 404 owns
-    // no post either, and until v7.8.1 took the "index, follow" default; the
-    // 404 status already keeps it out of the index, so the tag now agrees with
-    // it. "follow" keeps link discovery. ORDER: per-page -> search / 404 ->
-    // blog_public; the site-wide switch below must stay LAST.
-    if ( is_search() || is_404() ) {
-        $roci_robots = 'noindex, follow';
-    }
-
-    // SITE-WIDE SWITCH WINS. Settings → Reading → "Discourage search engines"
-    // (blog_public = 0) is the staging safety switch. Core implements it ONLY
-    // through wp_robots(), which this theme unhooks (functions.php) — so this
-    // tag must carry it, or a discouraged site publishes "index". The value and
-    // the test match core's own wp_robots_noindex() -> wp_robots_no_robots().
-    if ( ! get_option( 'blog_public' ) ) {
-        $roci_robots = 'noindex, nofollow';
-    }
+    $roci_robots = roci_effective_robots( $roci_post_id );
 
     // --------------------------------------------------------
     // OG IMAGE
@@ -463,11 +451,19 @@ $roci_article_times = $roci_is_article ? roci_article_times( get_queried_object_
      * MULTI-TYPED WITH Organization (v2.5.1).
      *
      * The node is emitted as [ "<business type>", "Organization" ], same @id,
-     * same properties. Every business type is already an Organization
-     * subtype in schema.org, so this asserts nothing new for a parser that
-     * walks the hierarchy — but some tools (Ahrefs AI Discoverability among
-     * them) only match the literal string "Organization" and otherwise report
-     * the site as having no Organization node.
+     * same properties. LocalBusiness, LodgingBusiness and Restaurant are
+     * already Organization subtypes in schema.org, so this asserts nothing new
+     * for a parser that walks the hierarchy — but some tools (Ahrefs AI
+     * Discoverability among them) only match the literal string
+     * "Organization" and otherwise report the site as having no Organization
+     * node.
+     *
+     * THE ONE EXCEPTION, TouristAttraction (v2.6.0): it is a Place, not an
+     * Organization, so it is paired with LocalBusiness instead —
+     * [ "TouristAttraction", "LocalBusiness" ]. LocalBusiness is both a Place
+     * and an Organization subtype, so the node is still an Organization to a
+     * parser that walks the hierarchy, and the business properties
+     * (telephone, priceRange, openingHoursSpecification) are valid on it.
      *
      * A type that is ALREADY "Organization" stays a single string: never
      * [ "Organization", "Organization" ].
@@ -475,9 +471,13 @@ $roci_article_times = $roci_is_article ? roci_article_times( get_queried_object_
      * Set before roci_schema_data, so a callback receives the array and may
      * still change it, or put a single string back.
      */
-    $roci_schema_type_out = ( 'Organization' === $roci_schema_type )
-        ? $roci_schema_type
-        : array( $roci_schema_type, 'Organization' );
+    if ( 'Organization' === $roci_schema_type ) {
+        $roci_schema_type_out = $roci_schema_type;
+    } elseif ( 'TouristAttraction' === $roci_schema_type ) {
+        $roci_schema_type_out = array( $roci_schema_type, 'LocalBusiness' );
+    } else {
+        $roci_schema_type_out = array( $roci_schema_type, 'Organization' );
+    }
 
     /*
      * The field keys THIS type declares — the emit gate for type-specific
@@ -777,49 +777,59 @@ $roci_article_times = $roci_is_article ? roci_article_times( get_queried_object_
 
     <?php
     // --------------------------------------------------------
-    // SCHEMA JSON-LD — FAQ (v2.4.0)
+    // SCHEMA JSON-LD — WEBSITE (v2.6.0, El Rocinante 8.4.0)
     //
-    // The page's FAQPage, printed here with the rest of the schema instead
-    // of after the FAQ section in the body. Built from the queried post's
-    // FAQ Items, every section (roci_get_faq_items() via jw_faq_schema()), on
-    // a singular route only.
+    // The site itself, on EVERY front-end page, in its own script, whether or
+    // not the site-level node above printed. @id is home/#website, the id
+    // other nodes (and pasted page schema) point at; name is the og:site_name
+    // value, entities decoded for JSON.
     //
-    // jw_faq_schema() prints once per post per request, so the FAQ part's own
-    // call later in the body (the parent's part, or a child's override that
-    // calls it) prints nothing for this post. That call stays as the fallback
-    // for what this block does not cover: a non-singular route, or a part
-    // rendered with another post's post_id.
+    // publisher references home/#organization ONLY when the site-level node
+    // printed (the same Business → name gate), so it never points at a node
+    // that is not on the page. No SearchAction.
     //
-    // ⚠ PUBLISHED WHENEVER THE POST HAS COMPLETE FAQ ITEMS, whether or not its
-    // template renders the FAQ part. A template that does not show the
-    // questions must not have FAQ Items saved, or the page publishes
-    // questions it does not show.
-    //
-    // Buffered so the banner prints only with a block: jw_faq_schema() can
-    // still print nothing (an item that decodes to blank, an encode failure).
+    // roci_website_schema( $data ) has the last word; an empty return prints
+    // nothing. Separate from roci_schema_data, whose contract is unchanged.
     // --------------------------------------------------------
-    $roci_faq_schema = '';
+    $roci_website_schema = array(
+        '@context'   => 'https://schema.org',
+        '@type'      => 'WebSite',
+        '@id'        => home_url( '/#website' ),
+        'url'        => home_url( '/' ),
+        'name'       => html_entity_decode( (string) $roci_site_name, ENT_QUOTES, 'UTF-8' ),
+        'inLanguage' => get_bloginfo( 'language' ),
+    );
 
-    if ( is_singular() && roci_get_faq_items( get_queried_object_id() ) ) {
-        ob_start();
-        jw_faq_schema( get_queried_object_id() );
-        $roci_faq_schema = (string) ob_get_clean();
+    if ( $roci_biz_name ) {
+        $roci_website_schema['publisher'] = array( '@id' => home_url( '/#organization' ) );
     }
+
+    $roci_website_schema = apply_filters( 'roci_website_schema', $roci_website_schema );
     ?>
-<?php if ( '' !== $roci_faq_schema ) : ?>
-<!-- Schema JSON-LD — FAQ -->
-<?php echo $roci_faq_schema; ?>
+<?php if ( is_array( $roci_website_schema ) && ! empty( $roci_website_schema ) ) : ?>
+<!-- Schema JSON-LD — WebSite -->
+<script type="application/ld+json">
+<?php echo str_replace( '</', '<\/', wp_json_encode( $roci_website_schema, JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT ) ); ?>
+</script>
 <?php endif; ?>
 
     <?php
     // --------------------------------------------------------
-    // SCHEMA JSON-LD — ARTICLE (v2.5.0, El Rocinante 8.3.0)
+    // FAQPage is NOT printed in <head> (v2.6.0, El Rocinante 8.4.0). It prints
+    // in the body, where the FAQ renders: jw_faq_schema(), called by the FAQ
+    // part (or a child's own FAQ markup) after the questions. A page whose
+    // template shows no FAQ therefore publishes none.
+    // --------------------------------------------------------
+
+    // --------------------------------------------------------
+    // SCHEMA JSON-LD — ARTICLE (v2.5.0, El Rocinante 8.3.0; graph v2.6.0)
     //
     // A BlogPosting node on a single post (roci_is_article_route(): singular,
     // post type in roci_article_schema_post_types(), default 'post'), built by
     // roci_article_schema_json() in inc/schema/article-schema.php: headline,
-    // datePublished, dateModified (the real modified time), author (Person,
-    // roci_article_author), publisher (a reference to the site-level
+    // datePublished, dateModified (the real modified time), author (an @id
+    // reference to the Person node printed beside it in one @graph, 8.4.0),
+    // publisher (a reference to the site-level
     // #organization node when Business → name is set, else an Organization),
     // image (the featured image) and mainEntityOfPage (this canonical).
     // roci_article_schema has the last word; false / array() prints nothing.

@@ -4,9 +4,12 @@
  *
  * Included by settings-page.php inside roci_settings_page().
  *
+ * 2.1.0 (El Rocinante 8.4.0): the Colour Mode section (roci_design
+ * color_mode: off | auto | toggle), shown only with roci-dark-mode.
+ *
  * File:    inc/theme-settings/tabs/tab-design.php
- * Version: 2.0.0
- * Updated: 2026-07-26
+ * Version: 2.1.0
+ * Updated: 2026-11-18
  *
  * @package ElRocinante
  */
@@ -231,6 +234,29 @@ $color_groups = array(
         </td>
     </tr>
 </table>
+
+<?php
+// COLOUR MODE (2.1.0, El Rocinante 8.4.0) — only on a site that declares
+// roci-dark-mode; without the flag nothing renders here, and the sanitiser
+// keeps whatever is stored.
+if ( current_theme_supports( 'roci-dark-mode' ) && function_exists( 'roci_color_modes' ) ) :
+    $roci_color_mode = function_exists( 'roci_color_mode' ) ? roci_color_mode() : 'auto';
+    ?>
+<h2 class="roci-section-title"><?php esc_html_e( 'Colour Mode', 'rocinante' ); ?></h2>
+<table class="form-table">
+    <tr>
+        <th><label for="roci_color_mode"><?php esc_html_e( 'Colour mode', 'rocinante' ); ?></label></th>
+        <td>
+            <select name="roci_design[color_mode]" id="roci_color_mode">
+                <?php foreach ( roci_color_modes() as $roci_mode_key => $roci_mode_label ) : ?>
+                    <option value="<?php echo esc_attr( $roci_mode_key ); ?>" <?php selected( $roci_color_mode, $roci_mode_key ); ?>><?php echo esc_html( $roci_mode_label ); ?></option>
+                <?php endforeach; ?>
+            </select>
+            <p class="roci-note"><?php esc_html_e( 'Changing this changes every page\'s HTML; the page cache is purged on save.', 'rocinante' ); ?></p>
+        </td>
+    </tr>
+</table>
+<?php endif; ?>
 
 <h2 class="roci-section-title"><?php esc_html_e( 'Buttons', 'rocinante' ); ?></h2>
 <table class="form-table">

@@ -6,8 +6,8 @@
  * loads includes, and outputs analytics/integration scripts.
  *
  * File:    functions.php
- * Version: 1.21.0
- * Updated: 2026-11-04
+ * Version: 1.22.0
+ * Updated: 2026-11-18
  *
  * @package ElRocinante
  */
@@ -140,6 +140,17 @@ function el_rocinante_enqueue_assets() {
         true
     );
 
+    // THE THEME TOGGLE (v8.4.0) — REGISTERED, NEVER ENQUEUED HERE.
+    // inc/dark-mode.php enqueues it only on a roci-dark-mode site whose colour
+    // mode is "toggle". Footer: it binds to markup already on the page.
+    wp_register_script(
+        'el-rocinante-theme-toggle',
+        get_template_directory_uri() . '/dist/js/theme-toggle.js',
+        array(),
+        filemtime( get_template_directory() . '/dist/js/theme-toggle.js' ),
+        true
+    );
+
     // THE FORMS MODULE'S SCRIPTS (v8.0.0) — registered only when the child
     // opted in to roci-forms, enqueued only by template-parts/form.php when
     // it renders a form. forms.js is enhancement only (the form works without
@@ -199,6 +210,181 @@ function el_rocinante_body_classes( $classes ) {
     return $classes;
 }
 add_filter( 'body_class', 'el_rocinante_body_classes' );
+
+// NO hentry ON THE FRONT END (v8.4.0). Core adds hentry to every post_class()
+// output, and hentry is the hAtom microformat: a parser that reads it expects
+// entry-title, updated and author markup the parent does not print, and
+// reports the entry as broken. The structured data is JSON-LD instead.
+//
+// Admin is untouched (the list tables and the block editor use post_class()
+// too). IDEMPOTENT: a child running the same filter is harmless, since a
+// second array_diff() on an array without hentry changes nothing.
+function el_rocinante_post_classes( $classes ) {
+
+    if ( is_admin() ) {
+        return $classes;
+    }
+
+    return array_values( array_diff( (array) $classes, array( 'hentry' ) ) );
+}
+add_filter( 'post_class', 'el_rocinante_post_classes' );
+
+
+// ============================================================
+// PRE-PAINT SCRIPT — the js class on <html>
+// ============================================================
+//
+// One tiny inline script in <head>, before any stylesheet, that adds the
+// class "js" to <html>. CSS uses html.js to arm controls that need
+// JavaScript and leaves the no-JS layout standing without it.
+//
+// ONE STATEMENT PER LINE OF $roci_lines. Anything else that must run before
+// first paint is added as a further entry, not a second script tag.
+// classList.add() is idempotent, so a child that adds "js" itself as well
+// changes nothing.
+//
+// PRIORITY 1, NEVER 0 — priority 0 is reserved for the hero preload
+// (roci_hero_preload()). Stylesheets print at 8, so 1 is still pre-paint.
+//
+// data-no-optimize="1" keeps LiteSpeed Cache from deferring or combining it:
+// a deferred copy runs after paint, which defeats the point. wp_head fires
+// on the front end only, so this never prints in the admin.
+
+function el_rocinante_pre_paint_script() {
+
+    $roci_lines = array(
+        "r.classList.add('js');",
+    );
+
+    // Dark mode (v8.4.0): the saved toggle choice, ahead of first paint. The
+    // function exists only when the child declares roci-dark-mode, and it
+    // returns '' unless the colour mode is "toggle", so every other site's
+    // script is byte-identical.
+    if ( function_exists( 'roci_dark_mode_pre_paint' ) ) {
+        $roci_dark_line = roci_dark_mode_pre_paint();
+        if ( '' !== $roci_dark_line ) {
+            $roci_lines[] = $roci_dark_line;
+        }
+    }
+
+    wp_print_inline_script_tag(
+        '(function(d){var r=d.documentElement;' . implode( '', $roci_lines ) . '})(document);',
+        array(
+            'id'               => 'roci-pre-paint',
+            'data-no-optimize' => '1',
+        )
+    );
+}
+add_action( 'wp_head', 'el_rocinante_pre_paint_script', 1 );
+
+
+// ============================================================
+// DARK MODE — opt-in via add_theme_support( 'roci-dark-mode' ) (v8.4.0)
+// ============================================================
+//
+// THE PARENT SHIPS THE MECHANISM, THE CHILD SHIPS THE DARK VALUES. Without
+// the flag inc/dark-mode.php is never loaded, so nothing it hooks runs and a
+// site's output is unchanged.
+//
+// Loaded on after_setup_theme at priority 100, not at file scope: a child
+// usually declares theme support in its own after_setup_theme callback, which
+// has not run while this file loads. 100 is after every callback at the
+// default 10. The file's hooks (language_attributes, wp_head,
+// wp_enqueue_scripts, the settings save) all fire later than that.
+
+function el_rocinante_load_dark_mode() {
+
+    if ( ! current_theme_supports( 'roci-dark-mode' ) ) {
+        return;
+    }
+
+    require_once get_template_directory() . '/inc/dark-mode.php';
+}
+add_action( 'after_setup_theme', 'el_rocinante_load_dark_mode', 100 );
+
+/**
+ * roci_get_theme_toggle()
+ *
+ * The visitor's light / dark toggle button, for a child's nav. ALWAYS
+ * DEFINED, so a child may call it unconditionally: it returns '' without the
+ * roci-dark-mode flag, and '' unless Theme Settings → Design → Colour mode is
+ * "toggle". The markup is built by inc/dark-mode.php.
+ *
+ * @param  string $class Extra class(es) for the button.
+ * @return string
+ */
+function roci_get_theme_toggle( $class = '' ) {
+    return function_exists( 'roci_dark_mode_toggle_markup' ) ? roci_dark_mode_toggle_markup( $class ) : '';
+}
+
+/**
+ * roci_theme_toggle()
+ *
+ * Echoes roci_get_theme_toggle(). Nothing without the flag or outside
+ * "toggle" mode.
+ *
+ * @param string $class Extra class(es) for the button.
+ */
+function roci_theme_toggle( $class = '' ) {
+    echo roci_get_theme_toggle( $class ); // Escaped where it is built.
+}
+
+
+// ============================================================
+// 404 LOG — opt-in via add_theme_support( 'roci-404-log' ) (v8.4.0)
+// ============================================================
+//
+// Inert without the flag: inc/404-log/ is never loaded, so there is no
+// table, query, cron event or menu. Loaded at after_setup_theme 100 for the
+// same reason as dark mode above.
+
+function el_rocinante_load_404_log() {
+
+    if ( ! current_theme_supports( 'roci-404-log' ) ) {
+        return;
+    }
+
+    require_once get_template_directory() . '/inc/404-log/404-log.php';
+}
+add_action( 'after_setup_theme', 'el_rocinante_load_404_log', 100 );
+
+
+// ============================================================
+// VISITOR STATS — opt-in via add_theme_support( 'roci-stats' ) (v8.4.0)
+// ============================================================
+//
+// Inert without the flag: inc/stats/ is never loaded, so there are no
+// tables, script, route, widget or cron event. Loaded at after_setup_theme
+// 100, like the modules above.
+
+function el_rocinante_load_stats() {
+
+    if ( ! current_theme_supports( 'roci-stats' ) ) {
+        return;
+    }
+
+    require_once get_template_directory() . '/inc/stats/stats.php';
+}
+add_action( 'after_setup_theme', 'el_rocinante_load_stats', 100 );
+
+
+// ============================================================
+// INDEXNOW — opt-in via add_theme_support( 'roci-indexnow' ) (v8.4.0)
+// ============================================================
+//
+// Inert without the flag: inc/indexnow.php is never loaded, so there is no
+// key, key file or ping. Loaded at after_setup_theme 100, like the modules
+// above.
+
+function el_rocinante_load_indexnow() {
+
+    if ( ! current_theme_supports( 'roci-indexnow' ) ) {
+        return;
+    }
+
+    require_once get_template_directory() . '/inc/indexnow.php';
+}
+add_action( 'after_setup_theme', 'el_rocinante_load_indexnow', 100 );
 
 
 // ============================================================
@@ -349,6 +535,13 @@ require_once get_template_directory() . '/inc/mail/mail.php';
 // ============================================================
 
 require_once get_template_directory() . '/inc/sitemap.php';
+
+
+// ============================================================
+// LLMS.TXT — opt-in, Theme Settings → SEO (v8.4.0)
+// ============================================================
+
+require_once get_template_directory() . '/inc/llms-txt.php';
 
 
 // ============================================================

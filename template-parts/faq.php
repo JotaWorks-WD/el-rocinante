@@ -1,7 +1,7 @@
 <?php
 /**
- * FAQ Accordion — a page's questions and answers (its FAQPage JSON-LD is
- * printed in <head>; this part's call is the fallback, see THE SCHEMA)
+ * FAQ Accordion — a page's questions and answers, and their FAQPage JSON-LD
+ * (printed here, in the body, after the questions — see THE SCHEMA)
  *
  * Any template renders it with one call:
  *
@@ -47,12 +47,16 @@
  *
  * THE SCHEMA. The FAQPage JSON-LD covers EVERY complete item of the post (all
  * sections) and prints once per post per request (jw_faq_schema()). Since El
- * Rocinante 7.8.0 header.php prints it in <head> on a singular route, so the
- * jw_faq_schema() call at the end of this part prints nothing for the queried
- * page. The call stays as the fallback: on a non-singular route, or with a
- * post_id arg naming another post, the first render that prints anything
- * publishes that post's FAQPage after its markup. (Keep the page's own Schema
- * JSON-LD field free of FAQ markup; that would be a second block.)
+ * Rocinante 8.4.0 it prints ONLY in the body, where the FAQ renders: the
+ * jw_faq_schema() call at the end of this part (or a child's own FAQ markup
+ * calling it) publishes it after the questions, and header.php no longer
+ * prints one. So a page whose template shows no FAQ publishes no FAQPage.
+ * With sections, the first render that prints anything publishes the whole
+ * set; later renders are no-ops. (Keep the page's own Schema JSON-LD field
+ * free of FAQ markup; that would be a second block.)
+ *
+ * 1.2.0 (El Rocinante 8.4.0): docblock only — the FAQPage moved out of
+ * <head>; this part's call is now the parent's only FAQPage output.
  *
  * THE HEADING — an H2 that names the section — resolves in this order, the
  * last non-empty value winning:
@@ -107,8 +111,8 @@
  * the arguments, the field and the filter cannot express.
  *
  * File:    template-parts/faq.php
- * Version: 1.1.1
- * Updated: 2026-10-21
+ * Version: 1.2.0
+ * Updated: 2026-11-18
  *
  * @package ElRocinante
  */

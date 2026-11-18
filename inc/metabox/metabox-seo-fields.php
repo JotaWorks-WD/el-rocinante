@@ -11,9 +11,12 @@
  * MB Pro mangles on its own: the slug field's config-array write, and
  * the HTML-entity encoding on both description textareas.
  *
+ * And roci_effective_robots() (v1.6.0): the robots value header.php prints,
+ * the roci_robots field after the search / 404 and blog_public overrides.
+ *
  * File:    metabox-seo-fields.php
- * Version: 1.5.1
- * Updated: 2026-09-11
+ * Version: 1.6.0
+ * Updated: 2026-11-18
  *
  * @package ElRocinante
  */
@@ -400,6 +403,63 @@ add_filter( 'rwmb_roci_meta_description_value', function( $new, $field, $old, $o
     // would sanitize an already-encoded string and store the encoding.
     return sanitize_text_field( roci_seo_decode_entities( $new ) );
 }, 10, 4 );
+
+
+// ============================================================
+// ROBOTS — the effective value (v1.6.0)
+// ============================================================
+
+/**
+ * The robots value a post's <head> publishes, after every override.
+ *
+ * header.php prints exactly this in <meta name="robots">. It lives beside the
+ * roci_robots field so the field and the rule that can overrule it are read
+ * together, and so code outside the template (IndexNow, say) can ask the same
+ * question and get the same answer.
+ *
+ * ORDER: per-page field -> search / 404 -> blog_public. The site-wide switch
+ * must stay LAST.
+ *
+ *   1. The post's roci_robots field, else "index, follow". $post_id 0 (a
+ *      listing route, which owns no post) skips the field and takes the
+ *      default — roci_get_field() would otherwise read the global post.
+ *   2. SEARCH RESULTS AND 404s ARE NEVER INDEXED -> "noindex, follow". Core
+ *      noindexes search through wp_robots_noindex_search(), part of the
+ *      wp_robots() chain this theme unhooks. A 404 owns no post and until
+ *      v7.8.1 took the "index, follow" default; the 404 status already keeps
+ *      it out of the index, so the tag agrees with it. "follow" keeps link
+ *      discovery.
+ *   3. SITE-WIDE SWITCH WINS. Settings → Reading → "Discourage search engines"
+ *      (blog_public = 0) is the staging safety switch -> "noindex, nofollow".
+ *      Core implements it ONLY through wp_robots(), which this theme unhooks
+ *      (functions.php), so this value must carry it, or a discouraged site
+ *      publishes "index". The test and the value match core's own
+ *      wp_robots_noindex() -> wp_robots_no_robots().
+ *
+ * OUTSIDE A FRONT-END REQUEST — the admin, REST, cron, or anything that runs
+ * before the main query (the 'wp' action) — there is no search or 404
+ * context, so step 2 is skipped and the result is field -> blog_public only.
+ * Called after 'wp' on a search or 404 page, step 2 applies to whatever ID is
+ * passed, exactly as it does in header.php.
+ *
+ * @param  int $post_id The post that owns the <head>; 0 for none.
+ * @return string       The robots value, e.g. "index, follow".
+ */
+function roci_effective_robots( $post_id ) {
+
+    $robots = $post_id ? roci_get_field( 'roci_robots', $post_id ) : '';
+    $robots = $robots ? $robots : 'index, follow';
+
+    if ( did_action( 'wp' ) && ( is_search() || is_404() ) ) {
+        $robots = 'noindex, follow';
+    }
+
+    if ( ! get_option( 'blog_public' ) ) {
+        $robots = 'noindex, nofollow';
+    }
+
+    return $robots;
+}
 
 
 // ---- OG Description ----
