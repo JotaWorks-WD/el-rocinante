@@ -6,7 +6,7 @@
  * loads includes, and outputs analytics/integration scripts.
  *
  * File:    functions.php
- * Version: 1.22.0
+ * Version: 1.23.0
  * Updated: 2026-11-18
  *
  * @package ElRocinante
@@ -85,6 +85,37 @@ function el_rocinante_render_loader() {
     get_template_part( 'template-parts/loader' );
 }
 add_action( 'wp_body_open', 'el_rocinante_render_loader', 5 );
+
+// THE LOADER'S CRITICAL CSS, IN <head> (v8.4.1). It used to print inside
+// <body>, just above the overlay — a <style> element there is invalid HTML and
+// the W3C validator rejects it. Same rules, same values, now printed on
+// wp_head at PRIORITY 7, just before the stylesheets (8), so the overlay is
+// styled from its first paint exactly as before (earlier, if anything).
+//
+// ⚠ A HAND-COPIED DUPLICATE OF components/_loader.scss (plus base/_base.scss's
+// root size), every selector in :where() so it has ZERO specificity: it only
+// fills the gap until the external sheet (same values) arrives, and any child
+// override still wins. Change a value in the SCSS and change it here — nothing
+// warns. :where(html){font-size:62.5%} is deliberate: the loader sizes are rem.
+// The 8s failsafe's clock starts when this copy first styles the overlay; the
+// external sheet's identical declaration does not restart it.
+//
+// ⚠ THE NO-JS ESCAPE NEEDS ITS EXTRA `html`. In the body it beat the sheet's
+// #loader.roci-loader{display:flex} (1,1,0) on source order. In the head it
+// comes BEFORE the sheet, so it wins on specificity instead: html
+// #loader.roci-loader is (1,1,1). No !important. <noscript> holding a <style>
+// is valid inside <head>.
+function el_rocinante_loader_head_css() {
+
+    if ( ! current_theme_supports( 'roci-loader' ) ) {
+        return;
+    }
+    ?>
+<style id="roci-loader-critical">:where(html){font-size:62.5%}:where(#loader.roci-loader){position:fixed;inset:0;z-index:var(--z-tooltip,700);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2rem;background-color:var(--color-surface,#fff);opacity:1;transition:opacity .4s ease;animation:roci-loader-failsafe .4s ease 8s forwards}@keyframes roci-loader-failsafe{to{opacity:0;visibility:hidden;pointer-events:none}}:where(#loader.roci-loader[hidden]){display:none}:where(#loader.roci-loader.is-dismissed){opacity:0;pointer-events:none}:where(.roci-loader__logo){max-width:18rem;height:auto}:where(.roci-loader__spinner){width:4rem;height:4rem;border:3px solid var(--color-border,#e5e5e5);border-top-color:var(--color-action,#333);border-radius:50%;animation:roci-loader-spin .8s linear infinite}@keyframes roci-loader-spin{to{transform:rotate(360deg)}}@media (prefers-reduced-motion:reduce){:where(#loader.roci-loader){transition:none}:where(.roci-loader__spinner){animation:none}}</style>
+<noscript><style id="roci-loader-noscript">html #loader.roci-loader{display:none}</style></noscript>
+    <?php
+}
+add_action( 'wp_head', 'el_rocinante_loader_head_css', 7 );
 
 
 // ============================================================

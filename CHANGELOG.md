@@ -4,6 +4,33 @@ All notable changes to the El Rocinante parent theme are recorded here. Entries 
 
 ---
 
+## [8.4.1] — 2026-11-18
+
+**FIX: W3C validity — the loader's critical CSS moves from `<body>` to `<head>`.**
+
+**In plain English (2026-11-18):** Pages with the loading screen now pass the W3C HTML validator; the loading screen looks and behaves exactly as before.
+
+PATCH. Only sites that declare `roci-loader` (today: Fish Potrero) change output.
+
+### The loader
+
+- Its critical CSS (a zero-specificity `:where()` copy of `components/_loader.scss`) and its `<noscript>` escape printed inside `<body>`, just above the overlay. A `<style>` element in `<body>` is invalid HTML.
+- They now print in `<head>` from `el_rocinante_loader_head_css()` on `wp_head` priority 7, just before the stylesheets. The critical block is byte-identical. The overlay is styled from first paint as before.
+- The `<noscript>` rule is now `html #loader.roci-loader` (1,1,1). In the head it comes before the sheet, so it wins on specificity instead of source order. Still no `!important`.
+- `template-parts/loader.php` 1.5.0 prints the markup only. `functions.php` 1.23.0. Build `components/_loader.scss` 1.0.2: comments only; the compiled CSS is byte-identical.
+
+### Checked, no change needed
+
+- **`hentry`**: removed from front-end `post_class()` since 8.4.0 (`el_rocinante_post_classes()`; wp-admin keeps it). Safe alongside a child's identical filter: removing it twice is a no-op. **Children no longer need their own `hentry` filter.**
+- **`@scope`**: none anywhere in the parent, its Build, the Boilerplate or any child (SCSS, compiled CSS, PHP or JS). A validator `@scope` error on a live site comes from a plugin or WordPress itself; find it in the page's own CSS.
+- **`role="list"`**: kept on every `<ul>` / `<ol>` that has it (the `[roci_expect]` list, list-tag listing results, the footer menu). The parent sets `list-style: none` on every list outside `.entry-content`, and Safari / VoiceOver then stops announcing it as a list. The validator's "redundant role" is a warning, not an error. The house rule stands.
+
+### Docs
+
+CLAUDE.md: the `el_rocinante_` list (now 14) and the tree. CONVENTIONS: the no-JS escape in `<head>`.
+
+---
+
 ## [8.4.0] — 2026-11-18
 
 **FEAT: schema + SEO hygiene, an opt-in Updated date, llms.txt, opt-in dark mode, and four admin tools (Pages tabs, 404 log, visitor stats, IndexNow).**
