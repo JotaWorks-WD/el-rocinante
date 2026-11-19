@@ -4,9 +4,14 @@
  *
  * Included by settings-page.php inside roci_settings_page().
  *
+ * 1.10.0 (El Rocinante 8.6.0): maps_url is relabelled "Open in Google Maps
+ * link" (key unchanged); new field maps_embed_url, "Map embed URL" (Google
+ * embed src only, roci_sanitize_maps_embed_url()); the WhatsApp source rule
+ * on the WhatsApp field; settings_errors( 'roci_business' ).
+ *
  * File:    inc/theme-settings/tabs/tab-business.php
- * Version: 1.9.0
- * Updated: 2026-10-31
+ * Version: 1.10.0
+ * Updated: 2026-11-19
  *
  * @package ElRocinante
  */
@@ -26,6 +31,10 @@ settings_fields( 'roci_business_group' );
  * Add a field here and add it there, in the same commit. Always.
  */
 $business = get_option( 'roci_business', array() );
+
+// A top-level menu page does not print settings errors by itself (the Mail
+// tab's precedent). The Map embed URL rejection (8.6.0) reports here.
+settings_errors( 'roci_business' );
 
 /*
  * The type map is the single source for the selector below, for the sanitiser's
@@ -123,13 +132,22 @@ $roci_biz_type          = isset( $business['type'] ) && '' !== $business['type']
         <td>
             <input type="text" name="roci_business[whatsapp]" id="roci_biz_whatsapp" class="regular-text" value="<?php echo esc_attr( isset( $business['whatsapp'] ) ? $business['whatsapp'] : '' ); ?>">
             <p class="roci-note"><?php esc_html_e( 'Include country code, no spaces or symbols. e.g. 50688887777', 'rocinante' ); ?></p>
+            <p class="roci-note"><?php esc_html_e( 'Business → WhatsApp is the main number; Social → WhatsApp is used only when it\'s empty.', 'rocinante' ); ?></p>
         </td>
     </tr>
     <tr>
-        <th><label for="roci_biz_maps"><?php esc_html_e( 'Google Maps Embed URL', 'rocinante' ); ?></label></th>
+        <th><label for="roci_biz_maps"><?php esc_html_e( 'Open in Google Maps link', 'rocinante' ); ?></label></th>
         <td>
             <input type="url" name="roci_business[maps_url]" id="roci_biz_maps" class="large-text" value="<?php echo esc_attr( isset( $business['maps_url'] ) ? $business['maps_url'] : '' ); ?>">
-            <p class="roci-note"><?php esc_html_e( 'Paste the src URL from your Google Maps embed code.', 'rocinante' ); ?></p>
+            <p class="roci-note"><?php esc_html_e( 'A link that opens your location in Google Maps (Google Maps → Share → Copy link). Not the embed code: that goes in the next field.', 'rocinante' ); ?></p>
+        </td>
+    </tr>
+    <tr>
+        <th><label for="roci_biz_maps_embed"><?php esc_html_e( 'Map embed URL (the iframe src)', 'rocinante' ); ?></label></th>
+        <td>
+            <input type="text" name="roci_business[maps_embed_url]" id="roci_biz_maps_embed" class="large-text" value="<?php echo esc_attr( isset( $business['maps_embed_url'] ) ? $business['maps_embed_url'] : '' ); ?>">
+            <p class="roci-note"><?php esc_html_e( 'From Google Maps → Share → Embed a map: paste the src URL, or the whole <iframe> code (only its src is kept).', 'rocinante' ); ?></p>
+            <p class="roci-note"><?php esc_html_e( 'Only an address starting with https://www.google.com/maps/embed is accepted. Anything else would show an error page inside the map, or load a frame from somewhere else, so it is rejected and the previous value kept.', 'rocinante' ); ?></p>
         </td>
     </tr>
     <?php $roci_biz_schema_img = isset( $business['schema_image'] ) ? $business['schema_image'] : ''; ?>

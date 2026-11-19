@@ -7,8 +7,8 @@
  * and template parts throughout El Rocinante and child themes.
  *
  * File:    inc/helpers.php
- * Version: 1.23.1
- * Updated: 2026-11-18
+ * Version: 1.24.0
+ * Updated: 2026-11-19
  *
  * @package ElRocinante
  *
@@ -28,6 +28,15 @@
  *   jw_new_tab_note()              — SR-only "(opens in a new tab)" for links that open a new tab
  *   roci_footer_credit_options()   — The footer credit choices (none / built / powered), one list for the tab + sanitiser
  *   roci_footer_credit()           — The footer credit line (Theme Settings → Footer), '' for None; one rel incl. nofollow
+ *   roci_footer_tagline()          — Footer → Tagline, or a default (v1.24.0)
+ *   roci_footer_blurb()            — Footer → Blurb, or a default (v1.24.0)
+ *   roci_footer_logo_url()         — Footer → Footer Logo, else the site logo, else '' (v1.24.0)
+ *   roci_whatsapp_number()         — Business → WhatsApp, else Social → WhatsApp, digits only (v1.24.0)
+ *   roci_whatsapp_url()            — https://api.whatsapp.com/send?phone=…[&text=…], '' with no number (v1.24.0)
+ *   roci_whatsapp_digits()         — (internal) The number in a stored WhatsApp value, 7–15 digits or ''
+ *   roci_maps_link_url()           — Business → Open in Google Maps link (maps_url), http(s) or '' (v1.24.0)
+ *   roci_maps_embed_url()          — Business → Map embed URL (maps_embed_url), a Google embed src or '' (v1.24.0)
+ *   roci_is_maps_embed_url()       — (internal) https://www.google.com/maps/embed… only
  *   roci_is_external_link()        — (internal) The one external-link test behind the three link helpers
  *   roci_is_svg_attachment()       — (internal) The one SVG test behind the image helpers (mime image/svg+xml)
  *   roci_current_atts()            — Returns aria-current for the link to the page being viewed
@@ -1352,6 +1361,218 @@ function roci_footer_credit() {
         esc_html__( 'Jota Works', 'rocinante' ),
         jw_new_tab_note( $url )
     );
+}
+
+
+// ============================================================
+// THEME SETTINGS READERS (v1.24.0, El Rocinante 8.6.0)
+// ============================================================
+//
+// Client-editable settings are read through these, never with a bare
+// roci_setting() in a child template (CONVENTIONS → "Client-editable
+// settings"). Each returns a plain value or ''; the CALLER escapes on output.
+
+/**
+ * roci_footer_tagline()
+ *
+ * Theme Settings → Footer → Tagline, trimmed. Plain text: escape on output.
+ *
+ * @param  string $default Returned when the field is empty.
+ * @return string
+ */
+function roci_footer_tagline( $default = '' ) {
+    $value = trim( (string) roci_setting( 'footer', 'tagline' ) );
+    return '' !== $value ? $value : (string) $default;
+}
+
+/**
+ * roci_footer_blurb()
+ *
+ * Theme Settings → Footer → Blurb, trimmed (line breaks kept). Plain text:
+ * escape on output (esc_html(), or wpautop( esc_html() ) for paragraphs).
+ *
+ * @param  string $default Returned when the field is empty.
+ * @return string
+ */
+function roci_footer_blurb( $default = '' ) {
+    $value = trim( (string) roci_setting( 'footer', 'blurb' ) );
+    return '' !== $value ? $value : (string) $default;
+}
+
+/**
+ * roci_footer_logo_url()
+ *
+ * Theme Settings → Footer → Footer Logo; else the site logo (custom_logo,
+ * full size; the bare file URL for an SVG, which core cannot size); else ''.
+ * Escape with esc_url() on output.
+ *
+ * @return string
+ */
+function roci_footer_logo_url() {
+    $url = trim( (string) roci_setting( 'footer', 'logo_url' ) );
+
+    if ( '' !== $url ) {
+        return $url;
+    }
+
+    $logo_id = (int) get_theme_mod( 'custom_logo', 0 );
+
+    if ( $logo_id > 0 ) {
+        $logo = wp_get_attachment_image_url( $logo_id, 'full' );
+
+        if ( ! $logo ) {
+            $logo = wp_get_attachment_url( $logo_id );
+        }
+        if ( $logo ) {
+            return (string) $logo;
+        }
+    }
+
+    return '';
+}
+
+/**
+ * roci_whatsapp_digits()
+ *
+ * Internal. The phone number in a stored WhatsApp value, digits only:
+ *   - a link: its phone= parameter (api.whatsapp.com/send?phone=…), else a
+ *     wa.me/<number> path; any other link (a group invite, say) has no number;
+ *   - anything else (the Business field's "50688887777", "+506 8888-7777"):
+ *     its digits.
+ * 7 to 15 digits (E.164 allows at most 15) or ''.
+ *
+ * @param  mixed $value
+ * @return string
+ */
+function roci_whatsapp_digits( $value ) {
+    $value = trim( (string) $value );
+
+    if ( '' === $value ) {
+        return '';
+    }
+
+    if ( preg_match( '#^[a-z][a-z0-9+.\-]*:|/#i', $value ) ) {
+        if ( preg_match( '/[?&]phone=([^&#]+)/i', $value, $m ) ) {
+            $digits = preg_replace( '/\D+/', '', rawurldecode( $m[1] ) );
+        } elseif ( preg_match( '#(?:^|//|\.)wa\.me/\+?(\d+)#i', $value, $m ) ) {
+            $digits = $m[1];
+        } else {
+            $digits = '';
+        }
+    } else {
+        $digits = preg_replace( '/\D+/', '', $value );
+    }
+
+    $length = strlen( $digits );
+
+    return ( $length >= 7 && $length <= 15 ) ? $digits : '';
+}
+
+/**
+ * roci_whatsapp_number()
+ *
+ * The site's WhatsApp number, digits only: Theme Settings → Business →
+ * WhatsApp Number (the main number), else the number in Social → WhatsApp
+ * (used only when the Business field is empty); '' when neither has one.
+ *
+ * @return string
+ */
+function roci_whatsapp_number() {
+    $number = roci_whatsapp_digits( roci_setting( 'business', 'whatsapp' ) );
+
+    if ( '' === $number ) {
+        $number = roci_whatsapp_digits( roci_setting( 'social', 'whatsapp' ) );
+    }
+
+    return $number;
+}
+
+/**
+ * roci_whatsapp_url()
+ *
+ * The WhatsApp chat link: https://api.whatsapp.com/send?phone={number}, plus
+ * &text={message} (URL-encoded) when $text is given. '' when there is no
+ * number. Never wa.me: that host fails DNS on some Costa Rican networks.
+ * Escape with esc_url() on output (it encodes the & for HTML).
+ *
+ * @param  string $text Optional pre-filled message.
+ * @return string
+ */
+function roci_whatsapp_url( $text = '' ) {
+    $number = roci_whatsapp_number();
+
+    if ( '' === $number ) {
+        return '';
+    }
+
+    $url  = 'https://api.whatsapp.com/send?phone=' . $number;
+    $text = trim( (string) $text );
+
+    if ( '' !== $text ) {
+        $url .= '&text=' . rawurlencode( $text );
+    }
+
+    return $url;
+}
+
+/**
+ * roci_is_maps_embed_url()
+ *
+ * Internal. Whether a URL is a Google Maps embed src:
+ * https://www.google.com/maps/embed… and nothing else (no other host, no
+ * http, no port or credentials). The one test behind the Business sanitizer
+ * and roci_maps_embed_url().
+ *
+ * @param  mixed $url
+ * @return bool
+ */
+function roci_is_maps_embed_url( $url ) {
+    $url = trim( (string) $url );
+
+    if ( '' === $url ) {
+        return false;
+    }
+
+    $parts = wp_parse_url( $url );
+
+    return is_array( $parts )
+        && isset( $parts['scheme'], $parts['host'], $parts['path'] )
+        && ! isset( $parts['port'] )
+        && ! isset( $parts['user'] )
+        && ! isset( $parts['pass'] )
+        && 'https' === strtolower( $parts['scheme'] )
+        && 'www.google.com' === strtolower( $parts['host'] )
+        && 0 === strpos( $parts['path'], '/maps/embed' );
+}
+
+/**
+ * roci_maps_embed_url()
+ *
+ * Theme Settings → Business → Map embed URL (maps_embed_url), the iframe
+ * src, re-checked with roci_is_maps_embed_url(); '' when empty or invalid.
+ * Escape with esc_url() on output.
+ *
+ * @return string
+ */
+function roci_maps_embed_url() {
+    $url = trim( (string) roci_setting( 'business', 'maps_embed_url' ) );
+
+    return roci_is_maps_embed_url( $url ) ? $url : '';
+}
+
+/**
+ * roci_maps_link_url()
+ *
+ * Theme Settings → Business → Open in Google Maps link (maps_url), when it is
+ * an http(s) URL; else ''. Escape with esc_url() on output.
+ *
+ * @return string
+ */
+function roci_maps_link_url() {
+    $url    = trim( (string) roci_setting( 'business', 'maps_url' ) );
+    $scheme = '' !== $url ? strtolower( (string) wp_parse_url( $url, PHP_URL_SCHEME ) ) : '';
+
+    return in_array( $scheme, array( 'http', 'https' ), true ) ? $url : '';
 }
 
 

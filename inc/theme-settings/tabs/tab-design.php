@@ -7,9 +7,13 @@
  * 2.1.0 (El Rocinante 8.4.0): the Colour Mode section (roci_design
  * color_mode: off | auto | toggle), shown only with roci-dark-mode.
  *
+ * 2.1.1 (El Rocinante 8.6.0): one honest line at the top of the Backgrounds,
+ * Typography, Header and Buttons sections ($roci_client_note). Labels and
+ * notes only; no field, key or behaviour changed.
+ *
  * File:    inc/theme-settings/tabs/tab-design.php
- * Version: 2.1.0
- * Updated: 2026-11-18
+ * Version: 2.1.1
+ * Updated: 2026-11-19
  *
  * @package ElRocinante
  */
@@ -99,11 +103,24 @@ $color_groups = array(
         ),
     ),
 );
+
+/*
+ * CLIENT-EDITABLE SETTINGS (2.1.1, El Rocinante 8.6.0). The Backgrounds,
+ * Typography, Header and Buttons settings are kept although no site reads
+ * them yet, so a future client build can give its owner editing access
+ * (CONVENTIONS → "Client-editable settings", locked 2026-11-19). Each of those
+ * sections says so in one line, so nobody expects them to change a site
+ * that styles itself. No behaviour change.
+ */
+$roci_client_note = __( 'Used only on sites built for client editing; on other sites the theme\'s own styles apply.', 'rocinante' );
 ?>
 
 <h2 class="roci-section-title"><?php esc_html_e( 'Colors', 'rocinante' ); ?></h2>
 <?php foreach ( $color_groups as $group ) : ?>
     <p style="font-weight:600;margin-bottom:8px;"><?php echo esc_html( $group['title'] ); ?></p>
+    <?php if ( isset( $group['fields']['background'] ) ) : ?>
+        <p class="roci-note"><?php echo esc_html( $roci_client_note ); ?></p>
+    <?php endif; ?>
     <div class="roci-color-row" style="margin-bottom:24px;">
         <?php
         foreach ( $group['fields'] as $key => $label ) :
@@ -190,6 +207,7 @@ $color_groups = array(
 <?php endforeach; ?>
 
 <h2 class="roci-section-title"><?php esc_html_e( 'Typography', 'rocinante' ); ?></h2>
+<p class="roci-note"><?php echo esc_html( $roci_client_note ); ?></p>
 <table class="form-table">
     <tr>
         <th><label for="roci_body_font"><?php esc_html_e( 'Body Font', 'rocinante' ); ?></label></th>
@@ -215,6 +233,7 @@ $color_groups = array(
 </table>
 
 <h2 class="roci-section-title"><?php esc_html_e( 'Header', 'rocinante' ); ?></h2>
+<p class="roci-note"><?php echo esc_html( $roci_client_note ); ?></p>
 <table class="form-table">
     <tr>
         <th><label for="roci_header_style"><?php esc_html_e( 'Header Style', 'rocinante' ); ?></label></th>
@@ -259,6 +278,7 @@ if ( current_theme_supports( 'roci-dark-mode' ) && function_exists( 'roci_color_
 <?php endif; ?>
 
 <h2 class="roci-section-title"><?php esc_html_e( 'Buttons', 'rocinante' ); ?></h2>
+<p class="roci-note"><?php echo esc_html( $roci_client_note ); ?></p>
 <table class="form-table">
     <tr>
         <th><label for="roci_button_style"><?php esc_html_e( 'Button Style', 'rocinante' ); ?></label></th>

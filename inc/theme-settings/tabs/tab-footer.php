@@ -12,9 +12,14 @@
  * roci_footer_credit()), and the Tagline note no longer names a font from
  * another site.
  *
+ * v1.2.1 (El Rocinante 8.6.0): honest help text. Tagline and Blurb are
+ * "Shown where your site's footer places it" (read with roci_footer_tagline()
+ * / roci_footer_blurb()); the Footer Logo's fallback is real now
+ * (roci_footer_logo_url()). Text only.
+ *
  * File:    inc/theme-settings/tabs/tab-footer.php
- * Version: 1.2.0
- * Updated: 2026-11-03
+ * Version: 1.2.1
+ * Updated: 2026-11-19
  *
  * @package ElRocinante
  */
@@ -31,14 +36,14 @@ $footer_logo = isset( $footer['logo_url'] ) ? $footer['logo_url'] : '';
         <th><label for="roci_footer_tagline"><?php esc_html_e( 'Footer Tagline', 'rocinante' ); ?></label></th>
         <td>
             <input type="text" name="roci_footer[tagline]" id="roci_footer_tagline" class="regular-text" value="<?php echo esc_attr( isset( $footer['tagline'] ) ? $footer['tagline'] : '' ); ?>">
-            <p class="roci-note"><?php esc_html_e( 'Displayed below the logo or brand name in the footer.', 'rocinante' ); ?></p>
+            <p class="roci-note"><?php esc_html_e( 'Shown where your site\'s footer places it.', 'rocinante' ); ?></p>
         </td>
     </tr>
     <tr>
         <th><label for="roci_footer_blurb"><?php esc_html_e( 'Footer Blurb', 'rocinante' ); ?></label></th>
         <td>
             <textarea name="roci_footer[blurb]" id="roci_footer_blurb" class="large-text" rows="4"><?php echo esc_textarea( isset( $footer['blurb'] ) ? $footer['blurb'] : '' ); ?></textarea>
-            <p class="roci-note"><?php esc_html_e( 'Short description displayed in the footer brand column.', 'rocinante' ); ?></p>
+            <p class="roci-note"><?php esc_html_e( 'Shown where your site\'s footer places it.', 'rocinante' ); ?></p>
         </td>
     </tr>
     <tr>
@@ -52,7 +57,7 @@ $footer_logo = isset( $footer['logo_url'] ) ? $footer['logo_url'] : '';
                     <button type="button" class="button button-small roci-media-remove" data-target="roci_footer_logo_url" data-preview="roci_footer_logo_preview"><?php esc_html_e( 'Remove', 'rocinante' ); ?></button>
                 <?php endif; ?>
             </div>
-            <p class="roci-note"><?php esc_html_e( 'Optional separate logo for the footer. Falls back to site logo if empty.', 'rocinante' ); ?></p>
+            <p class="roci-note"><?php esc_html_e( 'Optional separate logo for the footer, shown where your site\'s footer places it. When empty, the site logo is used there instead.', 'rocinante' ); ?></p>
         </td>
     </tr>
 </table>

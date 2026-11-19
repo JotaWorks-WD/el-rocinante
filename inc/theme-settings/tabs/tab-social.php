@@ -4,9 +4,12 @@
  *
  * Included by settings-page.php inside roci_settings_page().
  *
+ * 1.3.1 (El Rocinante 8.6.0): the WhatsApp source rule under the WhatsApp
+ * field (roci_whatsapp_number() reads Business first, this field second).
+ *
  * File:    inc/theme-settings/tabs/tab-social.php
- * Version: 1.3.0
- * Updated: 2026-10-17
+ * Version: 1.3.1
+ * Updated: 2026-11-19
  *
  * @package ElRocinante
  */
@@ -43,6 +46,9 @@ $roci_sameas_exclude = roci_schema_sameas_exclude();
                 <input type="url" name="roci_social[<?php echo esc_attr( $key ); ?>]" id="roci_social_<?php echo esc_attr( $key ); ?>" class="large-text" value="<?php echo esc_attr( isset( $social[ $key ] ) ? $social[ $key ] : '' ); ?>">
                 <?php if ( in_array( $key, $roci_sameas_exclude, true ) ) : ?>
                     <p class="roci-note"><?php esc_html_e( 'Chat link: used by the site\'s contact links, not published in the structured data (sameAs).', 'rocinante' ); ?></p>
+                <?php endif; ?>
+                <?php if ( 'whatsapp' === $key ) : ?>
+                    <p class="roci-note"><?php esc_html_e( 'Business → WhatsApp is the main number; Social → WhatsApp is used only when it\'s empty.', 'rocinante' ); ?></p>
                 <?php endif; ?>
             </td>
         </tr>

@@ -7,9 +7,12 @@
  *                  roci_sanitize_design() keeps color_mode.
  * 1.14.0 (8.5.0) — roci_sanitize_seo() keeps maintenance_enabled and
  *                  maintenance_message (inc/maintenance-mode.php).
+ * 1.15.0 (8.6.0) — roci_sanitize_business() keeps the new key maps_embed_url
+ *                  (a Google embed src only, through
+ *                  roci_sanitize_maps_embed_url()); every other key unchanged.
  *
  * File:    inc/theme-settings/settings-sanitize.php
- * Version: 1.14.0
+ * Version: 1.15.0
  * Updated: 2026-11-19
  *
  * @package ElRocinante
@@ -263,9 +266,52 @@ function roci_sanitize_business( $input ) {
         'country'  => sanitize_text_field( $input['country'] ?? '' ),
         'whatsapp' => isset( $input['whatsapp'] ) ? sanitize_text_field( $input['whatsapp'] ) : '',
         'maps_url' => isset( $input['maps_url'] ) ? esc_url_raw( $input['maps_url'] )         : '',
+        'maps_embed_url' => roci_sanitize_maps_embed_url( isset( $input['maps_embed_url'] ) ? $input['maps_embed_url'] : '' ),
         'schema_image' => isset( $input['schema_image'] ) ? esc_url_raw( $input['schema_image'] )      : '',
         'price_range'  => isset( $input['price_range'] )  ? sanitize_text_field( $input['price_range'] ) : '',
     );
+}
+
+/**
+ * roci_sanitize_maps_embed_url()
+ *
+ * Business → Map embed URL (8.6.0). Accepts the src URL, or the whole
+ * <iframe> code Google's "Embed a map" gives (only its src is kept). Stored
+ * only when roci_is_maps_embed_url() passes: https://www.google.com/maps/embed…
+ * Anything else is REJECTED with a notice and the previously stored value is
+ * kept (a typo never wipes a working map). Empty input clears the field.
+ *
+ * @param  mixed $raw
+ * @return string
+ */
+function roci_sanitize_maps_embed_url( $raw ) {
+    $raw = trim( (string) $raw );
+
+    if ( '' === $raw ) {
+        return '';
+    }
+
+    if ( false !== stripos( $raw, '<iframe' ) && preg_match( '/\ssrc\s*=\s*["\']([^"\']+)["\']/i', $raw, $m ) ) {
+        $raw = $m[1];
+    }
+
+    $url = trim( html_entity_decode( $raw, ENT_QUOTES, 'UTF-8' ) );
+
+    if ( roci_is_maps_embed_url( $url ) ) {
+        return esc_url_raw( $url );
+    }
+
+    if ( function_exists( 'add_settings_error' ) ) {
+        add_settings_error(
+            'roci_business',
+            'roci_business_maps_embed_url',
+            __( 'Map embed URL was not saved: it must start with https://www.google.com/maps/embed (Google Maps → Share → Embed a map). The previous value is kept.', 'rocinante' )
+        );
+    }
+
+    $stored = get_option( 'roci_business', array() );
+
+    return ( is_array( $stored ) && isset( $stored['maps_embed_url'] ) && roci_is_maps_embed_url( $stored['maps_embed_url'] ) ) ? (string) $stored['maps_embed_url'] : '';
 }
 
 function roci_sanitize_social( $input ) {

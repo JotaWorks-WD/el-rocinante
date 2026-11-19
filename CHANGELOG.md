@@ -4,6 +4,69 @@ All notable changes to the El Rocinante parent theme are recorded here. Entries 
 
 ---
 
+## [8.6.0] — 2026-11-19
+
+**FEAT: client-editable settings. Theme Settings keeps the options no site reads yet, labels each one honestly, and gives children helpers to read them. WhatsApp and Maps each get one clear job.**
+
+**In plain English (2026-11-19):** Theme Settings now explains which options are ready for client editing, and the WhatsApp and map settings each do one clear job.
+
+MINOR (new helpers and one new setting). Nothing a live site renders changes: no child calls the new helpers yet, every stored value is read exactly as before, and the parent's own front-end output is unchanged.
+
+### The principle (CONVENTIONS → "Client-editable settings", locked 2026-11-19)
+
+- **Kept:** the parent keeps client-editable settings even when no site reads them yet, so a future client can be given editing access.
+- **Labelled:** each one says honestly what it does today.
+- **Read through a helper:** a child reads it through a parent helper, never a bare `roci_setting()`.
+
+### Design tab (`tab-design.php` 2.1.1)
+
+- The Backgrounds, Typography, Header and Buttons sections each open with "Used only on sites built for client editing; on other sites the theme's own styles apply."
+- The settings are `background`, `background-alt`, `body_font`, `heading_font`, `base_font_size`, `header_style`, `sticky_header` and `button_style`, all kept.
+- No field, key or behaviour changed.
+
+### WhatsApp (`helpers.php` 1.24.0, `tab-business.php` 1.10.0, `tab-social.php` 1.3.1)
+
+- **`roci_whatsapp_number()`:** Business → WhatsApp Number, else the number in Social → WhatsApp.
+  - Digits only, 7–15, or `''`.
+  - A link gives its `phone=` value or `wa.me/` path. A group-invite link gives no number.
+- **`roci_whatsapp_url( $text = '' )`:** `https://api.whatsapp.com/send?phone={number}`, plus `&text=` URL-encoded when given; `''` with no number. Never `wa.me`, which fails DNS on some Costa Rican networks.
+- **Both fields say:** "Business → WhatsApp is the main number; Social → WhatsApp is used only when it's empty."
+
+### Maps (`tab-business.php` 1.10.0, `settings-sanitize.php` 1.15.0, `helpers.php` 1.24.0)
+
+- **`maps_url`** is relabelled "Open in Google Maps link", with matching help text. The key and its sanitizing are unchanged.
+- **New `maps_embed_url`, "Map embed URL (the iframe src)":**
+  - Only `https://www.google.com/maps/embed…` is accepted.
+  - A whole `<iframe>` paste keeps its src.
+  - Anything else is rejected with a notice (`settings_errors( 'roci_business' )`, now printed on the tab) and the previous value is kept. The help text says why.
+- **Helpers:** `roci_maps_link_url()` and `roci_maps_embed_url()`, with the internal test `roci_is_maps_embed_url()` and `roci_sanitize_maps_embed_url()`.
+- **Every existing Business key survives unchanged.** In the harness, the 8.5.0 and 8.6.0 sanitizers produce 21 identical keys, plus `maps_embed_url`.
+
+### Footer (`tab-footer.php` 1.2.1, `helpers.php` 1.24.0)
+
+- **Tagline and Blurb:** "Shown where your site's footer places it". New helpers `roci_footer_tagline( $default )` and `roci_footer_blurb( $default )`.
+- **Footer Logo:** the help text is now true. `roci_footer_logo_url()` returns the setting, else the site logo (full size; the file URL for an SVG), else `''`.
+- **Credit:** `roci_footer_credit()` has built the escaped credit line since 8.0.0, and the parent's footer part already calls it, so there was nothing to refactor. The harness proves the parent footer byte-identical against the 8.5.0 helpers in all six credit / follow combinations (sha1 `25da4cd…`).
+
+### Who reads what (checked across the parent, Boilerplate, Casa Jícaro, Coco, Fish Potrero, RJK 360, Jota Works, every Build and roci-standby)
+
+- **Unchanged readers:**
+  - `whatsapp`: Jota Works reads Business; Coco and Fish Potrero read Social.
+  - `maps_url`: Coco reads it as an embed, Fish Potrero as a link-out.
+  - `tagline`: Fish Potrero and Jota Works. `blurb`: Coco and Fish Potrero.
+  - `header_style` / `sticky_header`: the parent's body classes.
+- **No reader anywhere:** the six Design values and `logo_url`.
+- **RJK 360 and Casa Jícaro** read none of these keys.
+- No site calls a new helper yet.
+
+### Child follow-ups (in each site's run-through, not this release)
+
+- **Coco** moves its embed src from `maps_url` to `maps_embed_url` and calls `roci_maps_embed_url()`. Until then its admin shows the embed under "Open in Google Maps link"; the site itself is unaffected.
+- **Every child** switches to `roci_whatsapp_url()`, `roci_maps_link_url()` / `roci_maps_embed_url()` and `roci_footer_tagline()` / `roci_footer_blurb()` / `roci_footer_logo_url()`. That covers Coco's and Fish Potrero's Social WhatsApp reads, and Jota Works' own `jwd_whatsapp_url()`.
+- **Casa Jícaro** ships its own `footer.php`. CLAUDE.md says to override the footer part (`template-parts/footer/site-footer.php`), not the file.
+
+---
+
 ## [8.5.0] — 2026-11-19
 
 **FEAT: Maintenance mode. A switch in Theme Settings → SEO gives visitors a "back soon" page (HTTP 503) while administrators keep working on the live site. The page is the roci-standby renderer when that theme is installed.**
