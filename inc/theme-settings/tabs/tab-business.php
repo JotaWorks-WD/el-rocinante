@@ -9,8 +9,13 @@
  * embed src only, roci_sanitize_maps_embed_url()); the WhatsApp source rule
  * on the WhatsApp field; settings_errors( 'roci_business' ).
  *
+ * 1.10.1 (El Rocinante 8.7.1): a pasted Google embed code is converted to its
+ * src in the browser (inline script after the field, paste / change / submit),
+ * because a WAF blocks any POST containing "<iframe"; an aria-live status
+ * announces the conversion. The server-side extraction stays as the fallback.
+ *
  * File:    inc/theme-settings/tabs/tab-business.php
- * Version: 1.10.0
+ * Version: 1.10.1
  * Updated: 2026-11-19
  *
  * @package ElRocinante
@@ -146,7 +151,42 @@ $roci_biz_type          = isset( $business['type'] ) && '' !== $business['type']
         <th><label for="roci_biz_maps_embed"><?php esc_html_e( 'Map embed URL (the iframe src)', 'rocinante' ); ?></label></th>
         <td>
             <input type="text" name="roci_business[maps_embed_url]" id="roci_biz_maps_embed" class="large-text" value="<?php echo esc_attr( isset( $business['maps_embed_url'] ) ? $business['maps_embed_url'] : '' ); ?>">
-            <p class="roci-note"><?php esc_html_e( 'From Google Maps → Share → Embed a map: paste the src URL, or the whole <iframe> code (only its src is kept).', 'rocinante' ); ?></p>
+            <span id="roci_biz_maps_embed_status" class="screen-reader-text" aria-live="polite"></span>
+            <p class="roci-note"><?php esc_html_e( 'Paste the embed link, or the whole embed code from Google Maps → Share → Embed a map; it\'s converted to the link automatically.', 'rocinante' ); ?></p>
+            <?php
+            /*
+             * EMBED CODE → LINK, IN THE BROWSER (1.10.1, El Rocinante 8.7.1).
+             * A firewall (Wordfence) 403s any POST containing "<iframe" before
+             * WordPress runs, so the server-side extraction in
+             * roci_sanitize_maps_embed_url() never sees the paste. This swaps a
+             * pasted embed code for its src on paste, on change and on submit,
+             * so "<iframe" never leaves the browser. No src found → the value is
+             * left alone and the server rejects it with its notice. The server
+             * extraction stays as the fallback (no WAF, or JS off).
+             * Printed only here: this file is included only for the Business tab
+             * of Theme Settings. rociEmbedSrc() is tested on its own (8.7.1).
+             */
+            ?>
+            <script>
+            ( function () {
+                var field = document.getElementById( 'roci_biz_maps_embed' );
+                var live  = document.getElementById( 'roci_biz_maps_embed_status' );
+                function rociEmbedSrc( v ) {
+                    var m = /<iframe/i.test( v ) ? v.match( /\ssrc\s*=\s*(["'])([\s\S]*?)\1/i ) : null;
+                    return m ? m[2].replace( /&amp;|&#0*38;/gi, '&' ).trim() : '';
+                }
+                function convert() {
+                    var src = rociEmbedSrc( field.value );
+                    if ( ! src ) { return; }
+                    field.value = src;
+                    if ( live ) { live.textContent = ''; setTimeout( function () { live.textContent = <?php echo wp_json_encode( __( 'Embed code converted to link', 'rocinante' ) ); ?>; }, 50 ); }
+                }
+                if ( ! field ) { return; }
+                field.addEventListener( 'paste', function () { setTimeout( convert, 0 ); } );
+                field.addEventListener( 'change', convert );
+                if ( field.form ) { field.form.addEventListener( 'submit', convert ); }
+            } )();
+            </script>
             <p class="roci-note"><?php esc_html_e( 'Only an address starting with https://www.google.com/maps/embed is accepted. Anything else would show an error page inside the map, or load a frame from somewhere else, so it is rejected and the previous value kept.', 'rocinante' ); ?></p>
         </td>
     </tr>

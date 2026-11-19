@@ -4,6 +4,27 @@ All notable changes to the El Rocinante parent theme are recorded here. Entries 
 
 ---
 
+## [8.7.1] — 2026-11-19
+
+**FIX: pasting Google's whole map embed code into Theme Settings → Business → Map embed URL no longer gets the save blocked by the firewall.**
+
+**In plain English (2026-11-19):** You can now paste Google's full map embed code into Theme Settings without the security firewall blocking the save.
+
+PATCH. Admin only; no front-end change.
+
+- **The problem:** Wordfence's firewall returns a 403 ("A potentially unsafe operation…") for any POST containing `<iframe`. It runs before WordPress does, so the server-side iframe → src extraction in `roci_sanitize_maps_embed_url()` (8.6.0) never saw the paste.
+- **The fix** (`inc/theme-settings/tabs/tab-business.php` 1.10.1): a small inline script right after the field. It is printed only on the Business tab of Theme Settings, the one place this file is included; there is no new file and nothing is enqueued.
+  - **When:** on the field's `paste` and `change`, and on the form's `submit` before it posts.
+  - **What:** an `<iframe …>` value is replaced by its `src` (single or double quotes; `&amp;` / `&#038;` decoded), so `<iframe` never leaves the browser.
+  - **No `src` found:** the value is left alone, and the server rejects it with its existing notice.
+  - Vanilla JS, no jQuery, no console output.
+- **Accessibility:** a visually hidden `aria-live="polite"` region beside the field announces "Embed code converted to link" after each conversion.
+- **Kept:** the server-side extraction stays as the fallback, for sites without a WAF or with JS off.
+- **Help text:** "Paste the embed link, or the whole embed code from Google Maps → Share → Embed a map; it's converted to the link automatically."
+- **Tested:** a node test ran the shipped script from the PHP file against a fake field and form. It covered double- and single-quoted iframes, `&amp;`, a plain URL (unchanged), garbage (unchanged), paste / change / submit, the announcement and no console output.
+
+---
+
 ## [8.7.0] — 2026-11-19
 
 **FEAT: phone and social links from one place. `roci_tel_href()`, `roci_phone_number()` and `roci_social_links()` replace the copies each site carried (bug list H2). Social gains Google Business Profile, and `sameAs` reads the same list.**
