@@ -4,6 +4,24 @@ All notable changes to the El Rocinante parent theme are recorded here. Entries 
 
 ---
 
+## [8.7.2] — 2026-11-19
+
+**FEAT: the social network list leads with the business listings. Google Business Profile moves to first, and Bing Places for Business is new, second.**
+
+**In plain English (2026-11-19):** Google Business Profile is now first in the social links, and you can add your Bing Places listing.
+
+PATCH. No output change on any site that has filled neither listing, which is every live site today.
+
+- **The list** (`inc/schema/social-platforms.php` 1.3.0): `google_business` ("Google Business Profile") first, new `bing_places` ("Bing Places for Business") second, then `facebook`, `instagram`, `whatsapp`, `tiktok`, `youtube`, `linkedin`, `twitter`, `tripadvisor` in their old relative order.
+- **Social tab** (`tabs/tab-social.php` 1.4.1): the fields follow the list, so Bing Places is the second field, with help text "Your Bing Places for Business listing link."
+- **Sanitizer:** `roci_sanitize_social()` reads the list, so it picks up the new key. The harness shows every 8.7.1 key and value survives; the only addition is `bing_places`.
+- **`roci_social_links()` and `sameAs`:** `bing_places` is a profile (not in `roci_schema_sameas_exclude()`), returned like the others, and `sameAs` follows the list.
+  - With neither listing set, `sameAs` is byte-identical to 8.7.1 (all eight set, some set, none set).
+  - With both set they lead: Google Business Profile, Bing Places, then the rest.
+- **`header.php` 2.7.1:** the `sameAs` comment describes the new order. Comment only.
+
+---
+
 ## [8.7.1] — 2026-11-19
 
 **FIX: pasting Google's whole map embed code into Theme Settings → Business → Map embed URL no longer gets the save blocked by the firewall.**

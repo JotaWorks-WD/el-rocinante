@@ -35,8 +35,12 @@
  * through roci_social_links() (inc/helpers.php), which header.php's sameAs
  * now uses too.
  *
+ * 1.3.0 (El Rocinante 8.7.2): google_business moved to FIRST and a tenth
+ * platform, bing_places ("Bing Places for Business"), added SECOND; the other
+ * eight keep their relative order.
+ *
  * File:    inc/schema/social-platforms.php
- * Version: 1.2.0
+ * Version: 1.3.0
  * Updated: 2026-11-19
  *
  * @package ElRocinante
@@ -68,18 +72,21 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
  */
 function roci_social_platforms() {
     return apply_filters( 'roci_social_platforms', array(
-        'facebook'    => __( 'Facebook', 'rocinante' ),
-        'instagram'   => __( 'Instagram', 'rocinante' ),
-        'whatsapp'    => __( 'WhatsApp', 'rocinante' ),
-        'tiktok'      => __( 'TikTok', 'rocinante' ),
-        'youtube'     => __( 'YouTube', 'rocinante' ),
-        'linkedin'    => __( 'LinkedIn', 'rocinante' ),
-        'twitter'     => __( 'X (Twitter)', 'rocinante' ),
-        'tripadvisor' => __( 'TripAdvisor', 'rocinante' ),
-        // 1.2.0 (El Rocinante 8.7.0). LAST, so every existing site's sameAs
-        // order is unchanged; a site that fills it gains one sameAs entry. A
-        // profile, not a chat link, so it is NOT in roci_schema_sameas_exclude().
+        // 1.3.0 (El Rocinante 8.7.2): the two business listings lead — Google
+        // Business Profile first (moved from last), Bing Places second (new).
+        // Both are profiles, not chat links, so neither is in
+        // roci_schema_sameas_exclude(). A site with neither set keeps its
+        // exact sameAs; one that sets them gets them first.
         'google_business' => __( 'Google Business Profile', 'rocinante' ),
+        'bing_places'     => __( 'Bing Places for Business', 'rocinante' ),
+        'facebook'        => __( 'Facebook', 'rocinante' ),
+        'instagram'       => __( 'Instagram', 'rocinante' ),
+        'whatsapp'        => __( 'WhatsApp', 'rocinante' ),
+        'tiktok'          => __( 'TikTok', 'rocinante' ),
+        'youtube'         => __( 'YouTube', 'rocinante' ),
+        'linkedin'        => __( 'LinkedIn', 'rocinante' ),
+        'twitter'         => __( 'X (Twitter)', 'rocinante' ),
+        'tripadvisor'     => __( 'TripAdvisor', 'rocinante' ),
     ) );
 }
 

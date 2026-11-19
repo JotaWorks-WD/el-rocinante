@@ -28,7 +28,7 @@
  * Robots (v2.6.0) come from roci_effective_robots() (inc/metabox/metabox-seo-fields.php).
  *
  * File:    header.php
- * Version: 2.7.0
+ * Version: 2.7.1
  * Updated: 2026-11-19
  *
  * @package ElRocinante
@@ -509,10 +509,10 @@ $roci_article_times = $roci_is_article ? roci_article_times( get_queried_object_
      * once saving was fixed — the third of three hardcoded copies of the
      * same list. The getter is now the only source.
      *
-     * DECLARATION ORDER IN THE GETTER IS THE EMISSION ORDER HERE. The
-     * default eight are declared facebook → tripadvisor, matching the
-     * literals this replaced, so the emitted sameAs is byte-identical for
-     * any site that has not registered a platform.
+     * DECLARATION ORDER IN THE GETTER IS THE EMISSION ORDER HERE. Since
+     * El Rocinante 8.7.2 the two business listings lead (google_business,
+     * bing_places), then the original eight facebook → tripadvisor in their
+     * old order, so a site with neither listing set emits the same sameAs.
      *
      * array_filter() drops platforms with no URL saved; array_values()
      * reindexes so the result encodes as a JSON list rather than an object

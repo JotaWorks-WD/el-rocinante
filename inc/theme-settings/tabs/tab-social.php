@@ -11,8 +11,11 @@
  * google_business) renders from the platform list like every other; this
  * file adds its help line only.
  *
+ * 1.4.1 (El Rocinante 8.7.2): the help line for Bing Places for Business
+ * (bing_places, second in the list, after Google Business Profile).
+ *
  * File:    inc/theme-settings/tabs/tab-social.php
- * Version: 1.4.0
+ * Version: 1.4.1
  * Updated: 2026-11-19
  *
  * @package ElRocinante
@@ -56,6 +59,9 @@ $roci_sameas_exclude = roci_schema_sameas_exclude();
                 <?php endif; ?>
                 <?php if ( 'google_business' === $key ) : ?>
                     <p class="roci-note"><?php esc_html_e( 'Your Google Business Profile share link.', 'rocinante' ); ?></p>
+                <?php endif; ?>
+                <?php if ( 'bing_places' === $key ) : ?>
+                    <p class="roci-note"><?php esc_html_e( 'Your Bing Places for Business listing link.', 'rocinante' ); ?></p>
                 <?php endif; ?>
             </td>
         </tr>
