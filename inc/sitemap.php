@@ -4,11 +4,12 @@
  *
  * Restricts the WordPress XML sitemap to posts, pages, and whatever
  * post types a child theme declares via `roci_sitemap_post_types`.
- * Removes users and unwanted taxonomies.
+ * Removes users and unwanted taxonomies, and (1.2.0) leaves out any post or
+ * page whose roci_robots starts with "noindex" (roci_sitemap_skip_noindex()).
  *
  * File:    inc/sitemap.php
- * Version: 1.1.0
- * Updated: 2026-09-13
+ * Version: 1.2.0
+ * Updated: 2026-11-19
  *
  * @package ElRocinante
  */
@@ -64,3 +65,65 @@ add_filter( 'wp_sitemaps_post_types', function( $post_types ) {
     }
     return $post_types;
 } );
+
+/**
+ * roci_sitemap_skip_noindex() — 1.2.0 (El Rocinante 8.11.2)
+ *
+ * Leave noindexed posts and pages out of the XML sitemap: any entry whose
+ * roci_robots meta STARTS WITH "noindex" ("noindex, follow", "noindex,
+ * nofollow"). Entries with no roci_robots row, or any other value, stay.
+ *
+ * The clause is NOT REGEXP '^noindex' OR NOT EXISTS. Not NOT LIKE: core wraps a
+ * LIKE value in % on both sides, which would test "contains", not "starts
+ * with". With an OR that includes NOT EXISTS, core makes every meta JOIN a LEFT
+ * JOIN and groups by post ID, so a post without the meta is never lost and
+ * never listed twice.
+ *
+ * MERGED, never replaced: an existing meta_query (a child's own sitemap rule)
+ * is kept, ANDed with this clause. Priority 20, so a child callback at the
+ * default 10 that SETS meta_query outright runs first and is merged too.
+ *
+ * Core applies this filter to both the URL list and the page count
+ * (WP_Sitemaps_Posts::get_url_list() and get_max_num_pages() share
+ * get_posts_query_args()), so pagination follows. Which post types are listed
+ * is still wp_sitemaps_post_types + roci_sitemap_post_types, above.
+ *
+ * A site with no noindexed entry gets the same URLs in the same order (ID
+ * ascending, core's), so the same sitemap.
+ *
+ * The robots field itself: inc/metabox/metabox-seo-fields.php ('roci_robots';
+ * the per-page rule in roci_effective_robots()). Not consulted here: the
+ * search / 404 and blog_public overrides, which never apply to a listed post
+ * (and core serves no sitemap at all while blog_public is 0).
+ *
+ * @param  array  $args      WP_Query args for this sitemap page.
+ * @param  string $post_type The post type being listed.
+ * @return array
+ */
+function roci_sitemap_skip_noindex( $args, $post_type ) {
+    $clause = array(
+        'relation' => 'OR',
+        array(
+            'key'     => 'roci_robots',
+            'compare' => 'NOT EXISTS',
+        ),
+        array(
+            'key'     => 'roci_robots',
+            'value'   => '^noindex',
+            'compare' => 'NOT REGEXP',
+        ),
+    );
+
+    $existing = ( isset( $args['meta_query'] ) && is_array( $args['meta_query'] ) ) ? $args['meta_query'] : array();
+
+    $args['meta_query'] = empty( $existing )
+        ? array( $clause )
+        : array(
+            'relation' => 'AND',
+            $existing,
+            $clause,
+        );
+
+    return $args;
+}
+add_filter( 'wp_sitemaps_posts_query_args', 'roci_sitemap_skip_noindex', 20, 2 );

@@ -4,6 +4,36 @@ All notable changes to the El Rocinante parent theme are recorded here. Entries 
 
 ---
 
+## [8.11.2] — 2026-11-19
+
+**FIX: the XML sitemap no longer lists pages and posts set to noindex.**
+
+**In plain English (2026-11-19):** Pages you've told search engines not to index (like a privacy policy set to "No Index") are no longer listed in your sitemap.
+
+PATCH. Sitemap only (`inc/sitemap.php` 1.2.0).
+
+- **The rule:** a post or page whose `roci_robots` starts with `noindex` ("noindex, follow" or "noindex, nofollow") is left out. One with no `roci_robots` row, or any other value, stays.
+- **How:** `roci_sitemap_skip_noindex()` on `wp_sitemaps_posts_query_args`, priority 20.
+  - It adds the meta clause `roci_robots NOT EXISTS OR roci_robots NOT REGEXP '^noindex'`.
+  - **Not `NOT LIKE`:** core wraps a LIKE value in `%` on both sides, which would test "contains", not "starts with".
+  - **No lost or doubled posts:** with a `NOT EXISTS` in the OR, core turns every meta JOIN into a LEFT JOIN and groups by post ID.
+- **Merged, never replaced:** an existing `meta_query` (a child's own sitemap rule) is kept and ANDed with the new clause.
+  - Priority 20 means a child callback at the default 10 that **sets** `meta_query` outright (jota.works' case-study permission gate does) runs first and is merged too.
+  - Every other query arg is untouched.
+- **Pagination follows:** core uses the same filtered args for each sitemap page and for the index's page count (`get_url_list()` and `get_max_num_pages()` share `get_posts_query_args()`).
+- **Which post types are listed** is unchanged: `wp_sitemaps_post_types` + `roci_sitemap_post_types`.
+- **A site with no noindexed entry** gets the same URLs in the same order (core's ID ascending), so the same sitemap.
+- **Checked** (a harness running the real `inc/sitemap.php` through the hook order):
+  - With no `meta_query` → the clause alone.
+  - A child's single clause at 10 → `AND( child, clause )`.
+  - A child's own OR group → kept whole, ANDed.
+  - Core's other args are identical.
+  - The post-type allowlist still returns `post`, `page`.
+  - `php -l` is clean.
+- **On staging:** core serves no sitemap while `blog_public` is 0 (`/wp-sitemap.xml` is a 404 there), so the URL lists are checked with wp-cli. It builds core's posts provider directly, which runs the same filters.
+
+**Deploy:** parent only. No child change is needed.
+
 ## [8.11.1] — 2026-11-19
 
 **FIX: the PHP warning `Undefined array key "action"` on Theme Settings → Maintenance is gone. The tab looks and works exactly as before.**
