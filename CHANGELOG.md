@@ -4,6 +4,64 @@ All notable changes to the El Rocinante parent theme are recorded here. Entries 
 
 ---
 
+## [8.8.0] — 2026-11-19
+
+**FEAT: the maintenance / standby page uses the site's brand. The parent saves a brand snapshot that roci-standby reads, Maintenance mode passes it live, and the parent's own fallback page matches the new look and copy.**
+
+**In plain English (2026-11-19):** The "back soon" page now uses your site's colours and logo, with friendlier wording.
+
+MINOR. Nothing outside the maintenance / standby page changes. Pairs with roci-standby 1.1.0. On an older roci-standby the `brand` arg is ignored and its page is unchanged.
+
+### The snapshot (`inc/theme-settings/settings-register.php` 1.7.0)
+
+**`roci_brand_snapshot()`** reads `roci_brand_palette()`, so each child's existing palette filter is the source:
+
+| Key | Palette slot |
+|---|---|
+| `surface` | `color-white` |
+| `text` | `color-black` |
+| `heading` | `color-primary-darker`, else `color-black` |
+| `muted` | `color-grey` |
+| `accent` | `color-primary`, the action colour. Not `color-accent`, which the family uses decoratively |
+| `accent_text` | `color-white` |
+| `logo_url` | the custom logo, full size (an SVG's file URL) |
+| `name` | Business → name, else the site name |
+
+- **Colours:** only `#rrggbb`, lower-cased; anything else is omitted.
+- **New filter** `roci_brand_snapshot( $snapshot )`, re-validated after it.
+- **`roci_brand_snapshot_sync()`** writes the option `roci_brand_snapshot` (autoload off) on `admin_init` and `after_switch_theme`, only when the hashed array changed.
+- **What a child can filter:** `roci_brand_palette` (as today, every slot) and `roci_brand_snapshot` (the flattened result, last word).
+
+### Maintenance mode (`inc/maintenance-mode.php` 1.1.0)
+
+- `roci_standby_render()` gets `'brand' => roci_brand_snapshot()`.
+- **The built-in fallback page** (only when roci-standby isn't installed) now matches the standby page:
+  - **Copy:** "We're making a few improvements" / "We'll be back shortly. Thanks for your patience." The custom message still replaces the line, and `roci_standby_message` filters both.
+  - **Layout:** logo or name → heading → line → a contact button → a "© year name" footer.
+  - **Button:** WhatsApp → phone → email, through `roci_whatsapp_url()` / `roci_tel_href()` / `roci_phone_number()`.
+  - **Colours:** from `roci_brand_page_colors()` / `roci_contrast_ratio()`, the same algorithm as roci-standby's `roci_standby_colors()`. The harness shows identical results for 11 brands.
+
+### Contrast (both copies)
+
+- **Text on surface** must reach 4.5, else the default pair is used.
+- **Heading and muted** must reach 4.5, else they use text.
+- **Button label on accent** must reach 4.5, else `#000` or `#fff` (one always reaches ≥ 4.58).
+- **Accent edge against surface** must reach 3, else a 2px text-colour border.
+- **Hover:** 10% darker, used only while it still passes.
+- **Colour scheme:** light only with a brand, the neutral light + dark without one.
+
+### Through the snapshot, the family today (the palettes as each child fills them)
+
+| Site | Text on surface | Button label on accent | Accent edge | What happens |
+|---|---|---|---|---|
+| Coco | 18.78 | 5.39 | 5.39 | as filled |
+| Fish Potrero | 14.13 | white on teal is 3.48, so the label switches to `#000` (6.03) | 3.48 | label switched |
+| Jota Works | 15.36 | 4.63 | 4.63 | as filled |
+| Casa Jícaro | 10.49 | 4.74 | 4.74 | as filled |
+| RJK 360 | 15.99 | 5.41 | 5.41 | as filled; a light page, though its own site is dark (`roci_brand_snapshot` can remap) |
+
+---
+
 ## [8.7.2] — 2026-11-19
 
 **FEAT: the social network list leads with the business listings. Google Business Profile moves to first, and Bing Places for Business is new, second.**

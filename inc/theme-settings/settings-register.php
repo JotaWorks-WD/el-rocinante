@@ -8,10 +8,14 @@
  * ("what colour") and roci_has_brand_accent() ("is one configured at all").
  *
  * 1.6.0 (8.1.0) — roci_mail (the Mail tab: sender + notification recipient).
+ * 1.7.0 (8.8.0) — roci_brand_snapshot() (the palette flattened for the
+ *                  roci-standby page) and roci_brand_snapshot_sync() (saves it
+ *                  to the option roci_brand_snapshot on admin_init and
+ *                  after_switch_theme, only when it changed).
  *
  * File:    inc/theme-settings/settings-register.php
- * Version: 1.6.0
- * Updated: 2026-11-03
+ * Version: 1.7.0
+ * Updated: 2026-11-19
  *
  * @package ElRocinante
  */
@@ -245,6 +249,120 @@ function roci_brand_palette() {
 
     return apply_filters( 'roci_brand_palette', $palette );
 }
+
+
+// ============================================================
+// BRAND SNAPSHOT (v1.7.0, El Rocinante 8.8.0)
+// For the standby / maintenance page, which can load no parent CSS.
+// ============================================================
+
+/**
+ * roci_brand_snapshot()
+ *
+ * The brand, flattened for the roci-standby page: array( 'surface', 'text',
+ * 'heading', 'muted', 'accent', 'accent_text', 'logo_url', 'name' ). Built
+ * from roci_brand_palette() (so a child's palette filter reaches it):
+ *
+ *   surface     ← color-white            (the site's light neutral)
+ *   text        ← color-black            (the body text neutral)
+ *   heading     ← color-primary-darker, else color-black
+ *   muted       ← color-grey
+ *   accent      ← color-primary          (the action colour; NOT color-accent,
+ *                                         which the family uses decoratively)
+ *   accent_text ← color-white            (the label on an action fill)
+ *   logo_url    ← the custom logo, full size (an SVG's file URL), else ''
+ *   name        ← Business → name, else the site name
+ *
+ * Colours are kept only as 6-digit hex ('#rrggbb', lower case); anything
+ * else is OMITTED, and the standby page falls back to its defaults there. The
+ * renderer checks every pair for contrast itself.
+ *
+ * Filter roci_brand_snapshot( $snapshot ) has the last word (a child whose
+ * palette's light neutral is not its page surface remaps here); the result
+ * is re-validated after it.
+ *
+ * Not memoized. Maintenance mode passes it live to roci_standby_render(); the
+ * php-error.php drop-in and the standby theme read the copy
+ * roci_brand_snapshot_sync() saves.
+ *
+ * @return array
+ */
+function roci_brand_snapshot() {
+    $palette = roci_brand_palette();
+    $roles   = array(
+        'surface'     => array( 'color-white' ),
+        'text'        => array( 'color-black' ),
+        'heading'     => array( 'color-primary-darker', 'color-black' ),
+        'muted'       => array( 'color-grey' ),
+        'accent'      => array( 'color-primary' ),
+        'accent_text' => array( 'color-white' ),
+    );
+
+    $snapshot = array();
+    foreach ( $roles as $role => $slots ) {
+        foreach ( $slots as $slot ) {
+            $value = isset( $palette[ $slot ] ) ? strtolower( trim( (string) $palette[ $slot ] ) ) : '';
+            if ( preg_match( '/^#[0-9a-f]{6}$/', $value ) ) {
+                $snapshot[ $role ] = $value;
+                break;
+            }
+        }
+    }
+
+    $logo    = '';
+    $logo_id = (int) get_theme_mod( 'custom_logo', 0 );
+    if ( $logo_id > 0 ) {
+        $logo = wp_get_attachment_image_url( $logo_id, 'full' );
+        if ( ! $logo ) {
+            $logo = wp_get_attachment_url( $logo_id );
+        }
+    }
+    $snapshot['logo_url'] = (string) $logo;
+
+    $name = trim( (string) roci_setting( 'business', 'name' ) );
+    if ( '' === $name ) {
+        $name = trim( html_entity_decode( (string) get_bloginfo( 'name' ), ENT_QUOTES, 'UTF-8' ) );
+    }
+    $snapshot['name'] = $name;
+
+    $snapshot = apply_filters( 'roci_brand_snapshot', $snapshot );
+    $snapshot = is_array( $snapshot ) ? $snapshot : array();
+
+    // Re-validate after the filter.
+    $clean = array();
+    foreach ( array_keys( $roles ) as $role ) {
+        $value = isset( $snapshot[ $role ] ) ? strtolower( trim( (string) $snapshot[ $role ] ) ) : '';
+        if ( preg_match( '/^#[0-9a-f]{6}$/', $value ) ) {
+            $clean[ $role ] = $value;
+        }
+    }
+    $logo              = isset( $snapshot['logo_url'] ) ? trim( (string) $snapshot['logo_url'] ) : '';
+    $clean['logo_url'] = preg_match( '#^https?://#i', $logo ) ? $logo : '';
+    $clean['name']     = isset( $snapshot['name'] ) ? trim( wp_strip_all_tags( (string) $snapshot['name'] ) ) : '';
+
+    return $clean;
+}
+
+/**
+ * roci_brand_snapshot_sync()
+ *
+ * Saves roci_brand_snapshot() to the option roci_brand_snapshot (autoload
+ * off) when it differs from the stored copy: the arrays are hashed and the
+ * option is written only on a difference. On admin_init (any change to the
+ * palette, logo or name lands on the next admin page load) and
+ * after_switch_theme. The standby theme and php-error.php read it raw,
+ * because neither can call parent code.
+ */
+function roci_brand_snapshot_sync() {
+    $snapshot = roci_brand_snapshot();
+    $stored   = get_option( 'roci_brand_snapshot', null );
+
+    if ( md5( serialize( $stored ) ) !== md5( serialize( $snapshot ) ) ) {
+        update_option( 'roci_brand_snapshot', $snapshot, false );
+    }
+}
+add_action( 'admin_init', 'roci_brand_snapshot_sync' );
+add_action( 'after_switch_theme', 'roci_brand_snapshot_sync' );
 
 
 // ============================================================
