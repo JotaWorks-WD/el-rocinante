@@ -64,8 +64,14 @@
  * The Default theme row tells "not in wp-config.php" (roci_wp_config_defines())
  * from "set to something else".
  *
+ * 1.3.1 (El Rocinante 8.11.1): every Standby status row carries 'action' and
+ * 'button' ('' when the row has no install button). The Default theme, Brand
+ * snapshot and Active theme rows had neither, so the tab's wp_list_pluck()
+ * raised "Undefined array key "action"" (twice on a normal site). Output
+ * unchanged.
+ *
  * File:    inc/maintenance-mode.php
- * Version: 1.3.0
+ * Version: 1.3.1
  * Updated: 2026-11-19
  *
  * @package ElRocinante
@@ -260,7 +266,9 @@ add_action( 'roci_settings_tab_maintenance', 'roci_maintenance_settings_tab_pane
  *
  * Internal. The Maintenance tab's read-only "Standby status" rows. Each row:
  * label, state ('ok' | 'missing' | 'outdated' | 'warn'), detail (plain text),
- * fix ('' when nothing to do), plus 'swatches' / 'logo' on the snapshot row.
+ * fix ('' when nothing to do), action + button (the install button's
+ * admin-post action and label; '' when the row has none — EVERY row carries
+ * both keys since 8.11.1), plus 'swatches' / 'logo' on the snapshot row.
  *
  * @return array[]
  */
@@ -298,6 +306,8 @@ function roci_standby_status() {
         'state'  => 'roci-standby' === $default ? 'ok' : 'missing',
         'detail' => $d_detail,
         'fix'    => 'roci-standby' === $default ? '' : __( 'Add define( \'WP_DEFAULT_THEME\', \'roci-standby\' ); to wp-config.php.', 'rocinante' ),
+        'action' => '',
+        'button' => '',
     );
 
     $dropin   = trailingslashit( WP_CONTENT_DIR ) . 'php-error.php';
@@ -332,6 +342,8 @@ function roci_standby_status() {
         'state'    => $is_arr ? 'ok' : 'missing',
         'detail'   => $is_arr ? __( 'Saved. The standby page uses these colours and logo.', 'rocinante' ) : __( 'Not saved yet.', 'rocinante' ),
         'fix'      => $is_arr ? '' : __( 'Open any wp-admin screen once to save it.', 'rocinante' ),
+        'action'   => '',
+        'button'   => '',
         'swatches' => $swatch,
         'logo'     => ( $is_arr && isset( $snap['logo_url'] ) && preg_match( '#^https?://#i', (string) $snap['logo_url'] ) ) ? (string) $snap['logo_url'] : '',
     );
@@ -342,6 +354,8 @@ function roci_standby_status() {
             'state'  => 'warn',
             'detail' => __( 'Standby theme is active: visitors see the standby page.', 'rocinante' ),
             'fix'    => '',
+            'action' => '',
+            'button' => '',
         );
     }
 

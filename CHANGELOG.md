@@ -4,6 +4,26 @@ All notable changes to the El Rocinante parent theme are recorded here. Entries 
 
 ---
 
+## [8.11.1] — 2026-11-19
+
+**FIX: the PHP warning `Undefined array key "action"` on Theme Settings → Maintenance is gone. The tab looks and works exactly as before.**
+
+**In plain English (2026-11-19):** The Maintenance tab no longer triggers a hidden PHP warning; nothing you see on it changes.
+
+PATCH. Admin only; no front-end change.
+
+- **The cause:** three Standby status rows had no `action` key: Default theme, Brand snapshot, and the Active theme row (shown only while roci-standby is active). The tab's `wp_list_pluck( $roci_rows, 'action' )` read the key on every row, so a normal site logged the warning twice and a site running on standby three times (Query Monitor on jota.works staging, 8.11.0).
+- **The fix, at the source and at the reader:**
+  - **Source:** `roci_standby_status()` gives every row `action` and `button`, `''` when the row has no install button (`inc/maintenance-mode.php` 1.3.1).
+  - **Reader:** the tab tests for buttons with `array_column()`, which skips a row without the key instead of warning (`inc/theme-settings/tabs/tab-maintenance.php` 1.1.1).
+- **Verified:** the tab was rendered with 8.11.0 and 8.11.1 in four states:
+  - all set up;
+  - everything missing (the Install roci-standby button shows);
+  - drop-in out of date + default theme wrong + files not writable (the by-hand note shows);
+  - roci-standby active (five rows).
+
+  8.11.0 logged 2, 2, 2 and 3 warnings; 8.11.1 logs 0 in every state, and the HTML is byte-identical in all four.
+
 ## [8.11.0] — 2026-11-19
 
 **FEAT: two schema links. Every BlogPosting now says which site it belongs to (`isPartOf` → the WebSite node), and the site-level business node points to its map (`hasMap`).**

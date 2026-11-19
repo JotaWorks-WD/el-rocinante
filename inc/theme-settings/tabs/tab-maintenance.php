@@ -21,8 +21,12 @@
  * the redirect, and one note instead of the buttons when files cannot be
  * changed from here (DISALLOW_FILE_MODS, or FTP credentials needed).
  *
+ * 1.1.1 (El Rocinante 8.11.1): the "any install button?" test reads the rows
+ * with array_column(), so a row without 'action' raises no PHP warning. Output
+ * unchanged.
+ *
  * File:    inc/theme-settings/tabs/tab-maintenance.php
- * Version: 1.1.0
+ * Version: 1.1.1
  * Updated: 2026-11-19
  *
  * @package ElRocinante
@@ -75,7 +79,10 @@ if ( $roci_notice ) :
 <?php
 $roci_rows     = roci_standby_status();
 $roci_can_fix  = roci_standby_can_modify_files();
-$roci_has_btns = (bool) array_filter( wp_list_pluck( $roci_rows, 'action' ) );
+// 1.1.1: array_column(), not wp_list_pluck() — a row without an 'action' key
+// is skipped instead of raising "Undefined array key" (roci_standby_status()
+// now gives every row one; this keeps the tab quiet if a row ever lacks it).
+$roci_has_btns = (bool) array_filter( array_column( $roci_rows, 'action' ) );
 if ( $roci_has_btns && is_wp_error( $roci_can_fix ) ) :
     ?>
     <p class="roci-note"><?php echo esc_html( $roci_can_fix->get_error_message() . ' ' . __( 'One-click install is not available here, so follow the steps below by hand.', 'rocinante' ) ); ?></p>
