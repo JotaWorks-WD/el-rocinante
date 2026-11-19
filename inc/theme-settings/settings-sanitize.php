@@ -5,10 +5,12 @@
  * 1.12.0 (8.1.0) — roci_sanitize_mail().
  * 1.13.0 (8.4.0) — roci_sanitize_seo() keeps llms_enabled and llms_override;
  *                  roci_sanitize_design() keeps color_mode.
+ * 1.14.0 (8.5.0) — roci_sanitize_seo() keeps maintenance_enabled and
+ *                  maintenance_message (inc/maintenance-mode.php).
  *
  * File:    inc/theme-settings/settings-sanitize.php
- * Version: 1.13.0
- * Updated: 2026-11-18
+ * Version: 1.14.0
+ * Updated: 2026-11-19
  *
  * @package ElRocinante
  */
@@ -294,14 +296,17 @@ function roci_sanitize_social( $input ) {
 function roci_sanitize_seo( $input ) {
     // REBUILT FROM SCRATCH: a key the SEO tab renders but this list omits is
     // wiped on the next save. The two llms.txt keys (1.13.0, El Rocinante
-    // 8.4.0) are listed for that reason. sanitize_textarea_field() keeps the
-    // override's line breaks.
+    // 8.4.0) and the two Maintenance mode keys (1.14.0, 8.5.0) are listed for
+    // that reason. sanitize_textarea_field() keeps the override's line breaks;
+    // the maintenance message is one line, so sanitize_text_field().
     return array(
         'default_meta_description' => isset( $input['default_meta_description'] ) ? sanitize_textarea_field( $input['default_meta_description'] ) : '',
         'default_og_image'         => isset( $input['default_og_image'] )         ? esc_url_raw( $input['default_og_image'] )                     : '',
         'seo_preview'              => isset( $input['seo_preview'] )              ? '1'                                                           : '0',
         'llms_enabled'             => ! empty( $input['llms_enabled'] )           ? '1'                                                           : '',
         'llms_override'            => isset( $input['llms_override'] )            ? sanitize_textarea_field( $input['llms_override'] )            : '',
+        'maintenance_enabled'      => ! empty( $input['maintenance_enabled'] )    ? '1'                                                           : '',
+        'maintenance_message'      => isset( $input['maintenance_message'] )      ? sanitize_text_field( $input['maintenance_message'] )          : '',
     );
 }
 

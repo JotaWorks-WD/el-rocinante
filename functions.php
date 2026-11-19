@@ -6,8 +6,8 @@
  * loads includes, and outputs analytics/integration scripts.
  *
  * File:    functions.php
- * Version: 1.23.1
- * Updated: 2026-11-18
+ * Version: 1.24.0
+ * Updated: 2026-11-19
  *
  * @package ElRocinante
  */
@@ -626,6 +626,13 @@ require_once get_template_directory() . '/inc/sitemap.php';
 // ============================================================
 
 require_once get_template_directory() . '/inc/llms-txt.php';
+
+
+// ============================================================
+// MAINTENANCE MODE — Theme Settings → SEO, inert while off (v8.5.0)
+// ============================================================
+
+require_once get_template_directory() . '/inc/maintenance-mode.php';
 
 
 // ============================================================

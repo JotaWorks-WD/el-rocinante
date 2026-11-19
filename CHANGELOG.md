@@ -4,6 +4,61 @@ All notable changes to the El Rocinante parent theme are recorded here. Entries 
 
 ---
 
+## [8.5.0] — 2026-11-19
+
+**FEAT: Maintenance mode. A switch in Theme Settings → SEO gives visitors a "back soon" page (HTTP 503) while administrators keep working on the live site. The page is the roci-standby renderer when that theme is installed.**
+
+**In plain English (2026-11-19):** You can now put a site into maintenance mode from Theme Settings: visitors see a "back soon" page while you keep working on the live site.
+
+MINOR. New, inert while off. No change for a site that never turns it on, no CSS change, no Build change.
+
+### The setting (`tabs/tab-seo.php` 1.3.0, `settings-sanitize.php` 1.14.0)
+
+- **Theme Settings → SEO → Maintenance mode.** There is no General tab. SEO is the closest fit, because the switch is about what search engines and visitors get (503, `noindex`), and its option already holds the site-wide llms.txt switch.
+- **Fields:**
+  - "Turn on maintenance mode" (`roci_seo[maintenance_enabled]`, `'1'` \| `''`);
+  - an optional one-line "Message" (`roci_seo[maintenance_message]`, `sanitize_text_field()`; empty = the standby default).
+- **Help text:** visitors get a "back soon" page (HTTP 503), administrators see the live site, turn it off when done, and the switch purges the page cache.
+- **`roci_sanitize_seo()` lists both new keys** beside the five existing ones (`default_meta_description`, `default_og_image`, `seo_preview`, `llms_enabled`, `llms_override`), which are kept unchanged.
+- **Changing the on/off value fires `litespeed_purge_all`** (on `update_option_roci_seo`, and `add_option_roci_seo` for a first save). A message-only change does not purge.
+
+### Behaviour (`inc/maintenance-mode.php` 1.0.0, new; `functions.php` 1.24.0 requires it)
+
+- `roci_maintenance_mode_on()` reads the switch.
+- **While on,** `template_redirect` priority 0 (front end only) handles anyone without the `roci_maintenance_bypass_capability` capability (new filter, default `manage_options`):
+  - sends 503, `Retry-After: 3600`, `X-Robots-Tag: noindex`, `nocache_headers()` and `litespeed_control_set_nocache`;
+  - renders the page, then exits.
+- **The page, first that exists:**
+  - (a) `roci_standby_render()`, if defined;
+  - (b) `get_theme_root() . '/roci-standby/inc/standby-page.php'` (installed is enough, active is not needed);
+  - (c) a built-in parent page (site name, "We'll be right back", the line, `noindex`, a tiny inline style, AA in light and dark).
+
+  Always `array( 'context' => 'maintenance' )`.
+- **The custom message** goes in as `text` through `roci_standby_message`, a callback added only on the maintenance request. The built-in page prints it directly.
+- **Untouched:** wp-admin, `wp-login.php`, REST, admin-ajax and cron.
+- **Still served:** `/llms.txt` and the IndexNow key file (both answer on `parse_request`, earlier).
+- **The 503 page:** feeds, sitemaps and robots.txt, like every other front-end URL.
+- **Administrators, while on:**
+  - an admin-bar node "Maintenance mode is ON" linking to the setting, red from an inline `<style>` printed only when the node is added, on the front end and in wp-admin;
+  - a warning notice without a dismiss button on the Dashboard and Theme Settings. It also names the fallback when roci-standby is not installed.
+
+### IndexNow (`inc/indexnow.php` 1.1.0)
+
+- While Maintenance mode is on no ping goes out. Each saved post is logged `maintenance`, after the `blog_public` check.
+
+### Docs
+
+- CONVENTIONS, the new section "Maintenance mode and roci-standby": the setting, behaviour, bypass filter, render order, and the three roci-standby pieces with their shared renderer.
+- CONVENTIONS catalogue: the new `roci_maintenance_bypass_capability` row (now 65 extension points) and helpers-table rows for `roci_maintenance_mode_on()` and the two setting keys.
+- CONVENTIONS per-site onboarding checklist, items 8–11:
+  - install roci-standby with Git Updater and don't activate it;
+  - `WP_DEFAULT_THEME`;
+  - copy `php-error.php` into `wp-content/`;
+  - delete the leftover Twenty-something theme.
+- CLAUDE.md: §2 tree, the roci-standby repo under Folder Roles, and the §4 helper note.
+
+---
+
 ## [8.4.3] — 2026-11-19
 
 **FIX: the Pages tab strip stays on the tab you clicked.**

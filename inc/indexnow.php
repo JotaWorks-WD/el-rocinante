@@ -20,12 +20,18 @@
  *     it is not a revision or an autosave        (else: silent)
  *     its status is publish                      (else: silent)
  *     blog_public is on                          (else: logged "blog_public 0")
+ *     maintenance mode is off                    (else: logged "maintenance")
  *     its type is viewable                       (else: logged "not viewable")
  *     it has no password                         (else: logged "password")
  *     roci_effective_robots() has no noindex     (else: logged "noindex")
  *     the URL was not pinged in the last 5 min   (else: logged "debounced")
  * blog_public is tested before the robots, which would otherwise report a
  * discouraged site's every post as "noindex".
+ *
+ * 1.1.0 (El Rocinante 8.5.0): no pings while maintenance mode is on
+ * (roci_maintenance_mode_on(), inc/maintenance-mode.php) — every page
+ * answers 503 then, so a ping would only send crawlers to it. Logged
+ * "maintenance"; a post saved meanwhile is not re-pinged when it ends.
  *
  * ⚠ BLOCK EDITOR: a publish there is two requests — the post (REST), then the
  *   meta boxes. The ping goes out at the end of the first, so a robots value
@@ -46,8 +52,8 @@
  *     wp option delete roci_indexnow_key roci_indexnow_log
  *
  * File:    inc/indexnow.php
- * Version: 1.0.0
- * Updated: 2026-11-18
+ * Version: 1.1.0
+ * Updated: 2026-11-19
  *
  * @package ElRocinante
  */
@@ -191,6 +197,9 @@ function roci_indexnow_skip_reason( $post ) {
     }
     if ( ! get_option( 'blog_public' ) ) {
         return 'blog_public 0';
+    }
+    if ( function_exists( 'roci_maintenance_mode_on' ) && roci_maintenance_mode_on() ) {
+        return 'maintenance';
     }
     if ( ! is_post_type_viewable( $post->post_type ) ) {
         return 'not viewable';
