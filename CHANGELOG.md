@@ -4,6 +4,66 @@ All notable changes to the El Rocinante parent theme are recorded here. Entries 
 
 ---
 
+## [8.7.0] — 2026-11-19
+
+**FEAT: phone and social links from one place. `roci_tel_href()`, `roci_phone_number()` and `roci_social_links()` replace the copies each site carried (bug list H2). Social gains Google Business Profile, and `sameAs` reads the same list.**
+
+**In plain English (2026-11-19):** Phone and social links now come from one shared place, so every site builds them the same way, and you can add your Google Business Profile.
+
+MINOR (new helpers, a new filter, a new Social field).
+
+- **Output that changes:**
+  - a stored `#` or non-http(s) social value no longer reaches the business schema's `sameAs`;
+  - a site that fills Google Business Profile gains one `sameAs` entry.
+- **Unchanged:** no child calls the new helpers yet, so no page markup changes.
+
+### Phone (`inc/helpers.php` 1.25.0)
+
+- **`roci_tel_href( $number )`** builds `tel:`, then a `+` **only when it is the first character after trimming**, then the digits. Every other character is dropped, and fewer than 7 digits gives `''`.
+  - `+506 8888-7777` → `tel:+50688887777`
+  - `(+506) 2222 3333` → `tel:50622223333`
+  - `8888.7777` → `tel:88887777`
+  - `12345` → `''`
+- **`roci_phone_number( $which = 'primary' )`** returns the display string of Business → Phone (`'primary'`) or the second phone (`'secondary'`, key `phone_secondary`), trimmed. Empty or any other `$which` gives `''`.
+
+### Social (`inc/helpers.php` 1.25.0, `inc/schema/social-platforms.php` 1.2.0, `tabs/tab-social.php` 1.4.0, `header.php` 2.7.0)
+
+- **`roci_social_links( $args )`** returns the Social tab as data: `{ network, label, url }` in `roci_social_platforms()` order, with the parent's labels.
+  - **Skips** empty values, `#` and anything that isn't http(s). Stored values come back as saved; they were `esc_url_raw()`'d by the sanitizer.
+  - **WhatsApp is left out by default** (a contact channel). With `'include' => array( 'whatsapp' )` it is added, and its url is `roci_whatsapp_url()`.
+  - **Args:** `include` (only these, still in the parent's order) and `exclude`.
+  - **New filter** `roci_social_links( $links, $args )`.
+- **No `roci_social_links_html()`:** every child that shows social links (Coco, Fish Potrero, Jota Works) ships its own icons, screen-reader names and classes, and the parent ships no icon set. A default list would have no consumer.
+- **New Social network** `google_business`, "Google Business Profile", help text "Your Google Business Profile share link."
+  - Appended **last**, so every existing `sameAs` keeps its order.
+  - A profile, so it is not in `roci_schema_sameas_exclude()` and is published.
+  - `roci_sanitize_social()` reads the list: every 8.6.0 key kept, plus `google_business`.
+- **`sameAs`** = `roci_social_links( array( 'exclude' => roci_schema_sameas_exclude() ) )`.
+  - The exclude filter is kept, so a child that adds a chat network there still keeps it out of the schema.
+  - The harness ran the HEAD block and the 8.7.0 block from `header.php` and found the JSON-LD byte-identical (all set, some empty, none set, no option row). The only differences are the intended two above.
+- **Read time:** no parent change. `roci_reading_time()` (8.3.0) stands.
+
+### Child follow-ups (each in that site's run-through; nothing changes until then)
+
+**Phone links → `roci_phone_number()` + `roci_tel_href()`:**
+- **Coco:** footer and Contact info. Both build `tel:` with `[^0-9+]`, which keeps every `+`.
+- **Fish Potrero:** footer (leading `+` only when the value starts with one) and Contact info (keeps every `+`, and a hardcoded fallback `+(506) 8614 2958`). The two disagree today.
+- **RJK 360:** footer (its own `global.phone` field) and Contact info (its own `phone_href` field). It keeps its fields and passes them to `roci_tel_href()`.
+- **Jota Works:** `jwd_contact_details()` (Business `phone` and `phone_secondary`) → `roci_phone_number( 'primary' | 'secondary' )` + `roci_tel_href()`. Its country tag and US-number rule stay its own.
+
+**Social links → `roci_social_links()`:**
+- **Coco:** `cocoatv_social_links()` → `roci_social_links( array( 'include' => array( 'facebook', 'instagram' ) ) )`, keeping its icons. Its topbar WhatsApp (Social, raw) → `include` WhatsApp / `roci_whatsapp_url()`.
+- **Fish Potrero:**
+  - footer, topbar and Contact info lists → `roci_social_links()` with `include`;
+  - WhatsApp → `include` + `roci_whatsapp_url()`;
+  - fill in Google Business Profile and drop the dead `google` entry (an unregistered key that could never print);
+  - the hardcoded Contact fallbacks (phone, WhatsApp URL) are its own content, for its run-through.
+- **Jota Works:** `jwd_social_links()` → `roci_social_links()` (WhatsApp is already left out by default).
+
+**Read time:** Fish Potrero's `fpp_read_time()` (200 wpm, rounded, `false` with no words) → `roci_reading_time()`, keeping its hide-when-empty rule in its template. Jota Works already uses the parent's.
+
+---
+
 ## [8.6.0] — 2026-11-19
 
 **FEAT: client-editable settings. Theme Settings keeps the options no site reads yet, labels each one honestly, and gives children helpers to read them. WhatsApp and Maps each get one clear job.**

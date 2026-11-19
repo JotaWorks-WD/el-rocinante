@@ -7,8 +7,12 @@
  * 1.3.1 (El Rocinante 8.6.0): the WhatsApp source rule under the WhatsApp
  * field (roci_whatsapp_number() reads Business first, this field second).
  *
+ * 1.4.0 (El Rocinante 8.7.0): the Google Business Profile field (key
+ * google_business) renders from the platform list like every other; this
+ * file adds its help line only.
+ *
  * File:    inc/theme-settings/tabs/tab-social.php
- * Version: 1.3.1
+ * Version: 1.4.0
  * Updated: 2026-11-19
  *
  * @package ElRocinante
@@ -49,6 +53,9 @@ $roci_sameas_exclude = roci_schema_sameas_exclude();
                 <?php endif; ?>
                 <?php if ( 'whatsapp' === $key ) : ?>
                     <p class="roci-note"><?php esc_html_e( 'Business → WhatsApp is the main number; Social → WhatsApp is used only when it\'s empty.', 'rocinante' ); ?></p>
+                <?php endif; ?>
+                <?php if ( 'google_business' === $key ) : ?>
+                    <p class="roci-note"><?php esc_html_e( 'Your Google Business Profile share link.', 'rocinante' ); ?></p>
                 <?php endif; ?>
             </td>
         </tr>

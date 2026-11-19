@@ -30,9 +30,14 @@
  * consumer that lists platforms MUST read this function so the filter reaches
  * all three.
  *
+ * 1.2.0 (El Rocinante 8.7.0): a ninth platform, google_business ("Google
+ * Business Profile"), appended after tripadvisor. The front end reads the list
+ * through roci_social_links() (inc/helpers.php), which header.php's sameAs
+ * now uses too.
+ *
  * File:    inc/schema/social-platforms.php
- * Version: 1.1.0
- * Updated: 2026-10-17
+ * Version: 1.2.0
+ * Updated: 2026-11-19
  *
  * @package ElRocinante
  */
@@ -71,6 +76,10 @@ function roci_social_platforms() {
         'linkedin'    => __( 'LinkedIn', 'rocinante' ),
         'twitter'     => __( 'X (Twitter)', 'rocinante' ),
         'tripadvisor' => __( 'TripAdvisor', 'rocinante' ),
+        // 1.2.0 (El Rocinante 8.7.0). LAST, so every existing site's sameAs
+        // order is unchanged; a site that fills it gains one sameAs entry. A
+        // profile, not a chat link, so it is NOT in roci_schema_sameas_exclude().
+        'google_business' => __( 'Google Business Profile', 'rocinante' ),
     ) );
 }
 

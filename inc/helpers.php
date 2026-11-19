@@ -7,7 +7,7 @@
  * and template parts throughout El Rocinante and child themes.
  *
  * File:    inc/helpers.php
- * Version: 1.24.0
+ * Version: 1.25.0
  * Updated: 2026-11-19
  *
  * @package ElRocinante
@@ -37,6 +37,9 @@
  *   roci_maps_link_url()           — Business → Open in Google Maps link (maps_url), http(s) or '' (v1.24.0)
  *   roci_maps_embed_url()          — Business → Map embed URL (maps_embed_url), a Google embed src or '' (v1.24.0)
  *   roci_is_maps_embed_url()       — (internal) https://www.google.com/maps/embed… only
+ *   roci_tel_href()                — 'tel:' + leading + (only if first) + digits; '' under 7 digits (v1.25.0)
+ *   roci_phone_number()            — Business phone / phone_secondary display string (v1.25.0)
+ *   roci_social_links()            — Social profiles as data (network, label, url); WhatsApp only on include (v1.25.0)
  *   roci_is_external_link()        — (internal) The one external-link test behind the three link helpers
  *   roci_is_svg_attachment()       — (internal) The one SVG test behind the image helpers (mime image/svg+xml)
  *   roci_current_atts()            — Returns aria-current for the link to the page being viewed
@@ -1573,6 +1576,130 @@ function roci_maps_link_url() {
     $scheme = '' !== $url ? strtolower( (string) wp_parse_url( $url, PHP_URL_SCHEME ) ) : '';
 
     return in_array( $scheme, array( 'http', 'https' ), true ) ? $url : '';
+}
+
+
+// ============================================================
+// PHONE + SOCIAL LINKS (v1.25.0, El Rocinante 8.7.0)
+// ============================================================
+//
+// The family's repeated phone and social builders, promoted (bug list H2).
+// DATA, not markup: each child keeps its own markup and icons and loops over
+// these. Escape on output.
+
+/**
+ * roci_tel_href()
+ *
+ * A tel: href from any typed phone number: 'tel:' + a leading '+' (kept ONLY
+ * when it is the first character after trimming) + the digits; every other
+ * character is dropped. '' with fewer than 7 digits.
+ *
+ *   '+506 8888-7777'   → 'tel:+50688887777'
+ *   '(+506) 2222 3333' → 'tel:50622223333'   (the + is not first)
+ *   '8888.7777'        → 'tel:88887777'
+ *   '12345'            → ''
+ *
+ * Escape with esc_url() on output (core allows the tel: scheme).
+ *
+ * @param  mixed $number
+ * @return string
+ */
+function roci_tel_href( $number ) {
+    $number = trim( (string) $number );
+    $plus   = ( '' !== $number && '+' === $number[0] ) ? '+' : '';
+    $digits = preg_replace( '/\D+/', '', $number );
+
+    return strlen( $digits ) >= 7 ? 'tel:' . $plus . $digits : '';
+}
+
+/**
+ * roci_phone_number()
+ *
+ * The display string of a Business phone, trimmed: 'primary' → Business →
+ * Phone (phone), 'secondary' → the second phone (phone_secondary). '' when it
+ * is empty or $which is anything else. Pair it with roci_tel_href() for the
+ * link; escape the text with esc_html().
+ *
+ * @param  string $which 'primary' | 'secondary'.
+ * @return string
+ */
+function roci_phone_number( $which = 'primary' ) {
+    $keys = array(
+        'primary'   => 'phone',
+        'secondary' => 'phone_secondary',
+    );
+
+    if ( ! is_string( $which ) || ! isset( $keys[ $which ] ) ) {
+        return '';
+    }
+
+    return trim( (string) roci_setting( 'business', $keys[ $which ] ) );
+}
+
+/**
+ * roci_social_links()
+ *
+ * The site's social profiles from Theme Settings → Social, as data:
+ *
+ *   array( array( 'network' => 'facebook', 'label' => 'Facebook', 'url' => 'https://…' ), … )
+ *
+ * In roci_social_platforms() order, labels from that list (so a child-added
+ * platform is included). An entry is skipped when its URL is empty, '#', or
+ * not http(s). Values were esc_url_raw()'d on save by roci_sanitize_social()
+ * and are returned as stored; escape with esc_url() on output.
+ *
+ * WHATSAPP IS LEFT OUT unless asked for: it is a contact channel, not a
+ * profile. With 'include' => array( 'whatsapp' ) it is added, and its url is
+ * roci_whatsapp_url() (Business number first, api.whatsapp.com), never the
+ * raw Social value.
+ *
+ * Args:
+ *   'include' => string[]  only these keys (still in the parent's order);
+ *                          an empty array returns nothing.
+ *   'exclude' => string[]  never these keys.
+ *
+ * The result passes through roci_social_links( $links, $args ). header.php's
+ * sameAs reads this function, so a callback there shapes the schema too.
+ *
+ * @param  array $args
+ * @return array<int, array{network: string, label: string, url: string}>
+ */
+function roci_social_links( $args = array() ) {
+    $args    = is_array( $args ) ? $args : array();
+    $include = array_key_exists( 'include', $args ) ? array_map( 'strval', (array) $args['include'] ) : null;
+    $exclude = isset( $args['exclude'] ) ? array_map( 'strval', (array) $args['exclude'] ) : array();
+    $links   = array();
+
+    foreach ( roci_social_platforms() as $network => $label ) {
+        $network = (string) $network;
+
+        if ( null !== $include ? ! in_array( $network, $include, true ) : 'whatsapp' === $network ) {
+            continue;
+        }
+        if ( in_array( $network, $exclude, true ) ) {
+            continue;
+        }
+
+        if ( 'whatsapp' === $network ) {
+            $url = roci_whatsapp_url();
+        } else {
+            $url    = trim( (string) roci_setting( 'social', $network ) );
+            $scheme = ( '' !== $url && '#' !== $url ) ? strtolower( (string) wp_parse_url( $url, PHP_URL_SCHEME ) ) : '';
+            $url    = in_array( $scheme, array( 'http', 'https' ), true ) ? $url : '';
+        }
+
+        if ( '' === $url ) {
+            continue;
+        }
+
+        $links[] = array(
+            'network' => $network,
+            'label'   => (string) $label,
+            'url'     => $url,
+        );
+    }
+
+    return (array) apply_filters( 'roci_social_links', $links, $args );
 }
 
 

@@ -10,7 +10,8 @@
  * its @type resolves from roci_business_types() (inc/schema/business-types.php)
  * and is emitted as [ type, "Organization" ] (v2.5.1; a lone "Organization" stays a string;
  * TouristAttraction is paired with "LocalBusiness" instead, v2.6.0),
- * its sameAs skips the keys apply_filters('roci_schema_sameas_exclude') lists, and
+ * its sameAs comes from roci_social_links() (v2.7.0) and skips the keys
+ * apply_filters('roci_schema_sameas_exclude') lists, and
  * its openingHoursSpecification comes from roci_get_business_hours(), filterable
  * via apply_filters('roci_business_hours') (inc/schema/business-hours.php).
  * hreflang alternates are filterable via apply_filters('roci_hreflang_alternates')
@@ -27,8 +28,8 @@
  * Robots (v2.6.0) come from roci_effective_robots() (inc/metabox/metabox-seo-fields.php).
  *
  * File:    header.php
- * Version: 2.6.0
- * Updated: 2026-11-18
+ * Version: 2.7.0
+ * Updated: 2026-11-19
  *
  * @package ElRocinante
  */
@@ -524,15 +525,20 @@ $roci_article_times = $roci_is_article ? roci_article_times( get_queried_object_
      * site's own contact links. The same getter drives the Social tab's note,
      * so the two cannot disagree.
      */
-    $roci_same_as         = array();
-    $roci_sameas_excluded = roci_schema_sameas_exclude();
-    foreach ( array_keys( roci_social_platforms() ) as $roci_social_key ) {
-        if ( in_array( $roci_social_key, $roci_sameas_excluded, true ) ) {
-            continue;
-        }
-        $roci_same_as[] = roci_setting( 'social', $roci_social_key );
-    }
-    $roci_same_as = array_values( array_filter( $roci_same_as ) );
+    /*
+     * v2.7.0 (El Rocinante 8.7.0): read through roci_social_links(), the one
+     * social reader. Same order (the platform list), same exclusions
+     * (roci_schema_sameas_exclude() is passed as 'exclude', so a child that
+     * adds a chat platform there still keeps it out; WhatsApp is also left
+     * out by roci_social_links() itself), same values (returned as stored).
+     * Byte-identical JSON-LD for every stored http(s) URL. The intended
+     * difference: a stored '#' or non-http(s) value no longer reaches sameAs,
+     * and a filled Google Business Profile adds one entry at the end.
+     */
+    $roci_same_as = array_values( wp_list_pluck(
+        roci_social_links( array( 'exclude' => roci_schema_sameas_exclude() ) ),
+        'url'
+    ) );
 
     if ( $roci_biz_name ) :
         $roci_address_parts = array_filter( [
