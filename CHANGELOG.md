@@ -4,6 +4,48 @@ All notable changes to the El Rocinante parent theme are recorded here. Entries 
 
 ---
 
+## [8.10.0] — 2026-11-19
+
+**FEAT: a top-level Insights menu brings the visitor stats and the 404 log together: an Overview, a full Visitors page (7 / 30 / 90 days), and the 404 log moved out of Theme Settings with a clearer look. Two redesigned dashboard widgets: "Visitors" and a new "404s this week".**
+
+**In plain English (2026-11-19):** Visitor numbers and missing-page reports now live together under a new Insights menu, with clearer dashboard widgets.
+
+MINOR. Admin only; no front-end change. **No change to how anything is collected or stored:** the tables, the stats beacon and route, the 404 logger and both prune crons are untouched.
+
+### The menu (`inc/insights/insights.php` 1.0.0, new; `functions.php` 1.25.0)
+
+- `el_rocinante_load_insights()` (`after_setup_theme` 101) loads it when `roci-stats` **or** `roci-404-log` is declared. Neither flag: no menu, screen or widget.
+- **Insights** (`dashicons-chart-area`, position 2.1, right after Dashboard), for `roci_insights_capability()`: the new filter `roci_insights_capability`, default `manage_options`.
+  - **Overview** (`roci-insights`): each module's last 7 days side by side, each linking to its page.
+  - **Visitors** (`roci-insights-visitors`, `roci-stats` only): 7 / 30 / 90-day links (no JS, default 30); cards for views, visitors, average views per day, and the change vs the previous period ("↑ Up +19%": a word and an arrow, never colour alone); the bar chart (views with visitors inside, day labels thinned at 30 / 90); a by-day table, newest first.
+  - **404 log** (`roci-insights-404-log`, `roci-404-log` only): the existing screen, moved.
+- **The old slug** `admin.php?page=roci-404-log` redirects (`wp_safe_redirect`) to the new one with every query arg kept. It runs on `admin_menu` at `PHP_INT_MAX`: core rejects an unregistered page slug before `admin_init`.
+
+### Dashboard widgets
+
+- **"Visitors"** replaces stats.php's widget under the **same id** (`roci_stats_widget`), so its place on the dashboard is kept: today's views and visitors as two cards, the 7-day chart, "vs last 7 days" ± %, "Open Insights → Visitors".
+- **"404s this week"** (new, `roci_404_widget`): total misses, unique URLs, suppressed archives; the top 5 URLs by hits (truncated, full URL in `title`); "Open Insights → 404 log" (this week's dates). Empty: "No missing pages this week."
+
+### The 404 log screen (`inc/404-log/404-log.php` 1.1.0, `class-roci-404-log-table.php` 1.1.0)
+
+- Summary cards for the chosen dates: hits, unique URLs, suppressed, the most common referrer domain (by hits, `www.` folded).
+- A compact filter bar (one `fieldset`, wraps).
+- The table: Kind as a text badge (404 / Suppressed); the URL in `<code>`, truncated, full in `title`; the referrer as its domain, full URL in `title`; first / last seen as relative time in a `<time>`, exact date in `title`; hits right-aligned. The URL is the primary column.
+- Sorting, paging, the kind / date filters and the bulk Delete are unchanged (same queries). The screen and Delete now check `roci_insights_capability()`.
+- `roci_404_log_menu()` is gone; the menu is Insights'.
+
+### Stats (`inc/stats/stats.php` 1.1.0)
+
+- The widget's functions (`roci_stats_last_days()`, `roci_stats_chart_svg()`, `roci_stats_widget()`, `roci_stats_dashboard()`) are removed: module-internal, no caller outside the parent, replaced by Insights. Nothing else in the file changed.
+
+### Styles
+
+One small admin `<style id="roci-insights-css">` (`roci_insights_styles()`), printed once per request by the first Insights screen or widget that renders, so only there. WordPress-native: white cards, `1px #c3c4c7`, 4px radius; accents and focus from `var(--wp-admin-theme-color, #2271b1)`; cards wrap at narrow widths; `:focus-visible` outlines. Charts are inline SVG (`role="img"` + `<title>`) with a visually hidden data table. No Build change, no external request.
+
+### Docs (wrapper, not committed)
+
+CONVENTIONS: the opt-in modules table, the 404 log and stats sections, a new "Insights" section (menu, capability filter, moved slug + redirect, widgets, look); the catalogue now counts 68 extension points (59 filter rows) with the `roci_insights_capability` row; the flag rows and a helper row. CLAUDE.md §2 tree (`inc/insights/`), §4 lifecycle callbacks (seventeen).
+
 ## [8.9.1] — 2026-11-19
 
 **FEAT: the Standby status panel can fix its two most common gaps itself, installing roci-standby and copying its fatal-error page into `wp-content/` with one click each. The Default theme row now says plainly when wp-config doesn't set it.**

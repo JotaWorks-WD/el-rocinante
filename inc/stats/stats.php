@@ -7,7 +7,8 @@
  *     add_theme_support( 'roci-stats' );
  *
  * (el_rocinante_load_stats(), functions.php). Without it nothing here runs:
- * no tables, script, route, widget or cron event.
+ * no tables, script, route or cron event (and, with roci-404-log off too, no
+ * Insights menu or widget).
  *
  * COUNTED IN THE BROWSER, because the page cache answers most page views
  * without running PHP. dist/js/stats.js (footer, logged-out visitors only)
@@ -30,9 +31,8 @@
  * visitor), then one upsert on roci_stats_daily: views + 1, uniques + 1 when
  * the hash was new.
  *
- * DASHBOARD: a "Visitors" widget (manage_options) — today's views and
- * visitors, the last 7 days as an inline SVG bar chart, and the same numbers
- * as a screen-reader table.
+ * DASHBOARD + SCREEN: inc/insights/insights.php (8.10.0) — the "Visitors"
+ * dashboard widget and Insights → Visitors, for roci_insights_capability().
  *
  * RETENTION: a daily cron event, roci_stats_prune, drops seen rows older
  * than yesterday and, when roci_stats_retention_days is above 0 (default 0,
@@ -46,8 +46,8 @@
  *     wp option delete roci_stats_db_version
  *
  * File:    inc/stats/stats.php
- * Version: 1.0.0
- * Updated: 2026-11-18
+ * Version: 1.1.0
+ * Updated: 2026-11-19
  *
  * @package ElRocinante
  */
@@ -284,123 +284,13 @@ function roci_stats_rest_hit( $request ) {
 
 
 // ============================================================
-// DASHBOARD WIDGET
+// DASHBOARD WIDGET + SCREEN
 // ============================================================
-
-/**
- * roci_stats_last_days()
- *
- * The last $n days in site time, oldest first, each with its views and
- * uniques; a day with no row is 0 / 0.
- *
- * @param  int $n
- * @return array Each array( 'day' => Y-m-d, 'views' => int, 'uniques' => int ).
- */
-function roci_stats_last_days( $n = 7 ) {
-    global $wpdb;
-
-    $today = current_time( 'Y-m-d' );
-    $days  = array();
-
-    for ( $i = $n - 1; $i >= 0; $i-- ) {
-        $d          = gmdate( 'Y-m-d', strtotime( $today . ' -' . $i . ' days' ) );
-        $days[ $d ] = array( 'day' => $d, 'views' => 0, 'uniques' => 0 );
-    }
-
-    if ( roci_stats_ready() ) {
-        $table = roci_stats_table( 'daily' );
-        $rows  = $wpdb->get_results( $wpdb->prepare( "SELECT day, views, uniques FROM {$table} WHERE day BETWEEN %s AND %s", array_key_first( $days ), $today ), ARRAY_A ); // phpcs:ignore WordPress.DB
-
-        foreach ( (array) $rows as $row ) {
-            if ( isset( $days[ $row['day'] ] ) ) {
-                $days[ $row['day'] ]['views']   = (int) $row['views'];
-                $days[ $row['day'] ]['uniques'] = (int) $row['uniques'];
-            }
-        }
-    }
-
-    return array_values( $days );
-}
-
-/**
- * roci_stats_chart_svg()
- *
- * The 7-day chart: per day a views bar (currentColor, faint) with the
- * visitors bar inside it (the admin theme colour), the day under it and the
- * views count above. role="img" with a <title>; the numbers are also in the
- * widget's screen-reader table.
- *
- * @param  array $days roci_stats_last_days().
- * @return string
- */
-function roci_stats_chart_svg( $days ) {
-    $w     = 40;           // one day's column
-    $plot  = 100;          // bar area height
-    $top   = 16;           // room for the count above a bar
-    $max   = max( 1, max( wp_list_pluck( $days, 'views' ) ) );
-    $width = $w * count( $days );
-
-    $svg  = '<svg role="img" aria-labelledby="roci-stats-chart-title" viewBox="0 0 ' . $width . ' ' . ( $top + $plot + 20 ) . '" width="100%" style="max-width:' . ( $width * 1.6 ) . 'px;display:block;overflow:visible">';
-    $svg .= '<title id="roci-stats-chart-title">' . esc_html__( 'Views and visitors, last 7 days', 'rocinante' ) . '</title>';
-
-    foreach ( array_values( $days ) as $i => $d ) {
-        $x  = $i * $w;
-        $vh = round( $plot * $d['views'] / $max, 1 );
-        $uh = round( $plot * $d['uniques'] / $max, 1 );
-        $by = $top + $plot;
-
-        $svg .= '<rect x="' . ( $x + 6 ) . '" y="' . ( $by - $vh ) . '" width="' . ( $w - 12 ) . '" height="' . $vh . '" fill="currentColor" fill-opacity="0.2"/>';
-        $svg .= '<rect x="' . ( $x + 12 ) . '" y="' . ( $by - $uh ) . '" width="' . ( $w - 24 ) . '" height="' . $uh . '" style="fill:var(--wp-admin-theme-color,#2271b1)"/>';
-        $svg .= '<text x="' . ( $x + $w / 2 ) . '" y="' . ( $by - $vh - 4 ) . '" text-anchor="middle" font-size="10" fill="currentColor">' . (int) $d['views'] . '</text>';
-        $svg .= '<text x="' . ( $x + $w / 2 ) . '" y="' . ( $by + 14 ) . '" text-anchor="middle" font-size="10" fill="currentColor">' . esc_html( date_i18n( 'D', strtotime( $d['day'] . ' 12:00:00' ) ) ) . '</text>';
-    }
-
-    return $svg . '</svg>';
-}
-
-/**
- * roci_stats_widget()
- *
- * The widget body.
- */
-function roci_stats_widget() {
-    $days  = roci_stats_last_days( 7 );
-    $today = end( $days );
-    ?>
-    <p style="font-size:14px;margin-top:0">
-        <?php
-        /* translators: 1: views today, 2: visitors today. */
-        echo esc_html( sprintf( __( 'Today: %1$s views · %2$s visitors', 'rocinante' ), number_format_i18n( $today['views'] ), number_format_i18n( $today['uniques'] ) ) );
-        ?>
-    </p>
-    <?php echo roci_stats_chart_svg( $days ); // Built from integers and escaped strings. ?>
-    <p style="margin-bottom:0">
-        <span aria-hidden="true" style="display:inline-block;width:10px;height:10px;background:currentColor;opacity:.2"></span> <?php esc_html_e( 'Views', 'rocinante' ); ?>
-        &nbsp; <span aria-hidden="true" style="display:inline-block;width:10px;height:10px;background:var(--wp-admin-theme-color,#2271b1)"></span> <?php esc_html_e( 'Visitors', 'rocinante' ); ?>
-    </p>
-    <table class="screen-reader-text">
-        <caption><?php esc_html_e( 'Views and visitors, last 7 days', 'rocinante' ); ?></caption>
-        <thead><tr><th scope="col"><?php esc_html_e( 'Day', 'rocinante' ); ?></th><th scope="col"><?php esc_html_e( 'Views', 'rocinante' ); ?></th><th scope="col"><?php esc_html_e( 'Visitors', 'rocinante' ); ?></th></tr></thead>
-        <tbody>
-        <?php foreach ( $days as $d ) : ?>
-            <tr><th scope="row"><?php echo esc_html( date_i18n( get_option( 'date_format' ), strtotime( $d['day'] . ' 12:00:00' ) ) ); ?></th><td><?php echo (int) $d['views']; ?></td><td><?php echo (int) $d['uniques']; ?></td></tr>
-        <?php endforeach; ?>
-        </tbody>
-    </table>
-    <?php
-}
-
-/**
- * roci_stats_dashboard()
- *
- * On wp_dashboard_setup, for manage_options only.
- */
-function roci_stats_dashboard() {
-    if ( current_user_can( 'manage_options' ) ) {
-        wp_add_dashboard_widget( 'roci_stats_widget', __( 'Visitors', 'rocinante' ), 'roci_stats_widget' );
-    }
-}
-add_action( 'wp_dashboard_setup', 'roci_stats_dashboard' );
+//
+// Since 8.10.0 both live in inc/insights/insights.php (Insights → Visitors and
+// the dashboard "Visitors" widget, same id roci_stats_widget). They read
+// roci_stats_daily through roci_insights_stats_series(); nothing here changed
+// how a hit is counted or stored.
 
 
 // ============================================================

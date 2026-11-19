@@ -6,7 +6,7 @@
  * loads includes, and outputs analytics/integration scripts.
  *
  * File:    functions.php
- * Version: 1.24.0
+ * Version: 1.25.0
  * Updated: 2026-11-19
  *
  * @package ElRocinante
@@ -397,6 +397,25 @@ function el_rocinante_load_stats() {
     require_once get_template_directory() . '/inc/stats/stats.php';
 }
 add_action( 'after_setup_theme', 'el_rocinante_load_stats', 100 );
+
+
+// ============================================================
+// INSIGHTS — the admin menu over roci-stats + roci-404-log (v8.10.0)
+// ============================================================
+//
+// Loaded when either module's flag is declared, after both modules (101).
+// Display only: no table, script or cron of its own. Without both flags
+// there is no menu, screen or widget.
+
+function el_rocinante_load_insights() {
+
+    if ( ! current_theme_supports( 'roci-stats' ) && ! current_theme_supports( 'roci-404-log' ) ) {
+        return;
+    }
+
+    require_once get_template_directory() . '/inc/insights/insights.php';
+}
+add_action( 'after_setup_theme', 'el_rocinante_load_insights', 101 );
 
 
 // ============================================================

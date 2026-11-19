@@ -2,16 +2,21 @@
 /**
  * 404 Log — the admin list table
  *
- * Loaded only on Theme Settings → 404 log (roci_404_log_load()). One row per
+ * Loaded only on Insights → 404 log (roci_404_log_load()). One row per
  * URL over the chosen dates: SUM(hits), MIN(first_seen), MAX(last_seen), the
  * kind, and the latest non-empty referrer (a second query for the rows on the
  * page). Filters: date from / to (default the last 7 days, site time) and
  * kind (all / 404 / suppressed). Sortable by hits and last seen; paginated.
  * Bulk "Delete" removes every row of the chosen URLs, all days.
  *
+ * DISPLAY (8.10.0): the kind as a text badge, the URL in <code> truncated
+ * (full in title), the referrer as its domain (full URL in title), first /
+ * last seen as relative time (exact in title), hits right-aligned. Uses
+ * inc/insights/insights.php's helpers and styles; the queries are unchanged.
+ *
  * File:    inc/404-log/class-roci-404-log-table.php
- * Version: 1.0.0
- * Updated: 2026-11-18
+ * Version: 1.1.0
+ * Updated: 2026-11-19
  *
  * @package ElRocinante
  */
@@ -114,12 +119,12 @@ class Roci_404_Log_Table extends WP_List_Table {
     public function get_columns() {
         return array(
             'cb'         => '<input type="checkbox">',
-            'url'        => __( 'URL', 'rocinante' ),
-            'hits'       => __( 'Hits', 'rocinante' ),
             'kind'       => __( 'Kind', 'rocinante' ),
+            'url'        => __( 'URL', 'rocinante' ),
+            'referrer'   => __( 'Last referrer', 'rocinante' ),
             'first_seen' => __( 'First seen', 'rocinante' ),
             'last_seen'  => __( 'Last seen', 'rocinante' ),
-            'referrer'   => __( 'Last referrer', 'rocinante' ),
+            'hits'       => __( 'Hits', 'rocinante' ),
         );
     }
 
@@ -128,6 +133,10 @@ class Roci_404_Log_Table extends WP_List_Table {
             'hits'      => array( 'hits', true ),
             'last_seen' => array( 'last_seen', true ),
         );
+    }
+
+    protected function get_default_primary_column_name() {
+        return 'url';
     }
 
     protected function get_bulk_actions() {
@@ -216,15 +225,58 @@ class Roci_404_Log_Table extends WP_List_Table {
         $site = wp_parse_url( home_url() );
         $href = ( isset( $site['scheme'] ) ? $site['scheme'] : 'https' ) . '://' . ( isset( $site['host'] ) ? $site['host'] : '' ) . ( isset( $site['port'] ) ? ':' . $site['port'] : '' ) . $item['url'];
 
-        return '<a href="' . esc_url( $href ) . '" target="_blank" rel="noopener noreferrer"><code>' . esc_html( $item['url'] ) . '</code></a>';
+        // Truncated for the table; the full URL in title and in the new-tab note.
+        return '<a href="' . esc_url( $href ) . '" target="_blank" rel="noopener noreferrer" title="' . esc_attr( $item['url'] ) . '"><code class="roci-trunc">' . esc_html( roci_insights_truncate( $item['url'], 70 ) ) . '</code><span class="screen-reader-text"> ' . esc_html__( '(opens in a new tab)', 'rocinante' ) . '</span></a>';
     }
 
     protected function column_kind( $item ) {
-        return 'suppressed' === $item['kind'] ? esc_html__( 'Suppressed archive', 'rocinante' ) : esc_html__( '404', 'rocinante' );
+        return 'suppressed' === $item['kind']
+            ? '<span class="roci-badge roci-badge--suppressed">' . esc_html__( 'Suppressed', 'rocinante' ) . '</span>'
+            : '<span class="roci-badge roci-badge--404">' . esc_html__( '404', 'rocinante' ) . '</span>';
     }
 
     protected function column_referrer( $item ) {
-        return '' === $item['referrer'] ? '—' : '<span style="word-break:break-all">' . esc_html( $item['referrer'] ) . '</span>';
+        if ( '' === $item['referrer'] ) {
+            return '<span aria-hidden="true">—</span><span class="screen-reader-text">' . esc_html__( 'None', 'rocinante' ) . '</span>';
+        }
+
+        $domain = roci_insights_domain( $item['referrer'] );
+
+        return '<span class="roci-trunc" title="' . esc_attr( $item['referrer'] ) . '">' . esc_html( '' !== $domain ? $domain : roci_insights_truncate( $item['referrer'], 40 ) ) . '</span>';
+    }
+
+    protected function column_hits( $item ) {
+        return esc_html( number_format_i18n( (int) $item['hits'] ) );
+    }
+
+    protected function column_first_seen( $item ) {
+        return self::when( $item['first_seen'] );
+    }
+
+    protected function column_last_seen( $item ) {
+        return self::when( $item['last_seen'] );
+    }
+
+    /**
+     * A site-time datetime as "3 hours ago", the exact date and time in title
+     * and inside a <time datetime>.
+     *
+     * @param  string $mysql Y-m-d H:i:s, site time.
+     * @return string
+     */
+    public static function when( $mysql ) {
+        $ts  = strtotime( (string) $mysql );
+        $now = strtotime( current_time( 'mysql' ) );
+
+        if ( ! $ts ) {
+            return '—';
+        }
+
+        $exact = date_i18n( get_option( 'date_format' ) . ' ' . get_option( 'time_format' ), $ts );
+        /* translators: %s: a time span, e.g. "3 hours". */
+        $ago   = $ts <= $now ? sprintf( __( '%s ago', 'rocinante' ), human_time_diff( $ts, $now ) ) : $exact;
+
+        return '<time datetime="' . esc_attr( gmdate( 'Y-m-d\TH:i:s', $ts ) ) . '" title="' . esc_attr( $exact ) . '">' . esc_html( $ago ) . '</time>';
     }
 
     protected function column_default( $item, $column ) {
@@ -240,7 +292,8 @@ class Roci_404_Log_Table extends WP_List_Table {
 
         $f = self::filters();
         ?>
-        <div class="alignleft actions">
+        <fieldset class="alignleft actions roci-ins-filters">
+            <legend class="screen-reader-text"><?php esc_html_e( 'Filter the log', 'rocinante' ); ?></legend>
             <label for="roci-404-from"><?php esc_html_e( 'From', 'rocinante' ); ?></label>
             <input type="date" id="roci-404-from" name="date_from" value="<?php echo esc_attr( $f['from'] ); ?>">
             <label for="roci-404-to"><?php esc_html_e( 'To', 'rocinante' ); ?></label>
@@ -252,7 +305,7 @@ class Roci_404_Log_Table extends WP_List_Table {
                 <option value="suppressed" <?php selected( $f['kind'], 'suppressed' ); ?>><?php esc_html_e( 'Suppressed archive', 'rocinante' ); ?></option>
             </select>
             <?php submit_button( __( 'Filter', 'rocinante' ), '', 'filter_action', false ); ?>
-        </div>
+        </fieldset>
         <?php
     }
 }

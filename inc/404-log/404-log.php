@@ -21,7 +21,9 @@
  *   this module is on, so a repeat 404 is not answered from the page cache
  *   and still reaches PHP to be counted. No per-site 404 TTL setting needed.
  *
- * SCREEN: Theme Settings → 404 log (manage_options) — one row per URL over a
+ * SCREEN: Insights → 404 log since 8.10.0 (the menu, summary cards and styles
+ * are inc/insights/insights.php's; the old Theme Settings slug roci-404-log
+ * redirects there), for roci_insights_capability() — one row per URL over a
  * date range (default the last 7 days), filters, sorting, bulk delete
  * (inc/404-log/class-roci-404-log-table.php).
  *
@@ -41,8 +43,8 @@
  * An event left scheduled is harmless (no handler is hooked), just untidy.
  *
  * File:    inc/404-log/404-log.php
- * Version: 1.0.0
- * Updated: 2026-11-18
+ * Version: 1.1.0
+ * Updated: 2026-11-19
  *
  * @package ElRocinante
  */
@@ -273,35 +275,15 @@ add_action( 'roci_404_log_prune', 'roci_404_log_prune' );
 
 
 // ============================================================
-// ADMIN SCREEN
+// ADMIN SCREEN — Insights → 404 log (8.10.0; the menu is insights.php's)
 // ============================================================
-
-/**
- * roci_404_log_menu()
- *
- * Theme Settings → 404 log. The bulk delete runs on the screen's load hook,
- * before any output, then redirects.
- */
-function roci_404_log_menu() {
-    $hook = add_submenu_page(
-        'roci-theme-settings',
-        __( '404 log', 'rocinante' ),
-        __( '404 log', 'rocinante' ),
-        'manage_options',
-        'roci-404-log',
-        'roci_404_log_screen'
-    );
-
-    if ( $hook ) {
-        add_action( 'load-' . $hook, 'roci_404_log_load' );
-    }
-}
-add_action( 'admin_menu', 'roci_404_log_menu', 12 );
 
 /**
  * roci_404_log_load()
  *
- * Loads the list table class and handles "Delete" (nonce + capability).
+ * On the screen's load hook (registered by roci_insights_menu()): loads the
+ * list table class and handles "Delete" (nonce + capability), then
+ * redirects.
  */
 function roci_404_log_load() {
     require_once get_template_directory() . '/inc/404-log/class-roci-404-log-table.php';
@@ -315,13 +297,13 @@ function roci_404_log_load() {
 
     check_admin_referer( 'bulk-roci_404_urls' );
 
-    if ( ! current_user_can( 'manage_options' ) ) {
+    if ( ! current_user_can( roci_insights_capability() ) ) {
         wp_die( esc_html__( 'You do not have permission to do that.', 'rocinante' ), 403 );
     }
 
     $deleted = $table->delete_hashes( isset( $_REQUEST['url_hash'] ) ? (array) wp_unslash( $_REQUEST['url_hash'] ) : array() ); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput -- validated in delete_hashes().
 
-    $back = remove_query_arg( array( 'action', 'action2', 'url_hash', '_wpnonce', '_wp_http_referer', 'deleted' ), wp_get_referer() ? wp_get_referer() : admin_url( 'admin.php?page=roci-404-log' ) );
+    $back = remove_query_arg( array( 'action', 'action2', 'url_hash', '_wpnonce', '_wp_http_referer', 'deleted' ), wp_get_referer() ? wp_get_referer() : roci_insights_404_url() );
 
     wp_safe_redirect( add_query_arg( 'deleted', (int) $deleted, $back ) );
     exit;
@@ -330,17 +312,21 @@ function roci_404_log_load() {
 /**
  * roci_404_log_screen()
  *
- * The screen: filters, the table, the retention note.
+ * The screen: summary cards for the chosen dates (hits, unique URLs,
+ * suppressed, top referrer domain), the filter bar, the table, the
+ * retention note.
  */
 function roci_404_log_screen() {
-    if ( ! current_user_can( 'manage_options' ) ) {
+    if ( ! current_user_can( roci_insights_capability() ) ) {
         return;
     }
+    roci_insights_styles();
 
     $table = new Roci_404_Log_Table();
     $table->prepare_items();
+    $f     = Roci_404_Log_Table::filters();
     ?>
-    <div class="wrap">
+    <div class="wrap roci-ins">
         <h1><?php esc_html_e( '404 log', 'rocinante' ); ?></h1>
         <?php if ( isset( $_GET['deleted'] ) ) : // phpcs:ignore WordPress.Security.NonceVerification ?>
             <div class="notice notice-success is-dismissible"><p>
@@ -351,8 +337,10 @@ function roci_404_log_screen() {
             </p></div>
         <?php endif; ?>
         <p><?php echo esc_html( sprintf( /* translators: %d: days. */ __( 'Missing URLs visitors requested, one row per URL for the dates chosen. Logged-in administrators are not counted. Rows older than %d days are removed automatically.', 'rocinante' ), max( 1, (int) apply_filters( 'roci_404_log_retention_days', 90 ) ) ) ); ?></p>
+        <h2 class="screen-reader-text"><?php esc_html_e( 'Summary for the dates chosen', 'rocinante' ); ?></h2>
+        <?php echo roci_insights_404_cards( roci_insights_404_summary( $f['from'], $f['to'] ), true ); // Escaped in the builder. ?>
         <form method="get">
-            <input type="hidden" name="page" value="roci-404-log">
+            <input type="hidden" name="page" value="roci-insights-404-log">
             <?php $table->display(); ?>
         </form>
     </div>
