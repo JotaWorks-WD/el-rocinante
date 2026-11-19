@@ -15,8 +15,14 @@
  *      the state is never colour-only, plus one "how to fix" line when it
  *      fails. Nothing here is submitted.
  *
+ * 1.1.0 (El Rocinante 8.9.1): "Install roci-standby" and "Install / Update
+ * drop-in" buttons on their rows (nonce'd admin-post.php links; the panel
+ * sits inside the settings form, so no nested form), the result notice after
+ * the redirect, and one note instead of the buttons when files cannot be
+ * changed from here (DISALLOW_FILE_MODS, or FTP credentials needed).
+ *
  * File:    inc/theme-settings/tabs/tab-maintenance.php
- * Version: 1.0.0
+ * Version: 1.1.0
  * Updated: 2026-11-19
  *
  * @package ElRocinante
@@ -58,7 +64,22 @@ $roci_states = array(
 </table>
 
 <h2 class="roci-section-title" id="roci-standby-status"><?php esc_html_e( 'Standby status', 'rocinante' ); ?></h2>
-<p class="roci-note"><?php esc_html_e( 'The safety net behind maintenance mode and crashes. Read-only; every row should say OK.', 'rocinante' ); ?></p>
+<?php
+// 1.1.0 (8.9.1): the result of an install button, kept for one redirect.
+$roci_notice = roci_standby_notice_take();
+if ( $roci_notice ) :
+    ?>
+    <div class="notice notice-<?php echo 'error' === $roci_notice['type'] ? 'error' : 'success'; ?> inline"><p><?php echo esc_html( $roci_notice['message'] ); ?></p></div>
+<?php endif; ?>
+<p class="roci-note"><?php esc_html_e( 'The safety net behind maintenance mode and crashes. Every row should say OK.', 'rocinante' ); ?></p>
+<?php
+$roci_rows     = roci_standby_status();
+$roci_can_fix  = roci_standby_can_modify_files();
+$roci_has_btns = (bool) array_filter( wp_list_pluck( $roci_rows, 'action' ) );
+if ( $roci_has_btns && is_wp_error( $roci_can_fix ) ) :
+    ?>
+    <p class="roci-note"><?php echo esc_html( $roci_can_fix->get_error_message() . ' ' . __( 'One-click install is not available here, so follow the steps below by hand.', 'rocinante' ) ); ?></p>
+<?php endif; ?>
 <style>
     .roci-standby-status td .dashicons { vertical-align: text-bottom; margin-right: 4px; }
     .roci-standby-status .roci-swatches { display: flex; flex-wrap: wrap; gap: 12px; margin: 8px 0 0; padding: 0; list-style: none; }
@@ -67,7 +88,7 @@ $roci_states = array(
 </style>
 <table class="widefat striped roci-standby-status">
     <tbody>
-    <?php foreach ( roci_standby_status() as $roci_row ) : $roci_state = isset( $roci_states[ $roci_row['state'] ] ) ? $roci_states[ $roci_row['state'] ] : $roci_states['missing']; ?>
+    <?php foreach ( $roci_rows as $roci_row ) : $roci_state = isset( $roci_states[ $roci_row['state'] ] ) ? $roci_states[ $roci_row['state'] ] : $roci_states['missing']; ?>
         <tr>
             <th scope="row"><?php echo esc_html( $roci_row['label'] ); ?></th>
             <td>
@@ -75,6 +96,9 @@ $roci_states = array(
                 <?php echo esc_html( $roci_row['detail'] ); ?>
                 <?php if ( '' !== $roci_row['fix'] ) : ?>
                     <p class="roci-note"><?php echo esc_html( $roci_row['fix'] ); ?></p>
+                <?php endif; ?>
+                <?php if ( ! empty( $roci_row['action'] ) && true === $roci_can_fix ) : ?>
+                    <p><a class="button" href="<?php echo esc_url( roci_standby_action_url( $roci_row['action'] ) ); ?>"><?php echo esc_html( $roci_row['button'] ); ?></a></p>
                 <?php endif; ?>
                 <?php if ( ! empty( $roci_row['swatches'] ) ) : ?>
                     <ul class="roci-swatches">

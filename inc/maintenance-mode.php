@@ -55,8 +55,17 @@
  * read-only "Standby status" rows (roci_standby_status()). The fallback page's
  * logo takes the snapshot's logo_w / logo_h.
  *
+ * 1.3.0 (El Rocinante 8.9.1): the status panel's one-click buttons —
+ * "Install roci-standby" (core Theme_Upgrader, GitHub main.zip renamed to
+ * roci-standby for this install only, never activated) and "Install / Update
+ * drop-in" (WP_Filesystem copy via a temp file, Version read back) — on
+ * admin-post, manage_options + nonce, result notice after the redirect;
+ * hidden with a note under DISALLOW_FILE_MODS or a non-direct file system.
+ * The Default theme row tells "not in wp-config.php" (roci_wp_config_defines())
+ * from "set to something else".
+ *
  * File:    inc/maintenance-mode.php
- * Version: 1.2.0
+ * Version: 1.3.0
  * Updated: 2026-11-19
  *
  * @package ElRocinante
@@ -267,14 +276,27 @@ function roci_standby_status() {
         /* translators: %s: version number. */
         'detail' => $has ? sprintf( __( 'Installed, version %s.', 'rocinante' ), $ver ) : __( 'Not installed.', 'rocinante' ),
         'fix'    => $has ? '' : __( 'Install roci-standby with Git Updater (don\'t activate it).', 'rocinante' ),
+        'action' => $has ? '' : 'roci_install_standby',
+        'button' => $has ? '' : __( 'Install roci-standby', 'rocinante' ),
     );
 
-    $default = defined( 'WP_DEFAULT_THEME' ) ? (string) WP_DEFAULT_THEME : '';
-    $rows[]  = array(
+    // 8.9.1: core always defines WP_DEFAULT_THEME (its own default when
+    // wp-config.php does not), so "not set" is read from wp-config.php itself.
+    $default   = defined( 'WP_DEFAULT_THEME' ) ? (string) WP_DEFAULT_THEME : '';
+    $in_config = roci_wp_config_defines( 'WP_DEFAULT_THEME' );
+    if ( 'roci-standby' === $default ) {
+        /* translators: %s: the WP_DEFAULT_THEME value. */
+        $d_detail = sprintf( __( 'Set to %s.', 'rocinante' ), $default );
+    } elseif ( false === $in_config || '' === $default ) {
+        $d_detail = __( 'Not set (WordPress falls back to its built-in default).', 'rocinante' );
+    } else {
+        /* translators: %s: the WP_DEFAULT_THEME value. */
+        $d_detail = sprintf( __( 'Set to %s.', 'rocinante' ), $default );
+    }
+    $rows[] = array(
         'label'  => __( 'Default theme (WP_DEFAULT_THEME)', 'rocinante' ),
         'state'  => 'roci-standby' === $default ? 'ok' : 'missing',
-        /* translators: %s: the WP_DEFAULT_THEME value. */
-        'detail' => sprintf( __( 'Currently: %s.', 'rocinante' ), '' !== $default ? $default : __( 'not set', 'rocinante' ) ),
+        'detail' => $d_detail,
         'fix'    => 'roci-standby' === $default ? '' : __( 'Add define( \'WP_DEFAULT_THEME\', \'roci-standby\' ); to wp-config.php.', 'rocinante' ),
     );
 
@@ -291,6 +313,8 @@ function roci_standby_status() {
             /* translators: 1: the drop-in's version, 2: the theme's copy's version. */
             : sprintf( __( 'Version %1$s (theme copy: %2$s).', 'rocinante' ), '' !== $d_ver ? $d_ver : '?', '' !== $t_ver ? $t_ver : '?' ),
         'fix'    => 'ok' === $d_state ? '' : __( 'Copy php-error.php from the roci-standby theme folder into wp-content/.', 'rocinante' ),
+        'action' => ( 'ok' !== $d_state && $has ) ? 'roci_install_dropin' : '',
+        'button' => ( 'ok' !== $d_state && $has ) ? ( 'missing' === $d_state ? __( 'Install drop-in', 'rocinante' ) : __( 'Update drop-in', 'rocinante' ) ) : '',
     );
 
     $snap   = get_option( 'roci_brand_snapshot', false );
@@ -323,6 +347,298 @@ function roci_standby_status() {
 
     return $rows;
 }
+
+/**
+ * roci_wp_config_defines()
+ *
+ * Internal (8.9.1). Whether wp-config.php itself defines $name: its source
+ * with comments stripped (so a commented-out line does not count). Core's
+ * search order: ABSPATH, then one level up when that is not another install.
+ * null when the file cannot be read.
+ *
+ * @param  string $name
+ * @return bool|null
+ */
+function roci_wp_config_defines( $name ) {
+    $file = '';
+    if ( file_exists( ABSPATH . 'wp-config.php' ) ) {
+        $file = ABSPATH . 'wp-config.php';
+    } elseif ( file_exists( dirname( ABSPATH ) . '/wp-config.php' ) && ! file_exists( dirname( ABSPATH ) . '/wp-settings.php' ) ) {
+        $file = dirname( ABSPATH ) . '/wp-config.php';
+    }
+    if ( '' === $file || ! is_readable( $file ) ) {
+        return null;
+    }
+
+    $code = '';
+    foreach ( token_get_all( (string) file_get_contents( $file ) ) as $token ) {
+        if ( is_array( $token ) ) {
+            if ( in_array( $token[0], array( T_COMMENT, T_DOC_COMMENT ), true ) ) {
+                continue;
+            }
+            $code .= $token[1];
+        } else {
+            $code .= $token;
+        }
+    }
+
+    return (bool) preg_match( '/\bdefine\s*\(\s*[\'"]' . preg_quote( $name, '/' ) . '[\'"]/i', $code );
+}
+
+
+// ============================================================
+// ONE-CLICK INSTALLS (8.9.1) — the status panel's buttons
+// ============================================================
+
+/**
+ * roci_standby_zip_url()
+ *
+ * Internal. The roci-standby main-branch zip on GitHub (public repo).
+ *
+ * @return string
+ */
+function roci_standby_zip_url() {
+    return 'https://github.com/JotaWorks-WD/roci-standby/archive/refs/heads/main.zip';
+}
+
+/**
+ * roci_standby_can_modify_files()
+ *
+ * Internal. true when the buttons may run: file changes allowed
+ * (DISALLOW_FILE_MODS off, through core's wp_is_file_mod_allowed()) and
+ * WP_Filesystem would write directly (no FTP credentials). Else a WP_Error
+ * whose message the panel shows beside the manual steps.
+ *
+ * @return true|WP_Error
+ */
+function roci_standby_can_modify_files() {
+    $allowed = function_exists( 'wp_is_file_mod_allowed' ) ? wp_is_file_mod_allowed( 'roci_standby' ) : ! ( defined( 'DISALLOW_FILE_MODS' ) && DISALLOW_FILE_MODS );
+    if ( ! $allowed ) {
+        return new WP_Error( 'roci_file_mods', __( 'File changes are turned off on this site (DISALLOW_FILE_MODS).', 'rocinante' ) );
+    }
+    if ( ! function_exists( 'get_filesystem_method' ) ) {
+        require_once ABSPATH . 'wp-admin/includes/file.php';
+    }
+    if ( 'direct' !== get_filesystem_method( array(), WP_CONTENT_DIR ) ) {
+        return new WP_Error( 'roci_fs_credentials', __( 'This server needs FTP details for WordPress to change files.', 'rocinante' ) );
+    }
+    return true;
+}
+
+/**
+ * roci_standby_rename_source()
+ *
+ * Internal. upgrader_source_selection for OUR install only: the GitHub zip
+ * extracts as roci-standby-main, the theme must live in roci-standby. Any
+ * other upgrader ($upgrader_obj !== $own) gets $source back untouched.
+ *
+ * @param  string|WP_Error $source
+ * @param  string          $remote_source
+ * @param  object          $upgrader_obj
+ * @param  object          $own The Theme_Upgrader this install created.
+ * @return string|WP_Error
+ */
+function roci_standby_rename_source( $source, $remote_source, $upgrader_obj, $own ) {
+    if ( $upgrader_obj !== $own || is_wp_error( $source ) ) {
+        return $source;
+    }
+
+    global $wp_filesystem;
+    $want = trailingslashit( $remote_source ) . 'roci-standby/';
+
+    if ( trailingslashit( $source ) === $want ) {
+        return $source;
+    }
+    if ( ! $wp_filesystem || ! $wp_filesystem->move( untrailingslashit( $source ), untrailingslashit( $want ), true ) ) {
+        return new WP_Error( 'roci_standby_rename', __( 'Could not rename the downloaded folder to roci-standby.', 'rocinante' ) );
+    }
+    return $want;
+}
+
+/**
+ * roci_standby_install_theme()
+ *
+ * Internal. Installs roci-standby from roci_standby_zip_url() with core's
+ * Theme_Upgrader (renamed to roci-standby by roci_standby_rename_source(),
+ * hooked for this install only). NEVER activates it; Git Updater keeps it
+ * updated from then on (its GitHub Theme URI header). On any failure a
+ * roci-standby folder this call created is removed, so nothing half-done is
+ * left.
+ *
+ * @return true|WP_Error
+ */
+function roci_standby_install_theme() {
+    $can = roci_standby_can_modify_files();
+    if ( is_wp_error( $can ) ) {
+        return $can;
+    }
+    if ( wp_get_theme( 'roci-standby' )->exists() ) {
+        return new WP_Error( 'roci_standby_exists', __( 'roci-standby is already installed.', 'rocinante' ) );
+    }
+    if ( ! class_exists( 'Theme_Upgrader' ) ) {
+        require_once ABSPATH . 'wp-admin/includes/class-wp-upgrader.php';
+    }
+
+    $dest     = trailingslashit( get_theme_root() ) . 'roci-standby';
+    $skin     = new WP_Ajax_Upgrader_Skin();
+    $upgrader = new Theme_Upgrader( $skin );
+    $rename   = function ( $source, $remote_source, $upgrader_obj = null ) use ( $upgrader ) {
+        return roci_standby_rename_source( $source, $remote_source, $upgrader_obj, $upgrader );
+    };
+
+    add_filter( 'upgrader_source_selection', $rename, 10, 3 );
+    $result = $upgrader->install( roci_standby_zip_url() );
+    remove_filter( 'upgrader_source_selection', $rename, 10 );
+
+    if ( true !== $result ) {
+        global $wp_filesystem;
+        if ( $wp_filesystem && $wp_filesystem->is_dir( $dest ) ) {
+            $wp_filesystem->delete( $dest, true );
+        }
+        if ( is_wp_error( $result ) ) {
+            return $result;
+        }
+        $errors = method_exists( $skin, 'get_errors' ) ? $skin->get_errors() : null;
+        return ( $errors instanceof WP_Error && $errors->has_errors() ) ? $errors : new WP_Error( 'roci_standby_install', __( 'The install did not complete.', 'rocinante' ) );
+    }
+
+    if ( function_exists( 'wp_clean_themes_cache' ) ) {
+        wp_clean_themes_cache();
+    }
+    return true;
+}
+
+/**
+ * roci_standby_install_dropin()
+ *
+ * Internal. Copies themes/roci-standby/php-error.php to
+ * WP_CONTENT_DIR/php-error.php with WP_Filesystem: first to a temporary file
+ * beside it (checked), then moved over the old one, so a failed copy leaves
+ * the old drop-in in place. Verified by reading the Version header back.
+ *
+ * @return true|WP_Error True, or the error.
+ */
+function roci_standby_install_dropin() {
+    $can = roci_standby_can_modify_files();
+    if ( is_wp_error( $can ) ) {
+        return $can;
+    }
+
+    $theme = wp_get_theme( 'roci-standby' );
+    if ( ! $theme->exists() ) {
+        return new WP_Error( 'roci_standby_missing', __( 'Install roci-standby first.', 'rocinante' ) );
+    }
+
+    $src = trailingslashit( $theme->get_stylesheet_directory() ) . 'php-error.php';
+    if ( ! is_readable( $src ) ) {
+        return new WP_Error( 'roci_dropin_source', __( 'The roci-standby theme has no php-error.php.', 'rocinante' ) );
+    }
+    $want = (string) get_file_data( $src, array( 'Version' => 'Version' ) )['Version'];
+
+    if ( ! function_exists( 'WP_Filesystem' ) ) {
+        require_once ABSPATH . 'wp-admin/includes/file.php';
+    }
+    if ( ! WP_Filesystem() ) {
+        return new WP_Error( 'roci_fs', __( 'Could not access the file system.', 'rocinante' ) );
+    }
+
+    global $wp_filesystem;
+    $dest = trailingslashit( WP_CONTENT_DIR ) . 'php-error.php';
+    $tmp  = $dest . '.roci-new';
+
+    if ( ! $wp_filesystem->copy( $src, $tmp, true, defined( 'FS_CHMOD_FILE' ) ? FS_CHMOD_FILE : 0644 ) ) {
+        $wp_filesystem->delete( $tmp );
+        return new WP_Error( 'roci_dropin_copy', __( 'Could not copy php-error.php into wp-content/. The old file is unchanged.', 'rocinante' ) );
+    }
+    if ( (string) get_file_data( $tmp, array( 'Version' => 'Version' ) )['Version'] !== $want ) {
+        $wp_filesystem->delete( $tmp );
+        return new WP_Error( 'roci_dropin_verify', __( 'The copied file did not match the theme\'s. The old file is unchanged.', 'rocinante' ) );
+    }
+    if ( ! $wp_filesystem->move( $tmp, $dest, true ) ) {
+        $wp_filesystem->delete( $tmp );
+        return new WP_Error( 'roci_dropin_move', __( 'Could not replace wp-content/php-error.php. The old file is unchanged.', 'rocinante' ) );
+    }
+
+    clearstatcache( true, $dest );
+    if ( function_exists( 'opcache_invalidate' ) ) {
+        @opcache_invalidate( $dest, true ); // phpcs:ignore WordPress.PHP.NoSilencedErrors -- optional.
+    }
+    $got = (string) get_file_data( $dest, array( 'Version' => 'Version' ) )['Version'];
+    if ( $got !== $want ) {
+        /* translators: 1: version read back, 2: expected version. */
+        return new WP_Error( 'roci_dropin_readback', sprintf( __( 'wp-content/php-error.php reads version %1$s, expected %2$s.', 'rocinante' ), $got, $want ) );
+    }
+    return true;
+}
+
+/**
+ * roci_standby_notice_set() / roci_standby_notice_take()
+ *
+ * Internal. The result notice, kept per user for one redirect (60s).
+ */
+function roci_standby_notice_set( $type, $message ) {
+    set_transient( 'roci_standby_notice_' . get_current_user_id(), array( 'type' => $type, 'message' => (string) $message ), 60 );
+}
+function roci_standby_notice_take() {
+    $key    = 'roci_standby_notice_' . get_current_user_id();
+    $notice = get_transient( $key );
+    if ( $notice ) {
+        delete_transient( $key );
+    }
+    return is_array( $notice ) ? $notice : null;
+}
+
+/**
+ * roci_standby_action_url()
+ *
+ * Internal. The nonce'd admin-post.php link for a button.
+ *
+ * @param  string $action roci_install_standby | roci_install_dropin.
+ * @return string
+ */
+function roci_standby_action_url( $action ) {
+    return wp_nonce_url( admin_url( 'admin-post.php?action=' . $action ), $action );
+}
+
+/**
+ * roci_standby_install_handler() / roci_standby_dropin_handler()
+ *
+ * admin-post handlers: manage_options only, nonce-checked, then the result
+ * notice and a redirect back to the Maintenance tab.
+ */
+function roci_standby_install_handler() {
+    if ( ! current_user_can( 'manage_options' ) ) {
+        wp_die( esc_html__( 'Sorry, you are not allowed to do that.', 'rocinante' ), 403 );
+    }
+    check_admin_referer( 'roci_install_standby' );
+
+    $result = roci_standby_install_theme();
+    if ( is_wp_error( $result ) ) {
+        roci_standby_notice_set( 'error', $result->get_error_message() );
+    } else {
+        roci_standby_notice_set( 'success', __( 'roci-standby is installed (not activated). Git Updater keeps it updated from now on.', 'rocinante' ) );
+    }
+    wp_safe_redirect( roci_maintenance_settings_url() );
+    exit;
+}
+add_action( 'admin_post_roci_install_standby', 'roci_standby_install_handler' );
+
+function roci_standby_dropin_handler() {
+    if ( ! current_user_can( 'manage_options' ) ) {
+        wp_die( esc_html__( 'Sorry, you are not allowed to do that.', 'rocinante' ), 403 );
+    }
+    check_admin_referer( 'roci_install_dropin' );
+
+    $result = roci_standby_install_dropin();
+    if ( is_wp_error( $result ) ) {
+        roci_standby_notice_set( 'error', $result->get_error_message() );
+    } else {
+        roci_standby_notice_set( 'success', __( 'wp-content/php-error.php is in place and matches the roci-standby theme.', 'rocinante' ) );
+    }
+    wp_safe_redirect( roci_maintenance_settings_url() );
+    exit;
+}
+add_action( 'admin_post_roci_install_dropin', 'roci_standby_dropin_handler' );
 
 
 // ============================================================

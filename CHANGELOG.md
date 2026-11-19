@@ -4,6 +4,40 @@ All notable changes to the El Rocinante parent theme are recorded here. Entries 
 
 ---
 
+## [8.9.1] — 2026-11-19
+
+**FEAT: the Standby status panel can fix its two most common gaps itself, installing roci-standby and copying its fatal-error page into `wp-content/` with one click each. The Default theme row now says plainly when wp-config doesn't set it.**
+
+**In plain English (2026-11-19):** The Maintenance tab can now install the safety-net theme and its error page for you with one click.
+
+PATCH. Admin only; no front-end change.
+
+### The buttons (`inc/maintenance-mode.php` 1.3.0, `inc/theme-settings/tabs/tab-maintenance.php` 1.1.0)
+
+- **How they work:** nonce'd `admin-post.php` links (the panel sits inside the settings form, so no nested form), for `manage_options` only, with a result notice after the redirect back to the tab.
+- **"Install roci-standby"** (theme row Missing):
+  - Core's `Theme_Upgrader` installs `https://github.com/JotaWorks-WD/roci-standby/archive/refs/heads/main.zip`.
+  - The zip extracts as `roci-standby-main`. `roci_standby_rename_source()`, on `upgrader_source_selection`, renames it to `roci-standby` for **this install's upgrader only** (any other install is untouched) and is removed right after.
+  - **Never activated.** Git Updater takes over updates from its `GitHub Theme URI` header.
+  - A failure shows the `WP_Error` message and removes any `roci-standby` folder it created.
+- **"Install drop-in" / "Update drop-in"** (drop-in row Missing / Out of date, and the theme installed):
+  - `WP_Filesystem` copies the theme's `php-error.php` to a temporary file in `wp-content/`, checks its `Version`, then moves it over `php-error.php`, so a failed copy leaves the old drop-in.
+  - The `Version` header is read back to verify.
+- **When file changes aren't possible:** the buttons are replaced by one note, and the manual fix lines stay. That happens when `wp_is_file_mod_allowed()` is false (`DISALLOW_FILE_MODS`) or the file system isn't `direct` (FTP credentials needed). The handlers refuse in the same cases.
+
+### The Default theme row
+
+- Core always defines `WP_DEFAULT_THEME`, using its own default when wp-config.php doesn't. So the row now reads `wp-config.php` itself, with comments stripped (`roci_wp_config_defines()`).
+- **Not defined there:** "Not set (WordPress falls back to its built-in default)".
+- **Defined as something else:** "Set to {value}". The fix line is unchanged.
+
+### Docs (the wrapper, not in this repo)
+
+- **New `.runbook/wp-config-reference.md`:** every constant the family reads or recommends. It has a table (constant, purpose, required / recommended / optional, which sites, the exact line), a paste-ready block, the staging / live differences, and where to paste it.
+- **CONVENTIONS:** the buttons, the row wording, and two onboarding items (12 extended, 13 new, pointing to the reference).
+
+---
+
 ## [8.9.0] — 2026-11-19
 
 **FEAT: Maintenance mode moves to its own Theme Settings tab, with a read-only "Standby status" panel that shows whether the site's safety net (roci-standby, `WP_DEFAULT_THEME`, the fatal-error drop-in, the brand snapshot) is in place.**
