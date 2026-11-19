@@ -4,6 +4,42 @@ All notable changes to the El Rocinante parent theme are recorded here. Entries 
 
 ---
 
+## [8.11.0] — 2026-11-19
+
+**FEAT: two schema links. Every BlogPosting now says which site it belongs to (`isPartOf` → the WebSite node), and the site-level business node points to its map (`hasMap`).**
+
+**In plain English (2026-11-19):** Search engines now see that every blog post belongs to your site, and your business listing points to your map.
+
+MINOR. JSON-LD only; no visible change. No new filter or action (the catalogue count is unchanged).
+
+### BlogPosting `isPartOf` (`inc/schema/article-schema.php` 1.2.0, `header.php` 2.8.0)
+
+- `"isPartOf": { "@id": "https://example.com/#website" }`, the last key of the BlogPosting, set **before** `roci_article_schema`, so a child can still change or remove it.
+- **Only when the WebSite node actually printed.** `header.php` records the WebSite node's `@id` right after `roci_website_schema` runs, through the new internal `roci_website_schema_id()`; the article builder reads it.
+  - `roci_website_schema` returning empty, or a node without a string `@id`: no `isPartOf`, and the article JSON is byte-identical to 8.10.0.
+  - A filter that changed the WebSite `@id`: `isPartOf` follows it.
+  - **The edge:** `roci_get_article_schema()` called before the WebSite block has run (a child asking before `wp_head`) gets no `isPartOf`. Unknown is treated as absent, never a reference that might not resolve.
+
+### Business `hasMap` (`header.php` 2.8.0)
+
+- `roci_maps_link_url()` (Business → Open in Google Maps link) when set, else `roci_maps_embed_url()` (Business → Map embed URL), else omitted. Placed right after `geo`; added before `roci_schema_data`, which can change or remove it.
+- **A Place property.** Every built-in type is a Place subtype: `["LocalBusiness","Organization"]`, `["LodgingBusiness","Organization"]`, `["Restaurant","Organization"]` and `["TouristAttraction","LocalBusiness"]`. A child type mapped to a lone `Organization` never gets `hasMap`; any other non-Place child type unsets it in `roci_schema_data`, as with `openingHoursSpecification`.
+- **A site with neither maps field set prints byte-identical business JSON.**
+
+### Verified
+
+A side-by-side render of HEAD (8.10.0) and this release, running `header.php`'s real schema section and `article-schema.php`, 22 checks:
+- The post's JSON-LD differs only by `isPartOf`. The Person node is unchanged.
+- The business node differs only by `hasMap` when a maps value exists, and is byte-identical without one (including a rejected `javascript:` link or a non-Google embed).
+
+### Follow-ups
+
+- **Coco ATV Tours:** its `maps_url` currently holds an embed address. That address is an http(s) URL, so it passes `roci_maps_link_url()` and becomes Coco's `hasMap` until Coco's run-through moves it to `maps_embed_url` and fills a proper share link. Valid, but weaker than a place link.
+
+### Docs (wrapper, not committed)
+
+CONVENTIONS: schema outputs block 2 (`hasMap`), block 4 (`isPartOf` and its edge), and the `roci_schema_data` / `roci_article_schema` catalogue rows.
+
 ## [8.10.0] — 2026-11-19
 
 **FEAT: a top-level Insights menu brings the visitor stats and the 404 log together: an Overview, a full Visitors page (7 / 30 / 90 days), and the 404 log moved out of Theme Settings with a clearer look. Two redesigned dashboard widgets: "Visitors" and a new "404s this week".**

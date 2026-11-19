@@ -13,7 +13,10 @@
  * its sameAs comes from roci_social_links() (v2.7.0) and skips the keys
  * apply_filters('roci_schema_sameas_exclude') lists, and
  * its openingHoursSpecification comes from roci_get_business_hours(), filterable
- * via apply_filters('roci_business_hours') (inc/schema/business-hours.php).
+ * via apply_filters('roci_business_hours') (inc/schema/business-hours.php), and
+ * its hasMap (v2.8.0) from roci_maps_link_url(), else roci_maps_embed_url().
+ * The BlogPosting's isPartOf (v2.8.0) references the WebSite node's @id, which
+ * this file records with roci_website_schema_id() once that node is filtered.
  * hreflang alternates are filterable via apply_filters('roci_hreflang_alternates')
  * for children that opt into multilingual output with add_theme_support('roci-i18n').
  *
@@ -28,7 +31,7 @@
  * Robots (v2.6.0) come from roci_effective_robots() (inc/metabox/metabox-seo-fields.php).
  *
  * File:    header.php
- * Version: 2.7.1
+ * Version: 2.8.0
  * Updated: 2026-11-19
  *
  * @package ElRocinante
@@ -650,6 +653,27 @@ $roci_article_times = $roci_is_article ? roci_article_times( get_queried_object_
             $roci_local_schema['geo'] = [ '@type' => 'GeoCoordinates' ] + $roci_geo_parts;
         }
 
+        /*
+         * hasMap (v2.8.0, El Rocinante 8.11.0) — Business → "Open in Google
+         * Maps" link (roci_maps_link_url()), else the Map embed URL
+         * (roci_maps_embed_url()), else the key is omitted. Both helpers
+         * already reject anything that is not an http(s) / Maps-embed URL.
+         *
+         * A schema.org Place property. Every built-in type is a Place subtype
+         * (LocalBusiness, LodgingBusiness, Restaurant, and TouristAttraction
+         * paired with LocalBusiness); the one non-Place @type this file knows,
+         * a lone "Organization" from a child's roci_business_types entry, is
+         * skipped. Any other non-Place child type unsets it in
+         * roci_schema_data, as with openingHoursSpecification.
+         */
+        $roci_has_map = roci_maps_link_url();
+        if ( '' === $roci_has_map ) {
+            $roci_has_map = roci_maps_embed_url();
+        }
+        if ( '' !== $roci_has_map && 'Organization' !== $roci_schema_type ) {
+            $roci_local_schema['hasMap'] = $roci_has_map;
+        }
+
         // Only emit description when set (blank = key omitted, as above).
         if ( '' !== $roci_biz_description ) {
             $roci_local_schema['description'] = $roci_biz_description;
@@ -811,6 +835,15 @@ $roci_article_times = $roci_is_article ? roci_article_times( get_queried_object_
     }
 
     $roci_website_schema = apply_filters( 'roci_website_schema', $roci_website_schema );
+
+    // Recorded for the BlogPosting's isPartOf (v2.8.0, El Rocinante 8.11.0):
+    // the @id this node prints with, or '' when it prints nothing or has no
+    // string @id. The article block below reads it through the same function.
+    roci_website_schema_id(
+        ( is_array( $roci_website_schema ) && ! empty( $roci_website_schema ) && isset( $roci_website_schema['@id'] ) && is_string( $roci_website_schema['@id'] ) )
+            ? $roci_website_schema['@id']
+            : ''
+    );
     ?>
 <?php if ( is_array( $roci_website_schema ) && ! empty( $roci_website_schema ) ) : ?>
 <!-- Schema JSON-LD — WebSite -->
@@ -837,7 +870,8 @@ $roci_article_times = $roci_is_article ? roci_article_times( get_queried_object_
     // reference to the Person node printed beside it in one @graph, 8.4.0),
     // publisher (a reference to the site-level
     // #organization node when Business → name is set, else an Organization),
-    // image (the featured image) and mainEntityOfPage (this canonical).
+    // image (the featured image), mainEntityOfPage (this canonical) and, since
+    // v2.8.0, isPartOf (the WebSite node above, only when it printed).
     // roci_article_schema has the last word; false / array() prints nothing.
     //
     // Skipped when the post's own Schema JSON-LD field already declares an

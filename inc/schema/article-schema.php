@@ -31,6 +31,9 @@
  *   image             the featured image (ImageObject, url + width + height),
  *                     omitted when the post has none
  *   mainEntityOfPage  a WebPage whose @id is the page's canonical
+ *   isPartOf          { "@id" } — the WebSite node (8.11.0), home/#website by
+ *                     default; only when header.php printed that node on this
+ *                     request (roci_website_schema_id()), so it always resolves
  *
  * Filters:
  *   roci_article_schema_post_types( array( 'post' ) ) — which post types get it.
@@ -50,8 +53,8 @@
  * roci_schema_has_article_type().
  *
  * File:    inc/schema/article-schema.php
- * Version: 1.1.0
- * Updated: 2026-11-18
+ * Version: 1.2.0
+ * Updated: 2026-11-19
  *
  * @package ElRocinante
  */
@@ -104,6 +107,34 @@ function roci_article_times( $post_id ) {
         'published' => is_string( $published ) ? $published : '',
         'modified'  => is_string( $modified ) ? $modified : '',
     );
+}
+
+
+/**
+ * roci_website_schema_id()
+ *
+ * Internal (8.11.0). The @id of the WebSite node header.php printed on this
+ * request, for the BlogPosting's isPartOf. header.php records it right after
+ * roci_website_schema runs: the node's @id when the node printed with a
+ * string @id, '' when the filter emptied it (nothing printed) or dropped the
+ * @id. Read with no argument.
+ *
+ * null = not known yet: the WebSite block has not run on this request (a
+ * child calling roci_get_article_schema() before wp_head, or outside a page
+ * request). isPartOf is then left out rather than pointing at a node that
+ * may never print.
+ *
+ * @param  string|null $set The printed node's @id ('' for none); null to read.
+ * @return string|null
+ */
+function roci_website_schema_id( $set = null ) {
+    static $id = null;
+
+    if ( null !== $set ) {
+        $id = (string) $set;
+    }
+
+    return $id;
 }
 
 
@@ -251,6 +282,17 @@ function roci_article_schema_parts( $post_id, $canonical = '' ) {
             '@type' => 'WebPage',
             '@id'   => $page_url,
         );
+    }
+
+    // isPartOf (8.11.0) — the post belongs to the site: a reference to the
+    // WebSite node header.php printed on this page, by the @id it printed
+    // with (home/#website unless roci_website_schema changed it). Only when
+    // that node DID print, so the reference always resolves; added before
+    // roci_article_schema, so a child may still change or remove it.
+    $website_id = roci_website_schema_id();
+
+    if ( is_string( $website_id ) && '' !== $website_id ) {
+        $data['isPartOf'] = array( '@id' => $website_id );
     }
 
     $data = apply_filters( 'roci_article_schema', $data, $post_id );
