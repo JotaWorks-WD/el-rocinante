@@ -12,9 +12,12 @@
  *                  roci-standby page) and roci_brand_snapshot_sync() (saves it
  *                  to the option roci_brand_snapshot on admin_init and
  *                  after_switch_theme, only when it changed).
+ * 1.8.0 (8.9.0) — roci_maintenance (the Maintenance tab's option, sanitizer
+ *                  roci_sanitize_maintenance()); the snapshot gains logo_w /
+ *                  logo_h.
  *
  * File:    inc/theme-settings/settings-register.php
- * Version: 1.7.0
+ * Version: 1.8.0
  * Updated: 2026-11-19
  *
  * @package ElRocinante
@@ -36,6 +39,7 @@ function roci_register_settings() {
     register_setting( 'roci_integrations_group', 'roci_integrations', array( 'sanitize_callback' => 'roci_sanitize_integrations' ) );
     register_setting( 'roci_footer_group',       'roci_footer',       array( 'sanitize_callback' => 'roci_sanitize_footer'       ) );
     register_setting( 'roci_mail_group',         'roci_mail',         array( 'sanitize_callback' => 'roci_sanitize_mail'         ) );
+    register_setting( 'roci_maintenance_group',  'roci_maintenance',  array( 'sanitize_callback' => 'roci_sanitize_maintenance'  ) );
 
     // Site Identity — registers WP core options directly
     register_setting( 'roci_identity_group', 'blogname',        array( 'sanitize_callback' => 'sanitize_text_field' ) );
@@ -271,6 +275,8 @@ function roci_brand_palette() {
  *                                         which the family uses decoratively)
  *   accent_text ← color-white            (the label on an action fill)
  *   logo_url    ← the custom logo, full size (an SVG's file URL), else ''
+ *   logo_w/_h   ← its intrinsic width / height (ints, 8.9.0); omitted for an
+ *                 SVG or an unknown size
  *   name        ← Business → name, else the site name
  *
  * Colours are kept only as 6-digit hex ('#rrggbb', lower case); anything
@@ -312,9 +318,14 @@ function roci_brand_snapshot() {
     $logo    = '';
     $logo_id = (int) get_theme_mod( 'custom_logo', 0 );
     if ( $logo_id > 0 ) {
-        $logo = wp_get_attachment_image_url( $logo_id, 'full' );
-        if ( ! $logo ) {
-            $logo = wp_get_attachment_url( $logo_id );
+        $src  = wp_get_attachment_image_src( $logo_id, 'full' );
+        $logo = is_array( $src ) && ! empty( $src[0] ) ? $src[0] : wp_get_attachment_url( $logo_id );
+        // 1.8.0: the intrinsic size, so the standby <img> reserves its box.
+        // Not for an SVG (core reports no real size) or an unknown size.
+        $is_svg = function_exists( 'roci_is_svg_attachment' ) ? roci_is_svg_attachment( $logo_id ) : ( 'image/svg+xml' === get_post_mime_type( $logo_id ) );
+        if ( ! $is_svg && is_array( $src ) && (int) $src[1] > 0 && (int) $src[2] > 0 ) {
+            $snapshot['logo_w'] = (int) $src[1];
+            $snapshot['logo_h'] = (int) $src[2];
         }
     }
     $snapshot['logo_url'] = (string) $logo;
@@ -338,6 +349,10 @@ function roci_brand_snapshot() {
     }
     $logo              = isset( $snapshot['logo_url'] ) ? trim( (string) $snapshot['logo_url'] ) : '';
     $clean['logo_url'] = preg_match( '#^https?://#i', $logo ) ? $logo : '';
+    if ( '' !== $clean['logo_url'] && isset( $snapshot['logo_w'], $snapshot['logo_h'] ) && (int) $snapshot['logo_w'] > 0 && (int) $snapshot['logo_h'] > 0 ) {
+        $clean['logo_w'] = (int) $snapshot['logo_w'];
+        $clean['logo_h'] = (int) $snapshot['logo_h'];
+    }
     $clean['name']     = isset( $snapshot['name'] ) ? trim( wp_strip_all_tags( (string) $snapshot['name'] ) ) : '';
 
     return $clean;

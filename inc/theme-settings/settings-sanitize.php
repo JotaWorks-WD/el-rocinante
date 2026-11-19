@@ -10,9 +10,12 @@
  * 1.15.0 (8.6.0) — roci_sanitize_business() keeps the new key maps_embed_url
  *                  (a Google embed src only, through
  *                  roci_sanitize_maps_embed_url()); every other key unchanged.
+ * 1.16.0 (8.9.0) — roci_sanitize_seo() drops maintenance_enabled /
+ *                  maintenance_message (moved); new roci_sanitize_maintenance()
+ *                  for the option roci_maintenance (enabled, message).
  *
  * File:    inc/theme-settings/settings-sanitize.php
- * Version: 1.15.0
+ * Version: 1.16.0
  * Updated: 2026-11-19
  *
  * @package ElRocinante
@@ -342,17 +345,29 @@ function roci_sanitize_social( $input ) {
 function roci_sanitize_seo( $input ) {
     // REBUILT FROM SCRATCH: a key the SEO tab renders but this list omits is
     // wiped on the next save. The two llms.txt keys (1.13.0, El Rocinante
-    // 8.4.0) and the two Maintenance mode keys (1.14.0, 8.5.0) are listed for
-    // that reason. sanitize_textarea_field() keeps the override's line breaks;
-    // the maintenance message is one line, so sanitize_text_field().
+    // 8.4.0) are listed for that reason. sanitize_textarea_field() keeps the
+    // override's line breaks. The Maintenance mode keys (1.14.0) left this
+    // option at 1.16.0 (8.9.0): they are roci_maintenance, below.
     return array(
         'default_meta_description' => isset( $input['default_meta_description'] ) ? sanitize_textarea_field( $input['default_meta_description'] ) : '',
         'default_og_image'         => isset( $input['default_og_image'] )         ? esc_url_raw( $input['default_og_image'] )                     : '',
         'seo_preview'              => isset( $input['seo_preview'] )              ? '1'                                                           : '0',
         'llms_enabled'             => ! empty( $input['llms_enabled'] )           ? '1'                                                           : '',
         'llms_override'            => isset( $input['llms_override'] )            ? sanitize_textarea_field( $input['llms_override'] )            : '',
-        'maintenance_enabled'      => ! empty( $input['maintenance_enabled'] )    ? '1'                                                           : '',
-        'maintenance_message'      => isset( $input['maintenance_message'] )      ? sanitize_text_field( $input['maintenance_message'] )          : '',
+    );
+}
+
+/**
+ * roci_maintenance — the Maintenance tab (1.16.0, El Rocinante 8.9.0).
+ * REBUILT FROM SCRATCH: both keys the tab renders, nothing else.
+ * enabled: '1' | ''; message: one line, sanitize_text_field().
+ */
+function roci_sanitize_maintenance( $input ) {
+    $input = is_array( $input ) ? $input : array();
+
+    return array(
+        'enabled' => ! empty( $input['enabled'] ) ? '1' : '',
+        'message' => isset( $input['message'] ) ? sanitize_text_field( $input['message'] ) : '',
     );
 }
 

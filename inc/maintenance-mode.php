@@ -2,11 +2,12 @@
 /**
  * Maintenance Mode — a "back soon" page for visitors, the live site for admins
  *
- * ALWAYS LOADED, INERT WHILE OFF. The switch is Theme Settings → SEO →
- * Maintenance mode (roci_seo[maintenance_enabled], '1' | ''), with an optional
- * one-line message (roci_seo[maintenance_message], '' = the standby default).
- * Both keys live in roci_sanitize_seo(), which rebuilds the option from
- * scratch.
+ * ALWAYS LOADED, INERT WHILE OFF. The switch is Theme Settings → Maintenance
+ * → Maintenance mode (since 8.9.0 its own option, roci_maintenance[enabled],
+ * '1' | ''), with an optional one-line message (roci_maintenance[message],
+ * '' = the standby default). Both keys live in roci_sanitize_maintenance(),
+ * which rebuilds the option from scratch. 8.5.0–8.8.x kept them in roci_seo;
+ * roci_maintenance_migrate() moves them once.
  *
  * WHILE ON, on template_redirect priority 0 (front end only), a viewer who
  * cannot bypass gets HTTP 503, Retry-After: 3600, X-Robots-Tag: noindex,
@@ -47,8 +48,15 @@
  * (roci_brand_page_colors(), roci_contrast_ratio(); the same algorithm as
  * roci-standby's roci_standby_colors()).
  *
+ * 1.2.0 (El Rocinante 8.9.0): its own Theme Settings tab, "Maintenance"
+ * (roci_settings_tabs + roci_settings_tab_maintenance, after SEO), option
+ * roci_maintenance (enabled, message), the purge hooks on that option, the
+ * one-time move from roci_seo (roci_maintenance_migrate()), and the
+ * read-only "Standby status" rows (roci_standby_status()). The fallback page's
+ * logo takes the snapshot's logo_w / logo_h.
+ *
  * File:    inc/maintenance-mode.php
- * Version: 1.1.0
+ * Version: 1.2.0
  * Updated: 2026-11-19
  *
  * @package ElRocinante
@@ -64,22 +72,23 @@ if ( ! defined( 'ABSPATH' ) ) exit;
 /**
  * roci_maintenance_flag()
  *
- * Internal. The on/off value of a stored or submitted roci_seo array.
+ * Internal. The on/off value of a stored or submitted roci_maintenance array
+ * (1.2.0, El Rocinante 8.9.0; was a roci_seo array).
  *
- * @param  mixed $seo A roci_seo value.
+ * @param  mixed $value A roci_maintenance value.
  * @return bool
  */
-function roci_maintenance_flag( $seo ) {
-    return is_array( $seo ) && isset( $seo['maintenance_enabled'] ) && '1' === (string) $seo['maintenance_enabled'];
+function roci_maintenance_flag( $value ) {
+    return is_array( $value ) && isset( $value['enabled'] ) && '1' === (string) $value['enabled'];
 }
 
 /**
  * roci_maintenance_mode_on()
  *
- * @return bool True while Theme Settings → SEO → Maintenance mode is on.
+ * @return bool True while Theme Settings → Maintenance → Maintenance mode is on.
  */
 function roci_maintenance_mode_on() {
-    return roci_maintenance_flag( get_option( 'roci_seo', array() ) );
+    return roci_maintenance_flag( get_option( 'roci_maintenance', array() ) );
 }
 
 /**
@@ -90,9 +99,9 @@ function roci_maintenance_mode_on() {
  * @return string
  */
 function roci_maintenance_message() {
-    $seo = get_option( 'roci_seo', array() );
+    $value = get_option( 'roci_maintenance', array() );
 
-    return ( is_array( $seo ) && isset( $seo['maintenance_message'] ) ) ? trim( (string) $seo['maintenance_message'] ) : '';
+    return ( is_array( $value ) && isset( $value['message'] ) ) ? trim( (string) $value['message'] ) : '';
 }
 
 /**
@@ -114,8 +123,8 @@ function roci_maintenance_can_bypass() {
 /**
  * roci_maintenance_purge_on_change()
  *
- * On update_option_roci_seo: purge the whole page cache when the on/off
- * value changed, and only then.
+ * On update_option_roci_maintenance: purge the whole page cache when the
+ * on/off value changed, and only then.
  *
  * @param mixed $old The stored value before the save.
  * @param mixed $new The saved value.
@@ -125,13 +134,13 @@ function roci_maintenance_purge_on_change( $old, $new ) {
         do_action( 'litespeed_purge_all' );
     }
 }
-add_action( 'update_option_roci_seo', 'roci_maintenance_purge_on_change', 10, 2 );
+add_action( 'update_option_roci_maintenance', 'roci_maintenance_purge_on_change', 10, 2 );
 
 /**
  * roci_maintenance_purge_on_add()
  *
- * On add_option_roci_seo (the tab's first save): the option did not exist,
- * so it was off; purge when it is saved on.
+ * On add_option_roci_maintenance (the tab's first save): the option did not
+ * exist, so it was off; purge when it is saved on.
  *
  * @param string $option The option name.
  * @param mixed  $value  The saved value.
@@ -139,7 +148,181 @@ add_action( 'update_option_roci_seo', 'roci_maintenance_purge_on_change', 10, 2 
 function roci_maintenance_purge_on_add( $option, $value ) {
     roci_maintenance_purge_on_change( array(), $value );
 }
-add_action( 'add_option_roci_seo', 'roci_maintenance_purge_on_add', 10, 2 );
+add_action( 'add_option_roci_maintenance', 'roci_maintenance_purge_on_add', 10, 2 );
+
+/**
+ * roci_maintenance_migrate()
+ *
+ * One time, 8.5.0–8.8.x → 8.9.0. On admin_init PRIORITY 1: before
+ * roci_register_settings() (priority 10) attaches the sanitizers, so neither
+ * write below is re-sanitized (re-running roci_sanitize_seo() over a stored
+ * row would turn seo_preview '0' into '1'). If roci_maintenance does not exist
+ * yet and roci_seo still holds maintenance_enabled or maintenance_message,
+ * copy them into roci_maintenance (enabled, message), then remove them from
+ * roci_seo. Every other roci_seo key is untouched. No cache purge: the
+ * purge-on-change hooks and the llms.txt purge are unhooked for the two
+ * writes (the switch's value does not change). Runs at most once: after it,
+ * roci_maintenance exists.
+ */
+function roci_maintenance_migrate() {
+    if ( false !== get_option( 'roci_maintenance', false ) ) {
+        return;
+    }
+
+    $seo = get_option( 'roci_seo', array() );
+
+    if ( ! is_array( $seo ) || ! ( array_key_exists( 'maintenance_enabled', $seo ) || array_key_exists( 'maintenance_message', $seo ) ) ) {
+        return;
+    }
+
+    $value = array(
+        'enabled' => ( isset( $seo['maintenance_enabled'] ) && '1' === (string) $seo['maintenance_enabled'] ) ? '1' : '',
+        'message' => isset( $seo['maintenance_message'] ) ? sanitize_text_field( $seo['maintenance_message'] ) : '',
+    );
+    unset( $seo['maintenance_enabled'], $seo['maintenance_message'] );
+
+    $quiet = array(
+        array( 'add_option_roci_maintenance', 'roci_maintenance_purge_on_add', 10, 2 ),
+        array( 'update_option_roci_seo', 'roci_llms_txt_purge', 10, 1 ),
+        array( 'add_option_roci_seo', 'roci_llms_txt_purge', 10, 1 ),
+    );
+    foreach ( $quiet as $hook ) {
+        remove_action( $hook[0], $hook[1], $hook[2] );
+    }
+
+    add_option( 'roci_maintenance', $value, '', false );
+    update_option( 'roci_seo', $seo );
+
+    foreach ( $quiet as $hook ) {
+        if ( function_exists( $hook[1] ) ) {
+            add_action( $hook[0], $hook[1], $hook[2], $hook[3] );
+        }
+    }
+}
+add_action( 'admin_init', 'roci_maintenance_migrate', 1 );
+
+
+// ============================================================
+// THE MAINTENANCE TAB (8.9.0) — through roci_settings_tabs
+// ============================================================
+
+/**
+ * roci_maintenance_settings_tab()
+ *
+ * On roci_settings_tabs: the "Maintenance" tab, right after SEO (appended if
+ * there is no SEO tab). The panel is roci_maintenance_settings_tab_panel()
+ * on roci_settings_tab_maintenance; the setting is registered in
+ * roci_register_settings(). The filter's two-part contract (CONVENTIONS).
+ *
+ * @param  array $tabs slug => label.
+ * @return array
+ */
+function roci_maintenance_settings_tab( $tabs ) {
+    $tabs = is_array( $tabs ) ? $tabs : array();
+    $out  = array();
+
+    foreach ( $tabs as $slug => $label ) {
+        $out[ $slug ] = $label;
+        if ( 'seo' === $slug ) {
+            $out['maintenance'] = __( 'Maintenance', 'rocinante' );
+        }
+    }
+    if ( ! isset( $out['maintenance'] ) ) {
+        $out['maintenance'] = __( 'Maintenance', 'rocinante' );
+    }
+
+    return $out;
+}
+add_filter( 'roci_settings_tabs', 'roci_maintenance_settings_tab' );
+
+/**
+ * roci_maintenance_settings_tab_panel()
+ *
+ * On roci_settings_tab_maintenance: the tab's panel, inside the Theme
+ * Settings form (tabs/tab-maintenance.php).
+ */
+function roci_maintenance_settings_tab_panel() {
+    include get_template_directory() . '/inc/theme-settings/tabs/tab-maintenance.php';
+}
+add_action( 'roci_settings_tab_maintenance', 'roci_maintenance_settings_tab_panel' );
+
+/**
+ * roci_standby_status()
+ *
+ * Internal. The Maintenance tab's read-only "Standby status" rows. Each row:
+ * label, state ('ok' | 'missing' | 'outdated' | 'warn'), detail (plain text),
+ * fix ('' when nothing to do), plus 'swatches' / 'logo' on the snapshot row.
+ *
+ * @return array[]
+ */
+function roci_standby_status() {
+    $rows  = array();
+    $theme = wp_get_theme( 'roci-standby' );
+    $has   = $theme->exists();
+    $ver   = $has ? (string) $theme->get( 'Version' ) : '';
+
+    $rows[] = array(
+        'label'  => __( 'roci-standby theme', 'rocinante' ),
+        'state'  => $has ? 'ok' : 'missing',
+        /* translators: %s: version number. */
+        'detail' => $has ? sprintf( __( 'Installed, version %s.', 'rocinante' ), $ver ) : __( 'Not installed.', 'rocinante' ),
+        'fix'    => $has ? '' : __( 'Install roci-standby with Git Updater (don\'t activate it).', 'rocinante' ),
+    );
+
+    $default = defined( 'WP_DEFAULT_THEME' ) ? (string) WP_DEFAULT_THEME : '';
+    $rows[]  = array(
+        'label'  => __( 'Default theme (WP_DEFAULT_THEME)', 'rocinante' ),
+        'state'  => 'roci-standby' === $default ? 'ok' : 'missing',
+        /* translators: %s: the WP_DEFAULT_THEME value. */
+        'detail' => sprintf( __( 'Currently: %s.', 'rocinante' ), '' !== $default ? $default : __( 'not set', 'rocinante' ) ),
+        'fix'    => 'roci-standby' === $default ? '' : __( 'Add define( \'WP_DEFAULT_THEME\', \'roci-standby\' ); to wp-config.php.', 'rocinante' ),
+    );
+
+    $dropin   = trailingslashit( WP_CONTENT_DIR ) . 'php-error.php';
+    $d_ver    = is_readable( $dropin ) ? (string) get_file_data( $dropin, array( 'Version' => 'Version' ) )['Version'] : '';
+    $t_file   = $has ? trailingslashit( $theme->get_stylesheet_directory() ) . 'php-error.php' : '';
+    $t_ver    = ( '' !== $t_file && is_readable( $t_file ) ) ? (string) get_file_data( $t_file, array( 'Version' => 'Version' ) )['Version'] : '';
+    $d_state  = ! is_readable( $dropin ) ? 'missing' : ( ( '' !== $t_ver && $d_ver !== $t_ver ) ? 'outdated' : 'ok' );
+    $rows[]   = array(
+        'label'  => __( 'Fatal-error page (wp-content/php-error.php)', 'rocinante' ),
+        'state'  => $d_state,
+        'detail' => 'missing' === $d_state
+            ? __( 'Not in wp-content/.', 'rocinante' )
+            /* translators: 1: the drop-in's version, 2: the theme's copy's version. */
+            : sprintf( __( 'Version %1$s (theme copy: %2$s).', 'rocinante' ), '' !== $d_ver ? $d_ver : '?', '' !== $t_ver ? $t_ver : '?' ),
+        'fix'    => 'ok' === $d_state ? '' : __( 'Copy php-error.php from the roci-standby theme folder into wp-content/.', 'rocinante' ),
+    );
+
+    $snap   = get_option( 'roci_brand_snapshot', false );
+    $is_arr = is_array( $snap );
+    $swatch = array();
+    if ( $is_arr ) {
+        foreach ( array( 'surface', 'text', 'heading', 'muted', 'accent' ) as $key ) {
+            if ( isset( $snap[ $key ] ) && preg_match( '/^#[0-9a-f]{6}$/i', (string) $snap[ $key ] ) ) {
+                $swatch[ $key ] = strtolower( (string) $snap[ $key ] );
+            }
+        }
+    }
+    $rows[] = array(
+        'label'    => __( 'Brand snapshot', 'rocinante' ),
+        'state'    => $is_arr ? 'ok' : 'missing',
+        'detail'   => $is_arr ? __( 'Saved. The standby page uses these colours and logo.', 'rocinante' ) : __( 'Not saved yet.', 'rocinante' ),
+        'fix'      => $is_arr ? '' : __( 'Open any wp-admin screen once to save it.', 'rocinante' ),
+        'swatches' => $swatch,
+        'logo'     => ( $is_arr && isset( $snap['logo_url'] ) && preg_match( '#^https?://#i', (string) $snap['logo_url'] ) ) ? (string) $snap['logo_url'] : '',
+    );
+
+    if ( 'roci-standby' === get_stylesheet() ) {
+        $rows[] = array(
+            'label'  => __( 'Active theme', 'rocinante' ),
+            'state'  => 'warn',
+            'detail' => __( 'Standby theme is active: visitors see the standby page.', 'rocinante' ),
+            'fix'    => '',
+        );
+    }
+
+    return $rows;
+}
 
 
 // ============================================================
@@ -379,7 +562,7 @@ function roci_maintenance_fallback_page( $message = '', $brand = array() ) {
 html,body{margin:0}
 body{display:flex;flex-direction:column;min-height:100vh;background:var(--bg);color:var(--fg);font:1.0625rem/1.6 system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;text-align:center}
 main{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;width:100%;max-width:36rem;margin:0 auto;padding:4rem 1rem 2rem}
-.logo{display:block;width:auto;max-width:min(18rem,100%);height:auto;margin:0 auto 2rem}
+.logo{display:block;max-width:min(18rem,100%);height:auto;margin:0 auto 2rem}
 .name{margin:0 0 2rem;font-weight:600;font-size:1.25rem;color:var(--hd)}
 h1{margin:0 0 .75rem;font-size:clamp(1.75rem,5vw,2.5rem);line-height:1.2;color:var(--hd)}
 p{margin:0 0 1.5rem}
@@ -394,7 +577,7 @@ footer p{margin:0}
 <body class="roci-maintenance">
 <main>
 <?php if ( '' !== $logo ) : ?>
-<img class="logo" src="<?php echo esc_url( $logo ); ?>" alt="<?php echo esc_attr( $name ); ?>">
+<img class="logo" src="<?php echo esc_url( $logo ); ?>" alt="<?php echo esc_attr( $name ); ?>"<?php echo ( isset( $brand['logo_w'], $brand['logo_h'] ) && (int) $brand['logo_w'] > 0 && (int) $brand['logo_h'] > 0 ) ? ' width="' . (int) $brand['logo_w'] . '" height="' . (int) $brand['logo_h'] . '"' : ''; ?>>
 <?php elseif ( '' !== $name ) : ?>
 <p class="name"><?php echo esc_html( $name ); ?></p>
 <?php endif; ?>
@@ -418,12 +601,12 @@ footer p{margin:0}
 /**
  * roci_maintenance_settings_url()
  *
- * Internal. Theme Settings → SEO, at the Maintenance mode section.
+ * Internal. Theme Settings → Maintenance (8.9.0; was the SEO tab's section).
  *
  * @return string
  */
 function roci_maintenance_settings_url() {
-    return admin_url( 'admin.php?page=roci-theme-settings&tab=seo#roci-maintenance' );
+    return admin_url( 'admin.php?page=roci-theme-settings&tab=maintenance' );
 }
 
 /**
@@ -510,7 +693,7 @@ function roci_maintenance_admin_notice() {
         <p>
             <strong><?php esc_html_e( 'Maintenance mode is ON.', 'rocinante' ); ?></strong>
             <?php esc_html_e( 'Visitors see a "back soon" page (HTTP 503); you see the live site.', 'rocinante' ); ?>
-            <a href="<?php echo esc_url( roci_maintenance_settings_url() ); ?>"><?php esc_html_e( 'Turn it off in Theme Settings → SEO when you are done.', 'rocinante' ); ?></a>
+            <a href="<?php echo esc_url( roci_maintenance_settings_url() ); ?>"><?php esc_html_e( 'Turn it off in Theme Settings → Maintenance when you are done.', 'rocinante' ); ?></a>
         </p>
         <?php if ( ! $standby ) : ?>
             <p><?php esc_html_e( 'The roci-standby theme is not installed, so visitors get the plain built-in page (no logo or contact line).', 'rocinante' ); ?></p>

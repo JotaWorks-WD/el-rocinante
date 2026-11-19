@@ -11,8 +11,11 @@
  * maintenance_enabled and maintenance_message, read by
  * inc/maintenance-mode.php.
  *
+ * 1.4.0 (El Rocinante 8.9.0): the Maintenance mode section moved to its own
+ * tab (tabs/tab-maintenance.php, option roci_maintenance).
+ *
  * File:    inc/theme-settings/tabs/tab-seo.php
- * Version: 1.3.0
+ * Version: 1.4.0
  * Updated: 2026-11-19
  *
  * @package ElRocinante
@@ -27,9 +30,6 @@ $default_og = isset( $seo['default_og_image'] ) ? $seo['default_og_image'] : '';
 // rebuilds the option from scratch on every save.
 $llms_enabled  = isset( $seo['llms_enabled'] ) ? (string) $seo['llms_enabled'] : '';
 $llms_override = isset( $seo['llms_override'] ) ? (string) $seo['llms_override'] : '';
-// Maintenance mode (1.3.0) — both keys must also be in roci_sanitize_seo().
-$maintenance_enabled = isset( $seo['maintenance_enabled'] ) ? (string) $seo['maintenance_enabled'] : '';
-$maintenance_message = isset( $seo['maintenance_message'] ) ? (string) $seo['maintenance_message'] : '';
 ?>
 <h2 class="roci-section-title"><?php esc_html_e( 'SEO Defaults', 'rocinante' ); ?></h2>
 <table class="form-table">
@@ -74,26 +74,6 @@ $maintenance_message = isset( $seo['maintenance_message'] ) ? (string) $seo['mai
             <p><label for="roci_llms_override"><?php esc_html_e( 'Custom llms.txt (optional)', 'rocinante' ); ?></label></p>
             <textarea name="roci_seo[llms_override]" id="roci_llms_override" class="large-text code" rows="8"><?php echo esc_textarea( $llms_override ); ?></textarea>
             <p class="roci-note"><?php esc_html_e( 'Anything here replaces the whole file. Leave empty for the automatic version.', 'rocinante' ); ?></p>
-        </td>
-    </tr>
-</table>
-
-<h2 class="roci-section-title" id="roci-maintenance"><?php esc_html_e( 'Maintenance mode', 'rocinante' ); ?></h2>
-<table class="form-table">
-    <tr>
-        <th><label for="roci_maintenance_enabled"><?php esc_html_e( 'Maintenance mode', 'rocinante' ); ?></label></th>
-        <td>
-            <input type="checkbox" name="roci_seo[maintenance_enabled]" id="roci_maintenance_enabled" value="1" <?php checked( $maintenance_enabled, '1' ); ?>>
-            <label for="roci_maintenance_enabled"><?php esc_html_e( 'Turn on maintenance mode', 'rocinante' ); ?></label>
-            <p class="roci-note"><?php esc_html_e( 'Visitors see a "back soon" page (HTTP 503). Logged-in administrators see the live site. Turn it off when you are done.', 'rocinante' ); ?></p>
-            <p class="roci-note"><?php esc_html_e( 'Turning it on or off purges the page cache.', 'rocinante' ); ?></p>
-        </td>
-    </tr>
-    <tr>
-        <th><label for="roci_maintenance_message"><?php esc_html_e( 'Message', 'rocinante' ); ?></label></th>
-        <td>
-            <input type="text" name="roci_seo[maintenance_message]" id="roci_maintenance_message" class="large-text" maxlength="200" value="<?php echo esc_attr( $maintenance_message ); ?>">
-            <p class="roci-note"><?php esc_html_e( 'Optional, one line, shown under "We\'ll be right back". Leave empty for the default.', 'rocinante' ); ?></p>
         </td>
     </tr>
 </table>

@@ -4,6 +4,46 @@ All notable changes to the El Rocinante parent theme are recorded here. Entries 
 
 ---
 
+## [8.9.0] — 2026-11-19
+
+**FEAT: Maintenance mode moves to its own Theme Settings tab, with a read-only "Standby status" panel that shows whether the site's safety net (roci-standby, `WP_DEFAULT_THEME`, the fatal-error drop-in, the brand snapshot) is in place.**
+
+**In plain English (2026-11-19):** Maintenance mode has its own tab in Theme Settings, which also shows at a glance whether the site's safety net is fully set up.
+
+MINOR. Nothing visitors see changes.
+
+### The tab
+
+- **Theme Settings → Maintenance**, right after SEO. It's added through `roci_settings_tabs`, with its panel on `roci_settings_tab_maintenance` (the filter's two-part contract) and the file `inc/theme-settings/tabs/tab-maintenance.php` 1.0.0.
+- **Option:** `roci_maintenance` (group `roci_maintenance_group`), rebuilt by the new `roci_sanitize_maintenance()`: `enabled` (`'1'` \| `''`) and `message` (`sanitize_text_field`).
+- **The fields moved here from the SEO tab unchanged,** except the message help text: it now names the 8.8.0 heading ("shown under 'We're making a few improvements'") instead of the old "We'll be right back".
+- **`tabs/tab-seo.php` 1.4.0** no longer has the section. `roci_sanitize_seo()` (`settings-sanitize.php` 1.16.0) drops the two keys; every other SEO key and value is unchanged (proved in the harness against 8.8.0).
+
+### Maintenance mode (`inc/maintenance-mode.php` 1.2.0)
+
+- `roci_maintenance_mode_on()` and the message reader read `roci_maintenance`.
+- The purge-on-change hooks are now on `add_option_roci_maintenance` / `update_option_roci_maintenance`. They fire on on/off changes only.
+- The admin-bar node and the notice link to the Maintenance tab.
+- **The one-time move:** `roci_maintenance_migrate()`, on `admin_init` priority 1.
+  - It copies `roci_seo[maintenance_enabled|maintenance_message]` into `roci_maintenance` and removes them from `roci_seo`.
+  - It runs only when `roci_maintenance` doesn't exist yet and an old key is there, so never twice.
+  - **No purge,** and the writes are not re-sanitized: re-running `roci_sanitize_seo()` would flip a stored `seo_preview` `'0'` to `'1'`.
+  - A site that never used Maintenance mode gets no `roci_maintenance` until its first save.
+- **The Standby status panel** (`roci_standby_status()`, read-only). Each row shows a dashicon and a word (OK / Missing / Out of date / Warning) and a fix line when it fails:
+  - the roci-standby theme (installed, version);
+  - `WP_DEFAULT_THEME === 'roci-standby'`;
+  - `wp-content/php-error.php` present, with its `Version:` matching the theme's copy (`get_file_data()`);
+  - the brand snapshot (swatches with hex values as text, plus the logo);
+  - a Warning row if roci-standby is the active theme. In practice it can't appear, because the parent isn't loaded then.
+- **The fallback page's logo** gets `width` / `height` from the snapshot.
+
+### Brand snapshot (`inc/theme-settings/settings-register.php` 1.8.0)
+
+- New keys `logo_w` / `logo_h`: the custom logo's intrinsic size (ints), omitted for an SVG or an unknown size, and re-validated after the `roci_brand_snapshot` filter. roci-standby 1.1.1 prints them on the `<img>`.
+- `roci_maintenance` is registered in `roci_register_settings()`.
+
+---
+
 ## [8.8.0] — 2026-11-19
 
 **FEAT: the maintenance / standby page uses the site's brand. The parent saves a brand snapshot that roci-standby reads, Maintenance mode passes it live, and the parent's own fallback page matches the new look and copy.**
