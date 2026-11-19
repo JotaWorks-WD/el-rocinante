@@ -8,12 +8,16 @@
  * page owns its own option_name storage independently.
  *
  * 2.2.0 (El Rocinante 8.4.0): a tab strip across the top of the landing and
- * every page screen ("All pages" + one tab per screen, core nav-tab markup,
- * plain links), shown with two or more screens.
+ * every page screen ("All pages" + one tab per screen, plain links), shown
+ * with two or more screens.
+ *
+ * 2.2.1 (El Rocinante 8.4.3): the strip uses its own roci-pages-tabs classes
+ * and a small admin <style>, no longer core's nav-tab classes, which Meta Box
+ * Settings Page's tab script also binds to (it snapped back to "All pages").
  *
  * File:    inc/pages/pages-register.php
- * Version: 2.2.0
- * Updated: 2026-11-18
+ * Version: 2.2.1
+ * Updated: 2026-11-19
  *
  * @package ElRocinante
  */
@@ -110,9 +114,14 @@ function roci_pages_tab_entries( $entries ) {
  * roci_pages_tab_strip_html()
  *
  * The strip: "All pages" (the roci-pages landing), then one tab per page
- * screen. WordPress core's own nav-tab markup, so it needs no CSS. '' unless
- * $current is the landing or one of the screens, and '' with fewer than two
- * screens (a one-page site has nothing to switch between).
+ * screen. '' unless $current is the landing or one of the screens, and '' with
+ * fewer than two screens (a one-page site has nothing to switch between).
+ *
+ * Its own classes (roci-pages-tabs, __link, is-active), never core's
+ * nav-tab-wrapper / nav-tab / nav-tab-active: Meta Box Settings Page's tab
+ * script binds to those, and since this strip prints first it took "All
+ * pages" for its first tab and re-activated it after every load (8.4.3).
+ * Styled by roci_pages_tab_strip_css().
  *
  * Each tab is a plain link (a page load). Each Meta Box settings page keeps
  * its own form and its own option row; true in-page tabs stay ruled out,
@@ -137,14 +146,36 @@ function roci_pages_tab_strip_html( $current, $entries ) {
         'label' => __( 'All pages', 'rocinante' ),
     ) );
 
-    $html = '<div class="wrap roci-pages-tabs"><nav class="nav-tab-wrapper" aria-label="' . esc_attr__( 'Page settings', 'rocinante' ) . '">';
+    $html = '<div class="wrap"><nav class="roci-pages-tabs" aria-label="' . esc_attr__( 'Page settings', 'rocinante' ) . '">';
 
     foreach ( $tabs as $tab ) {
         $active = $tab['slug'] === $current;
-        $html  .= '<a href="' . esc_url( admin_url( 'admin.php?page=' . $tab['slug'] ) ) . '" class="nav-tab' . ( $active ? ' nav-tab-active' : '' ) . '"' . ( $active ? ' aria-current="page"' : '' ) . '>' . esc_html( $tab['label'] ) . '</a>';
+        $html  .= '<a href="' . esc_url( admin_url( 'admin.php?page=' . $tab['slug'] ) ) . '" class="roci-pages-tabs__link' . ( $active ? ' is-active' : '' ) . '"' . ( $active ? ' aria-current="page"' : '' ) . '>' . esc_html( $tab['label'] ) . '</a>';
     }
 
     return $html . '</nav></div>';
+}
+
+/**
+ * roci_pages_tab_strip_css()
+ *
+ * The strip's admin-only <style>, printed with it and only when it prints.
+ * Looks like core's tabs: a row of links over a bottom border, the active one
+ * joined to the page. Focus ring in the admin colour scheme's theme colour
+ * (--wp-admin-theme-color, core's default blue as the fallback); every link is
+ * at least 24x24px.
+ *
+ * @return string
+ */
+function roci_pages_tab_strip_css() {
+    return '<style id="roci-pages-tabs-css">'
+        . '.roci-pages-tabs{display:flex;flex-wrap:wrap;align-items:flex-end;gap:0 .5em;margin:0 0 1em;padding:9px 0 0;border-bottom:1px solid #c3c4c7}'
+        . '.roci-pages-tabs__link{box-sizing:border-box;display:inline-flex;align-items:center;min-width:24px;min-height:24px;margin:0 0 -1px;padding:5px 10px;border:1px solid #c3c4c7;background:#dcdcde;color:#50575e;font-size:14px;font-weight:600;line-height:1.71428571;text-decoration:none;white-space:nowrap}'
+        . '.roci-pages-tabs__link:hover,.roci-pages-tabs__link:focus{background:#fff;color:#3c434a}'
+        . '.roci-pages-tabs__link.is-active{background:#f0f0f1;border-bottom-color:#f0f0f1;color:#000}'
+        . '.roci-pages-tabs__link:focus{box-shadow:none;outline:0}'
+        . '.roci-pages-tabs__link:focus-visible{position:relative;z-index:1;outline:2px solid var(--wp-admin-theme-color,#2271b1);outline-offset:1px}'
+        . '</style>';
 }
 
 /**
@@ -164,6 +195,12 @@ function roci_pages_tab_strip() {
         return;
     }
 
-    echo roci_pages_tab_strip_html( sanitize_text_field( wp_unslash( $_GET['page'] ) ), $submenu['roci-pages'] ); // phpcs:ignore WordPress.Security.NonceVerification -- escaped in the builder.
+    $html = roci_pages_tab_strip_html( sanitize_text_field( wp_unslash( $_GET['page'] ) ), $submenu['roci-pages'] ); // phpcs:ignore WordPress.Security.NonceVerification -- read-only screen slug.
+
+    if ( '' === $html ) {
+        return;
+    }
+
+    echo roci_pages_tab_strip_css() . $html; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- static CSS; the markup is escaped in the builder.
 }
 add_action( 'all_admin_notices', 'roci_pages_tab_strip' );

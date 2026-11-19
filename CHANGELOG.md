@@ -4,6 +4,24 @@ All notable changes to the El Rocinante parent theme are recorded here. Entries 
 
 ---
 
+## [8.4.3] — 2026-11-19
+
+**FIX: the Pages tab strip stays on the tab you clicked.**
+
+**In plain English (2026-11-19):** The page tabs in Theme Settings now stay on the page you picked.
+
+PATCH. No change to any documented contract a child calls; admin markup and CSS only.
+
+### Pages tab strip (`inc/pages/pages-register.php` 2.2.1)
+
+- **The bug:** on Theme Settings → Pages screens, clicking a tab loaded that screen, then the active tab snapped back to "All pages". The strip used core's `nav-tab-wrapper` / `nav-tab` / `nav-tab-active` classes, which Meta Box Settings Page's own tab script also binds to; the strip prints first (on `all_admin_notices`), so that script took "All pages" for its first tab and activated it.
+- **Now:** `<nav class="roci-pages-tabs" aria-label="Page settings">` inside the same `div.wrap`, links `roci-pages-tabs__link`, the current one `is-active` + `aria-current="page"`. No `nav-tab*` class anywhere in the strip.
+- **Styling:** `roci_pages_tab_strip_css()` (new) returns a small admin-only `<style>`, printed with the strip and only when it prints: core-tab look (a row of links over a bottom border, the active one joined to the page), a `:focus-visible` outline in the admin colour scheme's `--wp-admin-theme-color`, every link at least 24×24px. No Build change.
+- **Unchanged:** the entries and their capability check, the fewer-than-two-screens rule, "All pages" first, and each tab a plain page load.
+- **Checked:** the only other `nav-tab` markup in the parent is the Theme Settings page's own tab row (`inc/theme-settings/settings-page.php`), a hand-rolled Settings API screen with no Meta Box settings page on it, so no clash. Left as is.
+
+---
+
 ## [8.4.2] — 2026-11-18
 
 **FIX: W3C validity — no `role="list"` (a zero-width list marker keeps Safari's list semantics instead), and no trailing slash on core's void tags in `<head>`.**
