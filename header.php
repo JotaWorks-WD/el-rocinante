@@ -14,7 +14,9 @@
  * apply_filters('roci_schema_sameas_exclude') lists, and
  * its openingHoursSpecification comes from roci_get_business_hours(), filterable
  * via apply_filters('roci_business_hours') (inc/schema/business-hours.php), and
- * its hasMap (v2.8.0) from roci_maps_link_url(), else roci_maps_embed_url().
+ * its hasMap (v2.8.0) from roci_maps_link_url(), else roci_maps_embed_url(), and
+ * its areaServed (v2.9.0) from Business → Areas Served (region, extra regions,
+ * country), added before roci_schema_data, so a child changes or removes it there.
  * The BlogPosting's isPartOf (v2.8.0) references the WebSite node's @id, which
  * this file records with roci_website_schema_id() once that node is filtered.
  * hreflang alternates are filterable via apply_filters('roci_hreflang_alternates')
@@ -32,7 +34,7 @@
  * twitter:image:alt (v2.8.1) follows twitter:image, with og:image:alt's value.
  *
  * File:    header.php
- * Version: 2.8.1
+ * Version: 2.9.0
  * Updated: 2026-11-21
  *
  * @package ElRocinante
@@ -443,6 +445,13 @@ $roci_article_times = $roci_is_article ? roci_article_times( get_queried_object_
     // the loop below is the second belt.
     $roci_biz_amenities    = roci_setting( 'business', 'amenities', array() );
 
+    // Areas Served (v2.9.0, El Rocinante 8.12.0). The extra regions are a
+    // LIST (the sanitiser splits the textarea on save), so they take the
+    // same array() default as amenities, for the same reason.
+    $roci_biz_area_region  = roci_setting( 'business', 'area_served_region' );
+    $roci_biz_area_country = roci_setting( 'business', 'area_served_country' );
+    $roci_biz_area_extra   = roci_setting( 'business', 'area_served_extra', array() );
+
     /*
      * @type resolved from the business type map, not hardcoded.
      *
@@ -773,13 +782,71 @@ $roci_article_times = $roci_is_article ? roci_article_times( get_queried_object_
         }
 
         /*
+         * areaServed (v2.9.0, El Rocinante 8.12.0) — Business → Areas Served.
+         *
+         * ORDER: the Region, then each extra region, then the Country.
+         * - Each region is an AdministrativeArea, containedInPlace its Country
+         *   (that key is omitted when Country is empty).
+         * - The Country closes the list as its own Country node.
+         * - No towns: the town is already in the address (addressLocality).
+         *
+         * Only when at least one of the three is filled. With all three empty
+         * the key is never set, so the node is byte-identical to 8.11.3.
+         *
+         * A region repeated (the extra list, or an extra equal to the Region,
+         * compared case-insensitively) is published once, first spelling kept.
+         * The sanitiser already dedupes on save; this guards data written by
+         * anything else.
+         *
+         * Valid on every @type this file emits: areaServed is an Organization
+         * property, and LocalBusiness is an Organization. A child that wants
+         * other areas, or none, changes or unsets the key in roci_schema_data.
+         */
+        $roci_area_country = trim( (string) $roci_biz_area_country );
+        $roci_area_names   = array();
+        $roci_area_seen    = array();
+        foreach ( array_merge( array( $roci_biz_area_region ), is_array( $roci_biz_area_extra ) ? $roci_biz_area_extra : array() ) as $roci_area_name ) {
+            $roci_area_name = is_scalar( $roci_area_name ) ? trim( (string) $roci_area_name ) : '';
+            if ( '' === $roci_area_name || isset( $roci_area_seen[ strtolower( $roci_area_name ) ] ) ) {
+                continue;
+            }
+            $roci_area_seen[ strtolower( $roci_area_name ) ] = true;
+            $roci_area_names[] = $roci_area_name;
+        }
+
+        $roci_area_served = array();
+        foreach ( $roci_area_names as $roci_area_name ) {
+            $roci_area_node = array(
+                '@type' => 'AdministrativeArea',
+                'name'  => $roci_area_name,
+            );
+            if ( '' !== $roci_area_country ) {
+                $roci_area_node['containedInPlace'] = array(
+                    '@type' => 'Country',
+                    'name'  => $roci_area_country,
+                );
+            }
+            $roci_area_served[] = $roci_area_node;
+        }
+        if ( '' !== $roci_area_country ) {
+            $roci_area_served[] = array(
+                '@type' => 'Country',
+                'name'  => $roci_area_country,
+            );
+        }
+        if ( $roci_area_served ) {
+            $roci_local_schema['areaServed'] = $roci_area_served;
+        }
+
+        /*
          * roci_schema_data — the site-level JSON-LD, filtered before encode.
          *
          * Receives the fully assembled LocalBusiness array: the base keys
          * (@context, @type, @id, name, url, telephone, email, and sameAs when
          * at least one profile URL survives) plus whichever of logo / image /
-         * priceRange / address / geo / description / openingHoursSpecification
-         * and the type-specific properties survived their gates above. A child
+         * priceRange / address / geo / hasMap / description /
+         * openingHoursSpecification, the type-specific properties and
+         * areaServed (v2.9.0) survived their gates above. A child
          * may modify it, add to it, or replace it outright — change '@type' to
          * the vertical it actually is (since v2.5.1 it arrives as an array,
          * [ type, 'Organization' ], unless the type is Organization itself;

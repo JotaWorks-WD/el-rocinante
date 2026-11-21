@@ -13,10 +13,15 @@
  * 1.16.0 (8.9.0) — roci_sanitize_seo() drops maintenance_enabled /
  *                  maintenance_message (moved); new roci_sanitize_maintenance()
  *                  for the option roci_maintenance (enabled, message).
+ * 1.17.0 (8.12.0) — roci_sanitize_business() keeps the three Areas Served
+ *                  keys: area_served_region, area_served_country (text) and
+ *                  area_served_extra (a list: the textarea split on lines,
+ *                  trimmed, blanks dropped, deduped, capped at 20). Every
+ *                  other key unchanged.
  *
  * File:    inc/theme-settings/settings-sanitize.php
- * Version: 1.16.0
- * Updated: 2026-11-19
+ * Version: 1.17.0
+ * Updated: 2026-11-21
  *
  * @package ElRocinante
  */
@@ -249,6 +254,37 @@ function roci_sanitize_business( $input ) {
         );
     }
 
+    /*
+     * AREAS SERVED (1.17.0, El Rocinante 8.12.0) — the site-level node's
+     * areaServed (header.php builds it). Region and Country are one line each.
+     *
+     * EXTRA REGIONS are stored as a LIST, not the textarea's string:
+     * 1. The raw textarea is split on line breaks BEFORE sanitising.
+     *    sanitize_text_field() on the whole string would fold every line into
+     *    one.
+     * 2. Each line goes through sanitize_text_field(), which also trims it;
+     *    an empty line is dropped.
+     * 3. Deduped case-insensitively, first spelling kept. A line equal to the
+     *    Region is a duplicate too: the Region is already the first area.
+     * 4. Capped at 20. A longer list stops at the twentieth kept line.
+     * A non-string value (a crafted POST) stores array().
+     */
+    $roci_area_region = isset( $input['area_served_region'] ) ? sanitize_text_field( $input['area_served_region'] ) : '';
+    $roci_area_extra  = array();
+    $roci_area_seen   = '' !== $roci_area_region ? array( strtolower( $roci_area_region ) => true ) : array();
+    $roci_area_raw    = ( isset( $input['area_served_extra'] ) && is_string( $input['area_served_extra'] ) ) ? $input['area_served_extra'] : '';
+    foreach ( preg_split( '/\R/', $roci_area_raw ) as $roci_area_line ) {
+        $roci_area_line = sanitize_text_field( $roci_area_line );
+        if ( '' === $roci_area_line || isset( $roci_area_seen[ strtolower( $roci_area_line ) ] ) ) {
+            continue;
+        }
+        $roci_area_seen[ strtolower( $roci_area_line ) ] = true;
+        $roci_area_extra[] = $roci_area_line;
+        if ( 20 === count( $roci_area_extra ) ) {
+            break;
+        }
+    }
+
     return array(
         'type'     => $roci_type,
         'name'     => isset( $input['name'] )     ? sanitize_text_field( $input['name'] )     : '',
@@ -272,6 +308,9 @@ function roci_sanitize_business( $input ) {
         'maps_embed_url' => roci_sanitize_maps_embed_url( isset( $input['maps_embed_url'] ) ? $input['maps_embed_url'] : '' ),
         'schema_image' => isset( $input['schema_image'] ) ? esc_url_raw( $input['schema_image'] )      : '',
         'price_range'  => isset( $input['price_range'] )  ? sanitize_text_field( $input['price_range'] ) : '',
+        'area_served_region'  => $roci_area_region,
+        'area_served_country' => isset( $input['area_served_country'] ) ? sanitize_text_field( $input['area_served_country'] ) : '',
+        'area_served_extra'   => $roci_area_extra,
     );
 }
 

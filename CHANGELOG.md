@@ -4,6 +4,44 @@ All notable changes to the El Rocinante parent theme are recorded here. Entries 
 
 ---
 
+## [8.12.0] — 2026-11-21
+
+**FEAT: the site-level business node carries `areaServed`, from Theme Settings → Business → Areas Served.**
+
+**In plain English (2026-11-21):** You can now tell search engines which region and country your business serves, right from Theme Settings.
+
+MINOR (a new settings group and a new schema property; nothing changes until it is filled). `header.php` 2.9.0, `inc/theme-settings/tabs/tab-business.php` 1.11.0, `inc/theme-settings/settings-sanitize.php` 1.17.0.
+
+- **The settings:** a new "Areas Served" group, after Business Information. Help text: "Where you serve customers. Leave empty to omit. The town is already in your address."
+  - **Region** (text, e.g. "Guanacaste"), key `area_served_region`.
+  - **Country** (text, e.g. "Costa Rica"), key `area_served_country`. A name, not the 2-letter code the address's Country takes.
+  - **Extra regions** (textarea, one per line, optional, all in the same country), key `area_served_extra`.
+  - These are separate from the address's State / Province / Region and Country. Those say where the business is; these say where it serves.
+- **The sanitizer** (`roci_sanitize_business()`, which rebuilds the row from scratch) lists all three:
+  - Region and Country go through `sanitize_text_field()`.
+  - Extra regions are stored as a **list**. The raw textarea is split on line breaks before sanitizing (`sanitize_text_field()` on the whole string would fold the lines into one). Each line goes through `sanitize_text_field()`; empty lines are dropped. Lines are deduped case-insensitively, keeping the first spelling, and a line equal to the Region counts as a repeat. The list is capped at 20. A non-string value stores `array()`.
+  - **Every existing Business key survives:** the harness ran the 8.11.3 and 8.12.0 sanitizers on the same POST (all 22 existing keys, hours, amenities, rooms, pets and a map embed), with and without the new fields. The 22 values are identical; the only change is the three new keys.
+- **The schema:** `areaServed` is added to the site-level node **before `roci_schema_data`**, so a child changes or removes it there (no new filter: `roci_schema_data` is the node's filter). The order is the Region, then each extra region, then the Country:
+  - each region: `{ "@type": "AdministrativeArea", "name": …, "containedInPlace": { "@type": "Country", "name": <Country> } }`, with `containedInPlace` omitted when Country is empty;
+  - the Country: `{ "@type": "Country", "name": … }`.
+  - It's added only when at least one field is filled. With all three empty the key is never set, and the node is **byte-identical to 8.11.3**.
+  - No towns (the town is in `address.addressLocality`). A region repeated in stored data is published once (a guard for data the sanitizer didn't write).
+  - It uses the same encoding and escaping as the rest of the node: the stored values, `wp_json_encode( …, JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT )`, and the `</` → `<\/` rewrite.
+  - It's valid on every built-in `@type`: `areaServed` is an Organization property, and LocalBusiness is an Organization.
+- **Children inherit it.** No child change is needed; a child fills the three fields, or adjusts the key in `roci_schema_data`.
+- **Checked** (`php -l` clean on all three files; a harness running the real node block cut out of the 8.11.3 and 8.12.0 `header.php`, and the real sanitizer):
+  - All empty: byte-identical to the 8.11.3 node (1,331 bytes, every other key populated).
+  - Region + Country: exactly the two nodes above (Guanacaste in Costa Rica, then Costa Rica).
+  - Country only: one Country node.
+  - Region only: one AdministrativeArea, no `containedInPlace`.
+  - Extra regions with blanks and repeats: "Puntarenas / (blank) / (spaces) / ␠Alajuela␠ / puntarenas / GUANACASTE / Alajuela" saves as `["Puntarenas","Alajuela"]`, then Guanacaste, Puntarenas, Alajuela (each in Costa Rica), then Costa Rica. 25 lines typed keeps 20.
+  - A `roci_schema_data` callback unsetting `areaServed`: byte-identical to the 8.11.3 node.
+  - In every case, every other key of the node is identical to 8.11.3.
+
+CONVENTIONS: schema outputs block 2 (`areaServed`), the Business settings keys, and `roci_schema_data` as the place to adjust it.
+
+**Deploy:** parent only (`header.php`, `inc/theme-settings/tabs/tab-business.php`, `inc/theme-settings/settings-sanitize.php`, `style.css`). Then fill Theme Settings → Business → Areas Served on each site that wants it.
+
 ## [8.11.3] — 2026-11-21
 
 **FEAT: the Twitter Card carries the image's alt text (`twitter:image:alt`).**

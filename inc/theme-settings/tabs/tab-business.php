@@ -14,9 +14,14 @@
  * because a WAF blocks any POST containing "<iframe"; an aria-live status
  * announces the conversion. The server-side extraction stays as the fallback.
  *
+ * 1.11.0 (El Rocinante 8.12.0): a new "Areas Served" group after Business
+ * Information: Region, Country and Extra regions (keys area_served_region,
+ * area_served_country, area_served_extra), kept by roci_sanitize_business()
+ * and published as the site-level node's areaServed.
+ *
  * File:    inc/theme-settings/tabs/tab-business.php
- * Version: 1.10.1
- * Updated: 2026-11-19
+ * Version: 1.11.0
+ * Updated: 2026-11-21
  *
  * @package ElRocinante
  */
@@ -210,6 +215,46 @@ $roci_biz_type          = isset( $business['type'] ) && '' !== $business['type']
         <td>
             <input type="text" name="roci_business[price_range]" id="roci_biz_price_range" class="large-text" value="<?php echo esc_attr( isset( $business['price_range'] ) ? $business['price_range'] : '' ); ?>">
             <p class="roci-note"><?php esc_html_e( 'Optional. e.g. $$, $$$, or a range like $150–$400. Leave blank if not applicable.', 'rocinante' ); ?></p>
+        </td>
+    </tr>
+</table>
+
+<?php
+/*
+ * AREAS SERVED (1.11.0, El Rocinante 8.12.0) — the site-level node's
+ * areaServed: each region an AdministrativeArea in the Country, then the
+ * Country itself. Separate from the address's State / Province / Region and
+ * Country (ISO code) above: those say where the business IS; these say where
+ * it SERVES, and the Country here is a name, not a code.
+ *
+ * Extra regions are stored as a list (roci_sanitize_business() splits the
+ * textarea), so they are shown one per line. Read raw from the option like
+ * every field on this tab.
+ */
+$roci_area_extra = ( isset( $business['area_served_extra'] ) && is_array( $business['area_served_extra'] ) ) ? $business['area_served_extra'] : array();
+?>
+<h2 class="roci-section-title"><?php esc_html_e( 'Areas Served', 'rocinante' ); ?></h2>
+<p class="roci-note"><?php esc_html_e( 'Where you serve customers. Leave empty to omit. The town is already in your address.', 'rocinante' ); ?></p>
+<table class="form-table">
+    <tr>
+        <th><label for="roci_biz_area_region"><?php esc_html_e( 'Region', 'rocinante' ); ?></label></th>
+        <td>
+            <input type="text" name="roci_business[area_served_region]" id="roci_biz_area_region" class="regular-text" value="<?php echo esc_attr( isset( $business['area_served_region'] ) ? $business['area_served_region'] : '' ); ?>">
+            <p class="roci-note"><?php esc_html_e( 'e.g. Guanacaste', 'rocinante' ); ?></p>
+        </td>
+    </tr>
+    <tr>
+        <th><label for="roci_biz_area_country"><?php esc_html_e( 'Country', 'rocinante' ); ?></label></th>
+        <td>
+            <input type="text" name="roci_business[area_served_country]" id="roci_biz_area_country" class="regular-text" value="<?php echo esc_attr( isset( $business['area_served_country'] ) ? $business['area_served_country'] : '' ); ?>">
+            <p class="roci-note"><?php esc_html_e( 'e.g. Costa Rica. The full name, not the 2-letter code the address uses.', 'rocinante' ); ?></p>
+        </td>
+    </tr>
+    <tr>
+        <th><label for="roci_biz_area_extra"><?php esc_html_e( 'Extra regions', 'rocinante' ); ?></label></th>
+        <td>
+            <textarea name="roci_business[area_served_extra]" id="roci_biz_area_extra" class="large-text" rows="3"><?php echo esc_textarea( implode( "\n", $roci_area_extra ) ); ?></textarea>
+            <p class="roci-note"><?php esc_html_e( 'Optional. One per line, all in the same country. Empty lines and repeats are dropped on save; up to 20.', 'rocinante' ); ?></p>
         </td>
     </tr>
 </table>
