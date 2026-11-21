@@ -4,6 +4,27 @@ All notable changes to the El Rocinante parent theme are recorded here. Entries 
 
 ---
 
+## [8.11.3] — 2026-11-21
+
+**FEAT: the Twitter Card carries the image's alt text (`twitter:image:alt`).**
+
+**In plain English (2026-11-21):** Shared links on X (Twitter) now carry the image description, the same as on Facebook and LinkedIn.
+
+PATCH. `<head>` only (`header.php` 2.8.1).
+
+- **The tag:** `<meta name="twitter:image:alt" content="…">`, printed directly after `twitter:image`.
+- **Same value, same escaping as `og:image:alt`:** `$roci_og_image_alt` through `esc_attr()`. That value's chain is unchanged: the typed OG Image Alt field, then the winning image's own alt text, then the meta description, then the title.
+- **When:** only when `twitter:image` prints (inside the same image test) **and** the alt is non-empty after `trim()`. No image means neither tag; an image with no alt means `twitter:image` alone. Never `content=""`; the file's no-empty-content rule (2.2.1) now lists it.
+- **Children inherit it.** No child prints its own `twitter:*` tags or defines `header.php` (checked: jota.works, the clients, the Boilerplate; every match is a comment about the parent's tags). **No child change is needed.** The only requirement is the existing rule: alt text on every OG image and featured image.
+- **Checked** (a harness running the real Open Graph + Twitter Card blocks cut out of `header.php`):
+  - Image + alt → `twitter:image` then `twitter:image:alt` on the next line, with a value identical to `og:image:alt` (`&`, `"` and `<` escaped the same way).
+  - Image, alt only whitespace → `twitter:image` and no `:alt` tag; no `content=""` anywhere.
+  - No image → `twitter:card` "summary" and neither image tag.
+  - `php -l` is clean.
+- Every other head tag is byte-identical.
+
+**Deploy:** parent only (`header.php`, `style.css`). No child change is needed.
+
 ## [8.11.2] — 2026-11-19
 
 **FIX: the XML sitemap no longer lists pages and posts set to noindex.**

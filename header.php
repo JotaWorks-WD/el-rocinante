@@ -29,10 +29,11 @@
  * FAQPage is no longer printed here (v2.6.0): it prints in the body where the
  * FAQ renders, through jw_faq_schema().
  * Robots (v2.6.0) come from roci_effective_robots() (inc/metabox/metabox-seo-fields.php).
+ * twitter:image:alt (v2.8.1) follows twitter:image, with og:image:alt's value.
  *
  * File:    header.php
- * Version: 2.8.0
- * Updated: 2026-11-19
+ * Version: 2.8.1
+ * Updated: 2026-11-21
  *
  * @package ElRocinante
  */
@@ -318,7 +319,7 @@
     // NO EMPTY content="" (v2.2.1). Below, every tag whose value can come out
     // empty is printed only when that value is non-empty after trim():
     // description, og:title, og:description, og:site_name, og:image:alt,
-    // twitter:title, twitter:description. (A listing route with no site-default
+    // twitter:title, twitter:description, twitter:image:alt. (A listing route with no site-default
     // description used to print <meta name="description" content="">.) The
     // guards sit at column 0 so they print nothing: wherever a value is
     // non-empty the output is byte-identical. Tags that can never be empty —
@@ -328,6 +329,11 @@
     // is one (the same test that prints twitter:image, so byte-identical
     // there), summary when there is not — a large-image card with no image
     // is a contradiction.
+    //
+    // twitter:image:alt (v2.8.1) — directly after twitter:image, inside the same
+    // image test, with og:image:alt's value and escaping ($roci_og_image_alt,
+    // esc_attr()); printed only while that alt is non-empty after trim(), so a
+    // card never carries an empty description. No image → neither tag.
     ?>
 
     <!-- Meta -->
@@ -399,6 +405,9 @@ $roci_article_times = $roci_is_article ? roci_article_times( get_queried_object_
 <?php endif; ?>
     <?php if ( $roci_og_image_url ) : ?>
     <meta name="twitter:image" content="<?php echo esc_url( $roci_og_image_url ); ?>">
+<?php if ( '' !== trim( (string) $roci_og_image_alt ) ) : ?>
+    <meta name="twitter:image:alt" content="<?php echo esc_attr( $roci_og_image_alt ); ?>">
+<?php endif; ?>
     <?php endif; ?>
 
     <?php if ( $roci_schema ) : ?>
